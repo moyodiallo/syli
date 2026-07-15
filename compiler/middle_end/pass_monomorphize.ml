@@ -60,7 +60,7 @@ module Monomorphize = struct
     | CR_Arrow (args, ret) ->
         List.exists (fun t -> has_generic_ir_type t.ir_type) args
         || has_generic_ir_type ret.ir_type
-    | CR_Ptr t -> has_generic_ir_type t.ir_type
+    | CR_Obj_Ptr t -> has_generic_ir_type t.ir_type
     | CR_Obj { args; _ } ->
         List.exists (fun t -> has_generic_ir_type t.ir_type) args
     | _ -> false
@@ -72,7 +72,8 @@ module Monomorphize = struct
     | CR_GenericTyp { type_var }, _ -> Hashtbl.replace subst type_var y_ty
     | CR_Obj { args = x_args; _ }, CR_Obj { args = y_args; _ } ->
         List.iter2 (collect_subst subst) x_args y_args
-    | CR_Ptr x_inner, CR_Ptr y_inner -> collect_subst subst x_inner y_inner
+    | CR_Obj_Ptr x_inner, CR_Obj_Ptr y_inner ->
+        collect_subst subst x_inner y_inner
     | CR_Arrow (x_args, x_ret), CR_Arrow (y_args, y_ret) ->
         List.iter2 (collect_subst subst) x_args y_args;
         collect_subst subst x_ret y_ret

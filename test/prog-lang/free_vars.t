@@ -62,7 +62,7 @@ Closure with free variables:
   define i64 @syliTest_multi.apply() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %syliTest_multi.apply__add = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %syliTest_multi.apply__add = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.apply__add.27_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %syliTest_multi.apply__add, i32 2

@@ -80,11 +80,12 @@ type ir_type =
   | RR_U8
   | RR_Float
   | RR_Double
-  | RR_Ptr of ir_type
+  | RR_Obj_Ptr of ir_type
+  | RR_FnPtr
   | RR_Void
   | RR_Arrow of ir_type list * ir_type
 
-let object_ptr_ty = RR_Ptr RR_I64
+let object_ptr_ty = RR_Obj_Ptr RR_I64
 
 type constant =
   | RR_IntLit of string

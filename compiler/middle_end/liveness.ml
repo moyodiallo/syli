@@ -10,7 +10,7 @@ type t = live_info IntMap.t
 (* ── Helpers ──────────────────────────────────────────────────── *)
 
 let is_ref_ir_type (t : ir_type) : bool =
-  match t with OR_Obj _ | OR_Ptr _ -> true | _ -> false
+  match t with OR_Obj _ | OR_Obj_Ptr _ -> true | _ -> false
 
 let is_ref_ty (t : ty) : bool = is_ref_ir_type t.ir_type
 

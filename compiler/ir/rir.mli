@@ -45,7 +45,8 @@ type ir_type =
   | RR_U8
   | RR_Float
   | RR_Double
-  | RR_Ptr of ir_type
+  | RR_Obj_Ptr of ir_type
+  | RR_FnPtr
   | RR_Void
   | RR_Arrow of ir_type list * ir_type
 

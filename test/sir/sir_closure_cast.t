@@ -306,7 +306,7 @@ Closure as an argument with multiple captured variables:
   define i64 @syliTest_multi.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.66_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
@@ -317,7 +317,7 @@ Closure as an argument with multiple captured variables:
     store i64 1, ptr %Sy_tmp3
     ; nop
     call void @syli_rt_gc_cycle()
-    %Sy_var1 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820451, i32 1, i32 3)
+    %Sy_var1 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820419, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.dispatch.clos0_arg2_ret_i64 to ptr
     %Sy_tmp4 = getelementptr i64, ptr %Sy_var1, i32 2
@@ -334,7 +334,7 @@ Closure as an argument with multiple captured variables:
     call void @syli_rt_object_decr(ptr %Sy_var1)
     call void @syli_rt_object_check_release(ptr %Sy_var1)
     call void @syli_rt_gc_cycle()
-    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 3026418949592973314, i32 1, i32 2)
+    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
     %Sy_tmp10 = getelementptr i64, ptr %Sy_var3, i32 2

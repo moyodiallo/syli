@@ -170,7 +170,7 @@ let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
       tv1 = tv2
   | CR_Obj { named = n1; args = args1 }, CR_Obj { named = n2; args = args2 } ->
       n1 = n2 && List.for_all2 ty_equal args1 args2
-  | CR_Ptr t1, CR_Ptr t2 -> ty_equal t1 t2
+  | CR_Obj_Ptr t1, CR_Obj_Ptr t2 -> ty_equal t1 t2
   | CR_Arrow (args1, ret1), CR_Arrow (args2, ret2) ->
       List.for_all2 ty_equal args1 args2 && ty_equal ret1 ret2
   | _, _ -> false

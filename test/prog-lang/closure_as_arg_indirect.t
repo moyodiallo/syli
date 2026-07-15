@@ -172,7 +172,7 @@
   define void @syliTest_file.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.111_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
@@ -193,7 +193,7 @@
   bb0:
     %Sy_var2 = alloca ptr
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.54_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2

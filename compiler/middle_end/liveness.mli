@@ -1,6 +1,6 @@
-(** Liveness analysis for reference-typed OIR variables (OR_Obj, OR_Ptr). Used
-    by pass_rc_insertion to decide where reference-counting operations can be
-    inserted. *)
+(** Liveness analysis for reference-typed OIR variables (OR_Obj, OR_Obj_Ptr).
+    Used by pass_rc_insertion to decide where reference-counting operations can
+    be inserted. *)
 
 open Syli_common
 

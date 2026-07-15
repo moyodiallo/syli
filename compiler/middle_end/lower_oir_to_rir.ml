@@ -42,9 +42,10 @@ let void_dst () : Rir.var =
 
 let is_reference_ty = function
   | RR_Bool | RR_I64 | RR_I32 | RR_I16 | RR_I8 | RR_U64 | RR_U32 | RR_U16
-  | RR_U8 | RR_Float | RR_Double | RR_Void ->
+  | RR_U8 | RR_Float | RR_Double | RR_Void | RR_Arrow _ ->
       false
-  | RR_Ptr _ | RR_Arrow _ -> true
+  | RR_Obj_Ptr _ -> true
+  | RR_FnPtr -> false
 
 (* ------------------------------------------------------------- *)
 (* Object header construction                                    *)
@@ -195,8 +196,6 @@ let header_operand_of_layout (layout : Oir.object_layout)
   in
   int64_operand header
 
-let object_ptr_ty = RR_Ptr RR_I64
-
 let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   match t with
   | OR_Bool -> RR_Bool
@@ -210,9 +209,9 @@ let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   | OR_U8 -> RR_U8
   | OR_Float -> RR_Float
   | OR_Double -> RR_Double
-  | OR_FnPtr -> RR_Ptr RR_I64
+  | OR_FnPtr -> RR_FnPtr
   | OR_Obj _ -> object_ptr_ty
-  | OR_Ptr inner -> RR_Ptr (lower_ir_type inner.ir_type)
+  | OR_Obj_Ptr inner -> RR_Obj_Ptr (lower_ir_type inner.ir_type)
   | OR_Void -> RR_Void
 
 let lower_ty (t : Oir.ty) : Rir.ty =
