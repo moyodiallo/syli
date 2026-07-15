@@ -20,7 +20,7 @@ Closure with multipble chains of captured variables:
   define i64 @syliTest_multi.apply() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.41_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
@@ -31,7 +31,7 @@ Closure with multipble chains of captured variables:
     store i64 1, ptr %Sy_tmp3
     ; nop
     call void @syli_rt_gc_cycle()
-    %Sy_var1 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462338, i32 1, i32 3)
+    %Sy_var1 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820355, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.clos1_arg1_ret_i64 to ptr
     %Sy_tmp4 = getelementptr i64, ptr %Sy_var1, i32 2
@@ -117,7 +117,7 @@ Closure as an argument:
   define i64 @__init_global.syliTest_multi.result() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3026418949592973313, i32 1, i32 1)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693953, i32 1, i32 1)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.62_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2

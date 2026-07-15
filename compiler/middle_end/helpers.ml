@@ -16,7 +16,7 @@ let rec type_key_of_ty (t : ty) : string =
   | CR_FnPtr -> "fn_ptr"
   | CR_Void -> "void"
   | CR_GenericTyp { type_var } -> "gen" ^ string_of_int type_var
-  | CR_Ptr inner -> "ptr_" ^ type_key_of_ty inner
+  | CR_Obj_Ptr inner -> "obj_" ^ type_key_of_ty inner
   | CR_Obj { named; args } ->
       let name = match named with Some n -> n | None -> "obj" in
       if args = [] then "obj_" ^ name
@@ -33,7 +33,7 @@ let rec ir_type_equal (a : ir_type) (b : ir_type) : bool =
       List.length args1 = List.length args2
       && List.for_all2 (fun a b -> ty_equal a b) args1 args2
       && ty_equal ret1 ret2
-  | CR_Ptr a, CR_Ptr b -> ty_equal a b
+  | CR_Obj_Ptr a, CR_Obj_Ptr b -> ty_equal a b
   | CR_Obj a, CR_Obj b ->
       a.named = b.named
       && List.length a.args = List.length b.args

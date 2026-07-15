@@ -20,7 +20,8 @@ let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
   | RR_Float -> LV_Float
   | RR_Double -> LV_Double
   | RR_Void -> LV_Void
-  | RR_Ptr _ -> LV_Ptr
+  | RR_Obj_Ptr _ -> LV_Ptr
+  | RR_FnPtr -> LV_Ptr
   | RR_Arrow (args, ret) ->
       LV_Func (List.map lltype_of_ir_type args, lltype_of_ir_type ret)
 

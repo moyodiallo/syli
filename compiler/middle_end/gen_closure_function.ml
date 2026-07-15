@@ -5,8 +5,11 @@ let fresh_id = Syli_ir.Oir.fresh_id
 let i64_ty : ty = { id = fresh_id (); ir_type = OR_I64 }
 let void_ty : ty = { id = fresh_id (); ir_type = OR_Void }
 let fn_ptr_ty : ty = { id = fresh_id (); ir_type = OR_FnPtr }
-let ptr_ty (inner : ty) : ty = { id = fresh_id (); ir_type = OR_Ptr inner }
-let void_ptr_ty () : ty = ptr_ty { id = fresh_id (); ir_type = OR_Void }
+
+let obj_ptr_ty (inner : ty) : ty =
+  { id = fresh_id (); ir_type = OR_Obj_Ptr inner }
+
+let void_ptr_ty () : ty = obj_ptr_ty { id = fresh_id (); ir_type = OR_Void }
 let fresh_var name ty : var = { id = fresh_id (); name; ty }
 
 let int_operand (value : int) : operand =
@@ -34,7 +37,7 @@ let rec type_key_of_ty (t : ty) : string =
   | OR_Double -> "f64"
   | OR_FnPtr -> "fn_ptr"
   | OR_Void -> "void"
-  | OR_Ptr inner -> "ptr_" ^ type_key_of_ty inner
+  | OR_Obj_Ptr inner -> "obj_" ^ type_key_of_ty inner
   | OR_Obj { named; args } ->
       let name = match named with Some n -> n | None -> "obj" in
       if args = [] then "obj_" ^ name
@@ -61,8 +64,8 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
     partial_closure_accum_dispatch_name ~stored_args_size ~args_size
       ~ret_ty:result_ty
   in
-  let clos_ty = ptr_ty void_ty in
-  let clos_var = fresh_var "Sy_clos" (ptr_ty void_ty) in
+  let clos_ty = obj_ptr_ty void_ty in
+  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty void_ty) in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
   let arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
@@ -234,13 +237,13 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
   let fn_name =
     partial_closure_accum_name ~stored_args_size ~args_size ~ret_ty:result_ty
   in
-  let clos_var = fresh_var "Sy_clos" (ptr_ty void_ty) in
+  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty void_ty) in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
-  let closure_ptr_ty = ptr_ty void_ty in
+  let closure_obj_ptr_ty = obj_ptr_ty void_ty in
   let arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
   in
-  let parent_clos_var = fresh_var "Sy_p_clos" closure_ptr_ty in
+  let parent_clos_var = fresh_var "Sy_p_clos" closure_obj_ptr_ty in
   let load_parent_stmt =
     make_statement
       (OR_Assign
@@ -252,11 +255,11 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
                   {
                     obj = OR_OVar clos_var;
                     field_idx = int_operand 1;
-                    value_ty = closure_ptr_ty;
+                    value_ty = closure_obj_ptr_ty;
                   })
-               closure_ptr_ty;
+               closure_obj_ptr_ty;
          })
-      closure_ptr_ty
+      closure_obj_ptr_ty
   in
   let parent_accum_var = fresh_var "Sy_p_accum" fn_ptr_ty in
   let load_parent_accum_stmt =
@@ -498,7 +501,7 @@ let build_make_closure_accum_dispatch ~stored_args_size ~args_size
   let apply_arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
   in
-  let clos_ty = ptr_ty void_ty in
+  let clos_ty = obj_ptr_ty void_ty in
   let clos_var = fresh_var "Sy_clos" clos_ty in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
   (* Load stored args from clos[1+] *)
@@ -599,7 +602,7 @@ let build_make_closure_accum ~(fn_name : string) ~stored_args_size ~args_size
     ~(specializations : ty list) ~ret_ty id : function_oir =
   let accum_fn_name = make_closure_accum_name ~fn_name id ~ret_ty in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
-  let clos_var = fresh_var "Sy_clos" (ptr_ty void_ty) in
+  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty void_ty) in
   let arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
   in

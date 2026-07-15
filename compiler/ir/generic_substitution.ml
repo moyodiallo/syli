@@ -13,7 +13,7 @@ and subst_ir_type subst = function
       | None -> CR_GenericTyp { type_var })
   | CR_Arrow (args, ret) ->
       CR_Arrow (List.map (apply_subst_ty subst) args, apply_subst_ty subst ret)
-  | CR_Ptr ty -> CR_Ptr (apply_subst_ty subst ty)
+  | CR_Obj_Ptr ty -> CR_Obj_Ptr (apply_subst_ty subst ty)
   | CR_Obj { named; args } ->
       CR_Obj { named; args = List.map (apply_subst_ty subst) args }
   | other -> other

@@ -38,7 +38,7 @@ Closure as an argument with multiple captured variables:
   bb0:
     %Sy_var2 = alloca i64
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.66_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
@@ -51,7 +51,7 @@ Closure as an argument with multiple captured variables:
     br i1 true, label %bb1, label %bb2
   bb2:
     call void @syli_rt_gc_cycle()
-    %Sy_var5 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820451, i32 1, i32 3)
+    %Sy_var5 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820419, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.dispatch.clos0_arg2_ret_i64 to ptr
     %Sy_tmp4 = getelementptr i64, ptr %Sy_var5, i32 2
@@ -73,7 +73,7 @@ Closure as an argument with multiple captured variables:
     br label %bb3
   bb1:
     call void @syli_rt_gc_cycle()
-    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 3026418949592973314, i32 1, i32 2)
+    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
     %Sy_tmp10 = getelementptr i64, ptr %Sy_var3, i32 2
@@ -223,7 +223,7 @@ Closure as an argument with multiple captured variables:
   define i64 @syliTest_multi.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.66_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
     %Sy_tmp1 = getelementptr i64, ptr %Sy_tmp0, i32 0
@@ -235,7 +235,7 @@ Closure as an argument with multiple captured variables:
   
   bb2:                                              ; preds = %bb0
     call void @syli_rt_gc_cycle()
-    %Sy_var5 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820451, i32 1, i32 3)
+    %Sy_var5 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820419, i32 1, i32 3)
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.dispatch.clos0_arg2_ret_i64 to ptr
     %Sy_tmp4 = getelementptr i64, ptr %Sy_var5, i32 2
     %Sy_tmp5 = getelementptr i64, ptr %Sy_tmp4, i32 0
@@ -255,7 +255,7 @@ Closure as an argument with multiple captured variables:
   
   bb1:                                              ; preds = %bb0
     call void @syli_rt_gc_cycle()
-    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 3026418949592973314, i32 1, i32 2)
+    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
     %Sy_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
     %Sy_tmp10 = getelementptr i64, ptr %Sy_var3, i32 2
     %Sy_tmp11 = getelementptr i64, ptr %Sy_tmp10, i32 0
@@ -385,13 +385,13 @@ Closure as an argument with multiple captured variables:
   define noundef i32 @syli_startup_program(i32 %argc, ptr nocapture readnone %argv) local_unnamed_addr {
   bb0:
     tail call void @syli_rt_gc_cycle()
-    %Sy_var0.i = tail call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0.i = tail call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     %Sy_tmp0.i = getelementptr i8, ptr %Sy_var0.i, i64 16
     store ptr @__make_closure_accum.dispatch.66_ret_i64, ptr %Sy_tmp0.i, align 8
     %Sy_tmp3.i = getelementptr i8, ptr %Sy_var0.i, i64 24
     store i64 1, ptr %Sy_tmp3.i, align 4
     tail call void @syli_rt_gc_cycle()
-    %Sy_var3.i = tail call ptr @syli_rt_rc_alloc_object(i64 3026418949592973314, i32 1, i32 2)
+    %Sy_var3.i = tail call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
     %Sy_tmp10.i = getelementptr i8, ptr %Sy_var3.i, i64 16
     store ptr @__partial_closure_accum.clos0_arg2_ret_i64, ptr %Sy_tmp10.i, align 8
     %Sy_tmp13.i = getelementptr i8, ptr %Sy_var3.i, i64 24
@@ -420,13 +420,13 @@ Closure as an argument with multiple captured variables:
   define i64 @syliTest_multi.main() local_unnamed_addr {
   bb0:
     tail call void @syli_rt_gc_cycle()
-    %Sy_var0 = tail call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = tail call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     %Sy_tmp0 = getelementptr i8, ptr %Sy_var0, i64 16
     store ptr @__make_closure_accum.dispatch.66_ret_i64, ptr %Sy_tmp0, align 8
     %Sy_tmp3 = getelementptr i8, ptr %Sy_var0, i64 24
     store i64 1, ptr %Sy_tmp3, align 4
     tail call void @syli_rt_gc_cycle()
-    %Sy_var3 = tail call ptr @syli_rt_rc_alloc_object(i64 3026418949592973314, i32 1, i32 2)
+    %Sy_var3 = tail call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
     %Sy_tmp10 = getelementptr i8, ptr %Sy_var3, i64 16
     store ptr @__partial_closure_accum.clos0_arg2_ret_i64, ptr %Sy_tmp10, align 8
     %Sy_tmp13 = getelementptr i8, ptr %Sy_var3, i64 24
@@ -536,7 +536,7 @@ Closure as an argument with multiple captured variables:
   	.cfi_offset %rbx, -24
   	.cfi_offset %r14, -16
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3602879701896462337, %rdi      # imm = 0x3200000000010001
+  	movabsq	$2305843009213693954, %rdi      # imm = 0x2000000000000002
   	movl	$1, %esi
   	movl	$2, %edx
   	callq	syli_rt_rc_alloc_object@PLT
@@ -545,7 +545,7 @@ Closure as an argument with multiple captured variables:
   	movq	%rax, 16(%rbx)
   	movq	$1, 24(%rbx)
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3026418949592973314, %rdi      # imm = 0x2A00000000000002
+  	movabsq	$4179340454199820354, %rdi      # imm = 0x3A00000000000042
   	movl	$1, %esi
   	movl	$2, %edx
   	callq	syli_rt_rc_alloc_object@PLT
@@ -611,7 +611,7 @@ Closure as an argument with multiple captured variables:
   	.cfi_offset %rbx, -24
   	.cfi_offset %r14, -16
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3602879701896462337, %rdi      # imm = 0x3200000000010001
+  	movabsq	$2305843009213693954, %rdi      # imm = 0x2000000000000002
   	movl	$1, %esi
   	movl	$2, %edx
   	callq	syli_rt_rc_alloc_object@PLT
@@ -620,7 +620,7 @@ Closure as an argument with multiple captured variables:
   	movq	%rax, 16(%rbx)
   	movq	$1, 24(%rbx)
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3026418949592973314, %rdi      # imm = 0x2A00000000000002
+  	movabsq	$4179340454199820354, %rdi      # imm = 0x3A00000000000042
   	movl	$1, %esi
   	movl	$2, %edx
   	callq	syli_rt_rc_alloc_object@PLT

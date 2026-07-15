@@ -49,7 +49,7 @@ type ir_type =
   | OR_Double
   | OR_FnPtr
   | OR_Obj of { named : string option; args : ty list }
-  | OR_Ptr of ty  (** TODO: remove Ptr and replace arrow translation by Obj *)
+  | OR_Obj_Ptr of ty
   | OR_Void
 
 and ty = { id : int; ir_type : ir_type }

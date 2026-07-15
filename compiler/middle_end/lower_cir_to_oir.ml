@@ -95,13 +95,13 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
   | Cir.CR_FnPtr -> Oir.OR_FnPtr
   | Cir.CR_Obj { named; args } ->
       Oir.OR_Obj { named; args = List.map lower_ty args }
-  | Cir.CR_Ptr inner -> Oir.OR_Ptr (lower_ty inner)
+  | Cir.CR_Obj_Ptr inner -> Oir.OR_Obj_Ptr (lower_ty inner)
   | Cir.CR_Void -> Oir.OR_Void
   | Cir.CR_GenericTyp _ ->
       failwith
         "Cir.CR_GenericTyp should be monomorphized before lowering to OIR"
   | Cir.CR_Arrow _ ->
-      Oir.OR_Ptr { id = fresh_global_id (); ir_type = Oir.OR_Void }
+      Oir.OR_Obj_Ptr { id = fresh_global_id (); ir_type = Oir.OR_Void }
 
 and lower_ty (t : Cir.ty) : Oir.ty =
   { id = fresh_global_id (); ir_type = lower_ir_type t.ir_type }
@@ -242,7 +242,7 @@ let sir_i64_ty : Cir.ty = { id = fresh_global_id (); ir_type = Cir.CR_I64 }
 let sir_void_ptr_ty : Cir.ty =
   {
     id = fresh_global_id ();
-    ir_type = Cir.CR_Ptr { id = fresh_global_id (); ir_type = Cir.CR_Void };
+    ir_type = Cir.CR_Obj_Ptr { id = fresh_global_id (); ir_type = Cir.CR_Void };
   }
 
 let sir_operand_ty (op : Cir.operand) : Cir.ty =
@@ -364,8 +364,8 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
 
 (** Lower a Cir.CR_Make_closure statement into OIR statements.
 
-    Layout (matching gen_closure_function.ml):
-      [0]=accum_fn, [1+]=stored_args (free_vars @ captured_args) *)
+    Layout (matching gen_closure_function.ml): [0]=accum_fn,
+    [1+]=stored_args(free_vars + captured_args) *)
 let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
     (captured_args : Cir.operand list) (fn_name : string) :
     ctx * Oir.statement list =
@@ -515,9 +515,11 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
 
 (** Lower a Cir.CR_Partial_apply statement into OIR statements.
 
-    Layouts (matching gen_closure_function.ml): Non-dispatch: [0]=accum_fn,
-    [1]=parent, [2+]=new_args Dispatch: [0]=accum_fn, [1]=dispatch_edge,
-    [2]=parent, [3+]=new_args
+    Layouts (matching gen_closure_function.ml):
+
+    Non-dispatch: [0]=accum_fn, [1]=parent, [2+]=new_args
+
+    Dispatch: [0]=accum_fn, [1]=dispatch_edge, [2]=parent, [3+]=new_args
 
     Only stores the new arguments at this step (no copy of inherited args).
     Chain traversal happens via the parent pointer at runtime. *)
@@ -662,8 +664,9 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
 (** Lower a Cir.CR_Cast on an arrow type into a pass-through closure when
     dispatch > 0.
 
-    Layout: [0]=accum_fn, [1]=dispatch_edge, [2]=parent Chains to the parent
-    (Make_closure root) with accumulated dispatch_id. *)
+    Layout: [0]=accum_fn, [1]=dispatch_edge, [2]=parent
+
+    Chains to the parent (Make_closure root) with accumulated dispatch_id. *)
 let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
     ctx * Oir.statement list =
   let ctx, oir_dst = lower_var ctx dst in
@@ -1055,16 +1058,19 @@ let block_of_cir (ctx : ctx) (block : Cir.block) : ctx * Oir.block =
 
 let function_of_cir (ctx : ctx) (fn : Cir.function_cir) : ctx * Oir.function_oir
     =
-  (* Reset per-function state: variables and blocks are scoped to one function *)
+  (* Reset per-function state: variables and blocks are scoped to one
+     function *)
   let ctx = { ctx with var_ids = IntMap.empty; block_ids = IntMap.empty } in
-  (* Initialize with params first, then locals, so subsequent references resolve *)
+  (* Initialize with params first, then locals, so subsequent references
+     resolve *)
   let ctx, params =
     List.fold_left_map (fun ctx p -> lower_var ctx p) ctx fn.params
   in
   let ctx, locals =
     List.fold_left_map (fun ctx l -> lower_var ctx l) ctx fn.locals
   in
-  (* Pre-register all block IDs so terminators can reference blocks not yet lowered *)
+  (* Pre-register all block IDs so terminators can reference blocks not yet
+     lowered *)
   let ctx =
     List.fold_left
       (fun ctx (b : Cir.block) ->

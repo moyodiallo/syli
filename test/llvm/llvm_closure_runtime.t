@@ -108,7 +108,7 @@ Closure with multiple captured variables:
   define void @syliTest_multi.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3026418949592973313, i32 1, i32 1)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693953, i32 1, i32 1)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.63_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2

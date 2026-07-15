@@ -237,7 +237,7 @@
   bb0:
     %Sy_var3 = alloca ptr
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.50_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
@@ -248,7 +248,7 @@
     store i64 1, ptr %Sy_tmp3
     ; nop
     call void @syli_rt_gc_cycle()
-    %Sy_var1 = call ptr @syli_rt_rc_alloc_object(i64 3602879701896462337, i32 1, i32 2)
+    %Sy_var1 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.60_ret_i64 to ptr
     %Sy_tmp4 = getelementptr i64, ptr %Sy_var1, i32 2
@@ -355,7 +355,7 @@
   	.cfi_offset %rbx, -24
   	.cfi_offset %r14, -16
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3602879701896462337, %r14      # imm = 0x3200000000010001
+  	movabsq	$2305843009213693954, %r14      # imm = 0x2000000000000002
   	movq	%r14, %rdi
   	movl	$1, %esi
   	movl	$2, %edx
@@ -432,7 +432,7 @@
   	.cfi_offset %rbx, -24
   	.cfi_offset %r14, -16
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3602879701896462337, %r14      # imm = 0x3200000000010001
+  	movabsq	$2305843009213693954, %r14      # imm = 0x2000000000000002
   	movq	%r14, %rdi
   	movl	$1, %esi
   	movl	$2, %edx

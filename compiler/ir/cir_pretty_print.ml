@@ -21,7 +21,7 @@ let rec string_of_ir_type = function
         ^ String.concat ", "
             (List.map (fun t -> string_of_ir_type t.ir_type) args)
         ^ ">"
-  | CR_Ptr inner -> Printf.sprintf "*%s" (string_of_ir_type inner.ir_type)
+  | CR_Obj_Ptr inner -> Printf.sprintf "*%s" (string_of_ir_type inner.ir_type)
   | CR_Void -> "void"
   | CR_GenericTyp { type_var } -> Printf.sprintf "?%d" type_var
   | CR_Arrow (param_tys, ret_ty) ->

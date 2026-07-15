@@ -99,7 +99,7 @@
   define void @syliTest_file.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 3026418949592973313, i32 1, i32 1)
+    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693953, i32 1, i32 1)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.id.54_ret_i64 to ptr
     %Sy_tmp0 = getelementptr i64, ptr %Sy_var0, i32 2
@@ -209,7 +209,7 @@
   	.cfi_offset %rbx, -24
   	.cfi_offset %r14, -16
   	callq	syli_rt_gc_cycle@PLT
-  	movabsq	$3026418949592973313, %rdi      # imm = 0x2A00000000000001
+  	movabsq	$2305843009213693953, %rdi      # imm = 0x2000000000000001
   	movl	$1, %esi
   	movl	$1, %edx
   	callq	syli_rt_rc_alloc_object@PLT
