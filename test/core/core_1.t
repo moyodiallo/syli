@@ -245,7 +245,7 @@ Non-recursive let shadowing a recursive function parameter:
         0 : i64
       else
         {
-          let syliTest_shadow_param.countdown__n = syliTest_shadow_param.countdown((syliTest_shadow_param.countdown__n : i64 - 1 : i64) : i64) : i64
+          let syliTest_shadow_param.countdown__n = syliTest_shadow_param.countdown((n : i64 - 1 : i64) : i64) : i64
           (syliTest_shadow_param.countdown__n : i64 + 1 : i64) : i64
         }
   
