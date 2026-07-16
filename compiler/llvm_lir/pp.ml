@@ -55,6 +55,15 @@ let instruction_to_string indent = function
           Printf.sprintf "%s%sgetelementptr %s, ptr %s, %s" p lhs
             (string_of_lltype result_ty)
             (string_of_operand base) idxs
+      | LV_InsertValue { agg; value; index; _ } ->
+          Printf.sprintf "%s%sinsertvalue %s, %s, %d" p lhs
+            (string_of_typed_operand agg)
+            (string_of_typed_operand value)
+            index
+      | LV_ExtractValue { agg; index; _ } ->
+          Printf.sprintf "%s%sextractvalue %s, %d" p lhs
+            (string_of_typed_operand agg)
+            index
       | LV_Phi incoming ->
           let ty =
             match incoming with

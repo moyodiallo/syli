@@ -22,6 +22,7 @@ let rec string_of_ir_type = function
             (List.map (fun t -> string_of_ir_type t.ir_type) args)
         ^ ">"
   | OR_Obj_Ptr inner -> Printf.sprintf "*%s" (string_of_ir_type inner.ir_type)
+  | OR_Str -> "str"
   | OR_Void -> "void"
 
 let string_of_ty (t : ty) : string = string_of_ir_type t.ir_type

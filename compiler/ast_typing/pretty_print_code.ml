@@ -16,7 +16,7 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Constant TTy_Unit -> "unit"
   | TTy_Constant TTy_Float -> "float"
   | TTy_Constant TTy_Double -> "double"
-  | TTy_Constant TTy_StringLit -> "string"
+  | TTy_Constant TTy_StringLit -> "str"
   | TTy_Constant TTy_CharLit -> "char"
   | TTy_Array ty -> "array[" ^ string_of_ty ty ^ "]"
   | TTy_Tuple tys -> "(" ^ String.concat ", " (List.map string_of_ty tys) ^ ")"

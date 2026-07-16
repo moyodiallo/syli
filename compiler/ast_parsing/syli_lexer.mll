@@ -7,6 +7,13 @@ let identation =
     int_of_string (Sys.getenv "SYLI_INDENTATION")
   with Not_found | Failure _ -> 4
 
+let hex_digit c =
+  match c with
+  | '0'..'9' -> Char.code c - 48
+  | 'a'..'f' -> Char.code c - 97
+  | 'A'..'F' -> Char.code c - 65
+  | _ -> raise (Error "invalid hex digit")
+
 }
 
 rule token = parse
@@ -65,7 +72,7 @@ rule token = parse
   | "rec"       { REC }
   
   (* --- Types --- *)
-  | "string"    { TY_STRING }
+  | "str"       { TY_STR }
   | "int"       { TY_INT }
   | "float"     { TY_FLOAT }
   | "char"      { TY_CHAR }
@@ -99,7 +106,7 @@ rule token = parse
   | ['0'-'9']+ as num              { INT num }
   | ['0'-'9']+ '.' ['0'-'9']* as f { FLOAT f }
   | ''' [^'''] ''' as c            { CHAR (String.get c 1 |> String.make 1) }
-  | '"' [^'"']* '"' as s           { STRING (String.sub s 1 (String.length s - 2)) }
+  | '"' { string (Buffer.create 64) lexbuf }
 
   (* --- Punctuation and operators --- *)
   | "("         { LPAREN }
@@ -146,3 +153,18 @@ rule token = parse
 
   (* --- Error handling --- *)
   | _ as c { raise (Error (Printf.sprintf "Unexpected character: %c" c)) }
+
+and string buf = parse
+  | '"' { STRING (Buffer.contents buf) }
+  | '\\' 'n'  { Buffer.add_char buf '\n'; string buf lexbuf }
+  | '\\' 't'  { Buffer.add_char buf '\t'; string buf lexbuf }
+  | '\\' 'r'  { Buffer.add_char buf '\r'; string buf lexbuf }
+  | '\\' '0'  { Buffer.add_char buf '\000'; string buf lexbuf }
+  | '\\' '\\' { Buffer.add_char buf '\\'; string buf lexbuf }
+  | '\\' '\"' { Buffer.add_char buf '"'; string buf lexbuf }
+  | '\\' 'x' (['0'-'9' 'a'-'f' 'A'-'F'] as h1) (['0'-'9' 'a'-'f' 'A'-'F'] as h2) {
+      Buffer.add_char buf (Char.chr ((hex_digit h1) * 16 + hex_digit h2));
+      string buf lexbuf }
+  | [^'"' '\\']+ as s { Buffer.add_string buf s; string buf lexbuf }
+  | eof { raise (Error "Unterminated string literal") }
+  | _ { raise (Error "Invalid character in string literal") }

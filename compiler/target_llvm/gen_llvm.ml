@@ -22,6 +22,7 @@ let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
   | RR_Void -> LV_Void
   | RR_Obj_Ptr _ -> LV_Ptr
   | RR_FnPtr -> LV_Ptr
+  | RR_Str -> LV_Struct [ LV_Ptr; LV_I64 ]
   | RR_Arrow (args, ret) ->
       LV_Func (List.map lltype_of_ir_type args, lltype_of_ir_type ret)
 
@@ -55,12 +56,8 @@ let llconst_of_ir_constant (c : Rir.constant) (ty : Rir.ty) : operand =
             (Failure "Float literal constant must have float or double type"))
   | RR_BoolLit s ->
       LV_Constant (LV_Integer (if bool_of_string s then 1L else 0L), LV_I1)
-  | RR_StringLit s ->
-      let bytes =
-        s |> String.to_seq |> List.of_seq
-        |> List.map (fun c -> LV_Integer (Int64.of_int (Char.code c)))
-      in
-      LV_Constant (LV_Array (bytes @ [ LV_Integer 0L ]), llty)
+  | RR_StringLit _ ->
+      failwith "RR_StringLit should not reach llconst_of_ir_constant"
   | RR_CharLit s ->
       let code = if s = "" then 0 else Char.code s.[0] in
       LV_Constant (LV_Integer (Int64.of_int code), llty)
@@ -73,10 +70,10 @@ type lower_ctx = {
   runtime_decls : (string, lltype) Hashtbl.t;
   fn_sigs : (string, fn_sig) Hashtbl.t;
   ffi_syli_names : (string, string) Hashtbl.t;
-      (** qualified Syli name → C name for FFI functions *)
+  known_globals : StringSet.t;
   next_reg : int ref;
   block_label_map : (int, int) Hashtbl.t;
-      (** maps globally unique block id → function-local label_id *)
+  str_data : (string, string) Hashtbl.t;
 }
 
 let fresh_reg (ctx : lower_ctx) (ty : lltype) : operand =
@@ -89,10 +86,55 @@ let add_decl_if_missing (ctx : lower_ctx) (name : string) (ty : lltype) : unit =
     Hashtbl.add ctx.runtime_decls name ty
 
 let fresh_global_id = Syli_ir.Cir.fresh_id
+let str_ty = LV_Struct [ LV_Ptr; LV_I64 ]
 
 let rec lower_operand (ctx : lower_ctx) (alloca_set : StringSet.t)
     (op : Rir.operand) : operand * instruction list * StringSet.t =
   match op with
+  | RR_OConstant (RR_StringLit s, ty) when ty.ty = RR_Str ->
+      let str_name =
+        match Hashtbl.find_opt ctx.str_data s with
+        | Some name -> name
+        | None ->
+            let name = "__str." ^ string_of_int (fresh_global_id ()) in
+            Hashtbl.replace ctx.str_data s name;
+            name
+      in
+      let global_op = LV_Global (str_name, LV_Array (String.length s, LV_I8)) in
+      let gep_tmp = fresh_reg ctx LV_Ptr in
+      let s1 = fresh_reg ctx str_ty in
+      let s2 = fresh_reg ctx str_ty in
+      let len = Int64.of_int (String.length s) in
+      ( s2,
+        [
+          LV_Assign
+            ( gep_tmp,
+              LV_GEP
+                {
+                  base = global_op;
+                  indices = [ LV_Constant (LV_Integer 0L, LV_I32) ];
+                  result_ty = LV_I8;
+                } );
+          LV_Assign
+            ( s1,
+              LV_InsertValue
+                {
+                  agg = LV_Constant (LV_ZeroInitializer, str_ty);
+                  value = gep_tmp;
+                  index = 0;
+                  ty = str_ty;
+                } );
+          LV_Assign
+            ( s2,
+              LV_InsertValue
+                {
+                  agg = s1;
+                  value = LV_Constant (LV_Integer len, LV_I64);
+                  index = 1;
+                  ty = str_ty;
+                } );
+        ],
+        alloca_set )
   | RR_OConstant (c, ty) -> (llconst_of_ir_constant c ty, [], alloca_set)
   | RR_OVar v -> (
       let key = v.id in
@@ -107,9 +149,20 @@ let rec lower_operand (ctx : lower_ctx) (alloca_set : StringSet.t)
               alloca_set )
           else (op', [], alloca_set)
       | None ->
-          fail
-            (Printf.sprintf
-               "Unbound SIR variable during SIR->LLVM lowering: id=%d" v.id))
+          if not (StringSet.mem v.fullname ctx.known_globals) then
+            fail
+              (Printf.sprintf
+                 "Unbound RIR variable during RIR->LLVM lowering: id=%d name=%s"
+                 v.id v.fullname);
+          let load_ty = lltype_of_ty v.ty in
+          let load_tmp = fresh_reg ctx load_ty in
+          ( load_tmp,
+            [
+              LV_Assign
+                ( load_tmp,
+                  LV_Load { ptr = global v.fullname LV_Ptr; ty = load_ty } );
+            ],
+            alloca_set ))
 
 let lower_runtime_arg (ctx : lower_ctx) (alloca_set : StringSet.t)
     (arg : Rir.operand) : operand * instruction list * StringSet.t =
@@ -490,8 +543,8 @@ let hoist_allocas (blocks : block list) : block list =
 
 let lower_function (runtime_decls : (string, lltype) Hashtbl.t)
     (fn_sigs : (string, fn_sig) Hashtbl.t)
-    (ffi_syli_names : (string, string) Hashtbl.t) (fn : Rir.function_rir) : func
-    =
+    (ffi_syli_names : (string, string) Hashtbl.t) (known_globals : StringSet.t)
+    (str_data : (string, string) Hashtbl.t) (fn : Rir.function_rir) : func =
   let block_label_map = Hashtbl.create 16 in
   List.iter
     (fun (b : Rir.block) -> Hashtbl.add block_label_map b.id b.label_id)
@@ -502,8 +555,10 @@ let lower_function (runtime_decls : (string, lltype) Hashtbl.t)
       runtime_decls;
       fn_sigs;
       ffi_syli_names;
+      known_globals;
       next_reg = ref 0;
       block_label_map;
+      str_data;
     }
   in
   let params =
@@ -606,21 +661,11 @@ let lower_global (g : Rir.global_value) : global_var =
     | RR_CharLit s ->
         let code = if s = "" then 0 else Char.code s.[0] in
         Some (LV_Integer (Int64.of_int code))
-    | RR_StringLit s ->
-        let bytes =
-          s |> String.to_seq |> List.of_seq
-          |> List.map (fun c -> LV_Integer (Int64.of_int (Char.code c)))
-        in
-        Some (LV_Array (bytes @ [ LV_Integer 0L ]))
+    | RR_StringLit _ -> None
     | RR_Null -> (
         match g_type with
         | LV_Ptr | LV_Named _ | LV_Struct _ | LV_Array _ -> Some LV_Null
         | _ -> Some LV_ZeroInitializer)
-  in
-  let g_type =
-    match g.value with
-    | RR_StringLit s -> (LV_Array (String.length s + 1, LV_I8) : lltype)
-    | _ -> g_type
   in
   {
     g_name = g.name;
@@ -638,17 +683,36 @@ let lower_program (prog : Rir.program_rir) : module_ =
     prog.ffi_external_functions;
   let runtime_decls = Hashtbl.create 32 in
   let fn_sigs = build_fn_sig_table prog in
-  let functions =
-    List.map
-      (lower_function runtime_decls fn_sigs ffi_syli_names)
-      prog.functions
+  let str_data = Hashtbl.create 16 in
+  let known_globals =
+    List.fold_left
+      (fun set (gv : Rir.global_value) -> StringSet.add gv.name set)
+      StringSet.empty prog.global_values
   in
+  let lower_fn =
+    lower_function runtime_decls fn_sigs ffi_syli_names known_globals str_data
+  in
+  let functions = List.map lower_fn prog.functions in
   let runtime_declarations =
     Hashtbl.to_seq runtime_decls |> List.of_seq |> List.sort compare
   in
   let ffi_declarations = List.map lower_ffi_decl prog.ffi_external_functions in
   let declarations = runtime_declarations @ ffi_declarations in
-  let globals = List.map lower_global prog.global_values in
+  let globals =
+    let str_globals =
+      Hashtbl.fold
+        (fun s name acc ->
+          {
+            g_name = name;
+            g_type = LV_Array (String.length s, LV_I8);
+            g_init = Some (LV_StringLit s);
+            g_linkage = Private;
+          }
+          :: acc)
+        str_data []
+    in
+    List.map lower_global prog.global_values @ str_globals
+  in
   let type_defs =
     List.map (fun (name, ty) -> (name, lltype_of_ty ty)) prog.type_defs
   in

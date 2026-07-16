@@ -433,3 +433,46 @@
   END
   NEWLINE
   EOF
+
+String escape sequences:
+  $ cat >test_esc.src <<'EOF'
+  > let s = "hello\nworld"
+  > let t = "tab\there"
+  > let u = "quot\"here"
+  > let v = "back\\slash"
+  > let w = "\x41\x42"
+  > let e = ""
+  > EOF
+  $ dune exec sylic lex test_esc.src
+  LET
+  IDENT(s)
+  EQ
+  STRING(hello
+  world)
+  NEWLINE
+  LET
+  IDENT(t)
+  EQ
+  STRING(tab	here)
+  NEWLINE
+  LET
+  IDENT(u)
+  EQ
+  STRING(quot"here)
+  NEWLINE
+  LET
+  IDENT(v)
+  EQ
+  STRING(back\slash)
+  NEWLINE
+  LET
+  IDENT(w)
+  EQ
+  STRING(AB)
+  NEWLINE
+  LET
+  IDENT(e)
+  EQ
+  STRING()
+  NEWLINE
+  EOF

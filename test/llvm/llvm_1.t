@@ -54,25 +54,22 @@ String literal emits an i8* return:
   > let s = "hello"
   > EOF
   $ dune exec sylic -- llvm test_str.sy
-  declare void @syli_rt_object_check_release(ptr)
-  declare void @syli_rt_object_decr(ptr)
-  declare void @syli_rt_object_incr(ptr)
-  
-  @syliTest_str.s = global [6 x i8] <array_const>
+  @syliTest_str.s = global { ptr, i64 } zeroinitializer
+  @__str.41 = global [5 x i8] c"hello"
   
   define void @__init.Test_str() {
   bb0:
-    %__init_tmp_0 = call ptr @__init_global.syliTest_str.s()
-    call void @syli_rt_object_incr(ptr %__init_tmp_0)
-    store ptr %__init_tmp_0, ptr @syliTest_str.s
-    call void @syli_rt_object_decr(ptr %__init_tmp_0)
-    call void @syli_rt_object_check_release(ptr %__init_tmp_0)
+    %__init_tmp_0 = call { ptr, i64 } @__init_global.syliTest_str.s()
+    store { ptr, i64 } %__init_tmp_0, ptr @syliTest_str.s
     ret void
   }
   
-  define ptr @__init_global.syliTest_str.s() {
+  define { ptr, i64 } @__init_global.syliTest_str.s() {
   bb0:
-    ret ptr <array_const>
+    %Sy_tmp0 = getelementptr i8, ptr @__str.41, i32 0
+    %Sy_tmp1 = insertvalue { ptr, i64 } zeroinitializer, ptr %Sy_tmp0, 0
+    %Sy_tmp2 = insertvalue { ptr, i64 } %Sy_tmp1, i64 5, 1
+    ret { ptr, i64 } %Sy_tmp2
   }
   
 

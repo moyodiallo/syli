@@ -79,7 +79,7 @@ let string_of_token = function
   | TY_INT -> "INT"
   | TY_FLOAT -> "FLOAT"
   | TY_CHAR -> "CHAR"
-  | TY_STRING -> "STRING"
+  | TY_STR -> "STR"
   | TY_ARRAY -> "ARRAY"
   | TY_LIST -> "LIST"
   | TY_TUPLE -> "TUPLE"

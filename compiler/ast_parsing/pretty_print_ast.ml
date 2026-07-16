@@ -18,7 +18,7 @@ let rec pp_ty fmt (ty : ty) =
   | Ty_Constant Ty_Unit -> Format.fprintf fmt "unit"
   | Ty_Constant Ty_Float -> Format.fprintf fmt "float"
   | Ty_Constant Ty_Double -> Format.fprintf fmt "double"
-  | Ty_Constant Ty_StringLit -> Format.fprintf fmt "string"
+  | Ty_Constant Ty_StringLit -> Format.fprintf fmt "str"
   | Ty_Constant Ty_CharLit -> Format.fprintf fmt "char"
   | Ty_Any -> Format.fprintf fmt "_"
   | Ty_Var s -> Format.fprintf fmt "'%s" s

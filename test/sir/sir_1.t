@@ -81,7 +81,7 @@ String literal:
   $ dune exec sylic -- cir test_str.sy
   module Test_str :
   globals:
-  global public syliTest_str.s : string = "hello" init=__init_global.syliTest_str.s
+  global public syliTest_str.s : str = "hello" init=__init_global.syliTest_str.s
   
   
   functions:
@@ -89,17 +89,47 @@ String literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:string = #call_direct __init_global.syliTest_str.s ()
-      store_global syliTest_str.s = %__init_tmp_0:string
+      %__init_tmp_0:str = #call_direct __init_global.syliTest_str.s ()
+      store_global syliTest_str.s = %__init_tmp_0:str
       return
   end
   
-  private fn __init_global.syliTest_str.s() -> string:
+  private fn __init_global.syliTest_str.s() -> str:
     entry: bb0
   
     bb0:
   
-      return hello:string
+      return hello:str
+  end
+  
+  end
+
+Empty string literal:
+  $ cat >test_empty.sy <<EOF
+  > let s = ""
+  > EOF
+  $ dune exec sylic -- cir test_empty.sy
+  module Test_empty :
+  globals:
+  global public syliTest_empty.s : str = "" init=__init_global.syliTest_empty.s
+  
+  
+  functions:
+  public fn __init.Test_empty() -> void:
+    entry: bb0
+  
+    bb0:
+      %__init_tmp_0:str = #call_direct __init_global.syliTest_empty.s ()
+      store_global syliTest_empty.s = %__init_tmp_0:str
+      return
+  end
+  
+  private fn __init_global.syliTest_empty.s() -> str:
+    entry: bb0
+  
+    bb0:
+  
+      return :str
   end
   
   end

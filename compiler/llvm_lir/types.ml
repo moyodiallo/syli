@@ -21,6 +21,7 @@ type constant =
   | LV_Null
   | LV_ZeroInitializer
   | LV_Array of constant list
+  | LV_StringLit of string
 
 type const = constant
 
@@ -91,6 +92,13 @@ type instr_rhs =
   | LV_Call of { fn : operand; args : operand list; ret_ty : lltype }
   | LV_Cast of cast_op * operand * lltype
   | LV_GEP of { base : operand; indices : operand list; result_ty : lltype }
+  | LV_InsertValue of {
+      agg : operand;
+      value : operand;
+      index : int;
+      ty : lltype;
+    }
+  | LV_ExtractValue of { agg : operand; index : int; ty : lltype }
   | LV_Phi of (operand * string) list
   | LV_Select of operand * operand * operand
 

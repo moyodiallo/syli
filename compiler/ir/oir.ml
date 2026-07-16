@@ -50,6 +50,7 @@ type ir_type =
   | OR_FnPtr
   | OR_Obj of { named : string option; args : ty list }
   | OR_Obj_Ptr of ty
+  | OR_Str
   | OR_Void
 
 and ty = { id : int; ir_type : ir_type }

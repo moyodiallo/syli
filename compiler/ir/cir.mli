@@ -59,6 +59,7 @@ type ir_type =
   | CR_FnPtr
   | CR_Obj of { named : string option; args : ty list }
   | CR_Obj_Ptr of ty
+  | CR_Str
   | CR_Void
   | CR_GenericTyp of { type_var : int }
   | CR_Arrow of ty list * ty

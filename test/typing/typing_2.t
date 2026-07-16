@@ -1,5 +1,5 @@
   $ cat >parse0.src <<EOF
-  > type person = { name: string; age: int64 }
+  > type person = { name: str; age: int64 }
   > fn add () =
   >     let record =
   >     {
@@ -17,7 +17,7 @@
   }
 
   $ cat >parse0.src <<EOF
-  > type person = { name: string; age: int64 }
+  > type person = { name: str; age: int64 }
   > fn add () =
   >     let record =
   >     {
@@ -35,8 +35,8 @@
   }
 
   $ cat >parse0.src <<EOF
-  > type grown_person = { name: string; age: int64; grown: bool }
-  > type person = { name: string; age: int64 }
+  > type grown_person = { name: str; age: int64; grown: bool }
+  > type person = { name: str; age: int64 }
   > fn add () =
   >     let record =
   >     {
@@ -56,8 +56,8 @@
   }
 
   $ cat >parse0.src <<EOF
-  > type grown_person = { name: string; age: int64; grown: bool }
-  > type person = { name: string; age: int64 }
+  > type grown_person = { name: str; age: int64; grown: bool }
+  > type person = { name: str; age: int64 }
   > fn add () =
   >     let record =
   >     {
@@ -74,8 +74,8 @@
   [2]
 
   $ cat >parse0.src <<EOF
-  > type grown_person = { name: string; age: int64; grown: bool }
-  > type person = { name: string; age: int64 }
+  > type grown_person = { name: str; age: int64; grown: bool }
+  > type person = { name: str; age: int64 }
   > fn add () =
   >     let record =
   >     {

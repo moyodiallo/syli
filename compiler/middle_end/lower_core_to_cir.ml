@@ -138,7 +138,7 @@ let mk_ir_ty (cty : C.ty) : I.ty =
         | CTy_Bool -> I.CR_Bool
         | CTy_Float -> I.CR_Float
         | CTy_Double -> I.CR_Double
-        | CTy_StringLit -> I.CR_Obj { named = Some "string"; args = [] }
+        | CTy_StringLit -> I.CR_Str
         | CTy_CharLit -> I.CR_I8)
     | CTy_Var v -> I.CR_GenericTyp { type_var = v }
     | CTy_Arrow (args, ret) ->
@@ -170,6 +170,7 @@ let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
       tv1 = tv2
   | CR_Obj { named = n1; args = args1 }, CR_Obj { named = n2; args = args2 } ->
       n1 = n2 && List.for_all2 ty_equal args1 args2
+  | CR_Str, CR_Str -> true
   | CR_Obj_Ptr t1, CR_Obj_Ptr t2 -> ty_equal t1 t2
   | CR_Arrow (args1, ret1), CR_Arrow (args2, ret2) ->
       List.for_all2 ty_equal args1 args2 && ty_equal ret1 ret2
