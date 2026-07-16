@@ -16,7 +16,7 @@ let string_of_const_ty = function
   | TTy_Unit -> "unit"
   | TTy_Float -> "float"
   | TTy_Double -> "double"
-  | TTy_StringLit -> "string"
+  | TTy_StringLit -> "str"
   | TTy_CharLit -> "char"
 
 let rec string_of_ty (t : ty) : string =
@@ -66,7 +66,7 @@ let normalized_builtin_ty_name (ty : ty) : string option =
   | TTy_Constant TTy_Unit -> Some "unit"
   | TTy_Constant TTy_Float -> Some "float"
   | TTy_Constant TTy_Double -> Some "double"
-  | TTy_Constant TTy_StringLit -> Some "string"
+  | TTy_Constant TTy_StringLit -> Some "str"
   | TTy_Constant TTy_CharLit -> Some "char"
   | TTy_Defined { name; args = [] } -> Some name.name
   | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _ | TTy_Array _

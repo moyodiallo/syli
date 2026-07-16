@@ -17,7 +17,7 @@ let string_of_constant_ty = function
   | CTy_Bool -> "bool"
   | CTy_Float -> "float"
   | CTy_Double -> "double"
-  | CTy_StringLit -> "string"
+  | CTy_StringLit -> "str"
   | CTy_CharLit -> "char"
 
 let rec string_of_ty ty =

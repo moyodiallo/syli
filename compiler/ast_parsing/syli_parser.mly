@@ -9,7 +9,7 @@
 %token <string> FLOAT
 %token <string> BOOL_VAL
 %token TY_INT64 TY_INT32 TY_INT16 TY_INT8 TY_UINT64 TY_UINT32 TY_UINT16 TY_UINT8
-%token TY_INT TY_FLOAT TY_DOUBLE TY_CHAR TY_BOOL TY_UNIT TY_STRING TY_ARRAY TY_LIST TY_TUPLE
+%token TY_INT TY_FLOAT TY_DOUBLE TY_CHAR TY_BOOL TY_UNIT TY_STR TY_ARRAY TY_LIST TY_TUPLE
 %token REC FN LET RETURN IF ELSE ELSEIF THEN
 %token VAL EXTERN SIGNATURE
 %token WHILE LOOP DO END LOCAL CONTINUE BREAK LAMBDA MATCH WITH TYPE OF MUT
@@ -242,15 +242,8 @@ ty:
       }
   | TY_UNIT
       { mk_ty $startpos $endpos (Ty_Constant Ty_Unit) }
-  | TY_STRING
-      {
-        mk_ty $startpos $endpos
-          (Ty_Defined
-             {
-               name = mk_ident $startpos $endpos "string";
-               args = [];
-             })
-      }
+  | TY_STR
+      { mk_ty $startpos $endpos (Ty_Constant Ty_StringLit) }
   | TY_TUPLE LPAREN ty_tuple RPAREN
       { mk_ty $startpos $endpos (Ty_Tuple $3) }
   | TY_LIST LBRACKET ty RBRACKET

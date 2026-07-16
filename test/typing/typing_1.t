@@ -35,8 +35,8 @@ String literals:
   Typed test_string.src successfully: module Test_string with 2 top-level typed items
   Type Environment:
   {
-    s : string
-    t : string
+    s : str
+    t : str
   }
 
 Arithmetic operations result in integers:
@@ -103,7 +103,7 @@ Tuple types:
   Type Environment:
   {
     pair : (int64, int64)
-    triple : (bool, int64, string)
+    triple : (bool, int64, str)
   }
 
 Tuple types:
@@ -119,7 +119,7 @@ Tuple types:
   Type Environment:
   {
     one_int : (int64, int64)
-    one_str : (int64, string)
+    one_str : (int64, str)
     pair : forall '57 '59. ('57, '59) -> ('57, '59)
     pair_int : forall '70. ('70) -> (int64, '70)
     triple : forall '62 '64 '66. ('62, '64, '66) -> ('62, '64, '66)
@@ -199,7 +199,7 @@ Identity function and partial application:
     id : forall '35. ('35) -> '35
     id_float : double
     id_int : int64
-    id_str : string
+    id_str : str
   }
 
 
@@ -252,7 +252,7 @@ Polymorpic Closures as an argument:
     apply_twice : forall '55. (('55) -> '55, '55) -> '55
     id : forall '47. ('47) -> '47
     result_1 : int64
-    result_2 : string
+    result_2 : str
   }
 
 To support higher rank like rank 2 here: we need to annotate f,
@@ -265,7 +265,7 @@ need more work to do, extend closure_graph or adapt it.
   > let result = apply_both id
   > EOF
   $ dune exec sylic typing test_closure.src
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs string")
+  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs str")
   [2]
 
 

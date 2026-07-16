@@ -47,6 +47,15 @@ let string_of_operand = function
   | LV_Constant (LV_Double f, _) -> string_of_float_literal f
   | LV_Constant (LV_Null, _) -> "null"
   | LV_Constant (LV_ZeroInitializer, _) -> "zeroinitializer"
+  | LV_Constant (LV_StringLit s, _) ->
+      let buf = Buffer.create (String.length s) in
+      String.iter
+        (fun c ->
+          if c >= ' ' && c <= '~' && c <> '"' && c <> '\\' then
+            Buffer.add_char buf c
+          else Buffer.add_string buf (Printf.sprintf "\\%02x" (Char.code c)))
+        s;
+      Printf.sprintf "c\"%s\"" (Buffer.contents buf)
   | LV_Constant (LV_Array _, _) -> "<array_const>"
   | LV_Local (n, _) -> "%" ^ n
   | LV_Global (n, _) -> "@" ^ n

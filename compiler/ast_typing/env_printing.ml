@@ -16,7 +16,7 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Constant TTy_Double -> "double"
   | TTy_Constant TTy_Bool -> "bool"
   | TTy_Constant TTy_Unit -> "unit"
-  | TTy_Constant TTy_StringLit -> "string"
+  | TTy_Constant TTy_StringLit -> "str"
   | TTy_Constant TTy_CharLit -> "char"
   | TTy_Var v -> "'" ^ string_of_int v
   | TTy_Arrow (args, ret) ->

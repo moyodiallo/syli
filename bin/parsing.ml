@@ -12,7 +12,7 @@ let rec string_of_ty (ty : Syli_parsing.Ast.ty) : string =
   | Ty_Constant Ty_Unit -> "unit"
   | Ty_Constant Ty_Float -> "float"
   | Ty_Constant Ty_Double -> "double"
-  | Ty_Constant Ty_StringLit -> "string"
+  | Ty_Constant Ty_StringLit -> "str"
   | Ty_Constant Ty_CharLit -> "char"
   | Ty_Any -> "_"
   | Ty_Var v -> "'" ^ v

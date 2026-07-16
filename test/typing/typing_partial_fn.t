@@ -1,5 +1,5 @@
   $ cat >parse0.src <<EOF
-  > type person = { name: string; age: int64 }
+  > type person = { name: str; age: int64 }
   > fn add x y = x + y
   > let add10 = add 10
   > let add20 = add10 20
@@ -8,14 +8,14 @@
   Typed parse0.src successfully: module Parse0 with 4 top-level typed items
   Type Environment:
   {
-    add : forall '43. ('43, '43) -> '43
+    add : forall '42. ('42, '42) -> '42
     add10 : (int64) -> int64
     add20 : int64
   }
 
 
   $ cat >parse0.src <<EOF
-  > type person = { name: string; age: int64 }
+  > type person = { name: str; age: int64 }
   > fn add x y = x + y
   > let z = add 10 20
   > EOF
@@ -23,13 +23,13 @@
   Typed parse0.src successfully: module Parse0 with 3 top-level typed items
   Type Environment:
   {
-    add : forall '37. ('37, '37) -> '37
+    add : forall '36. ('36, '36) -> '36
     z : int64
   }
 
 
   $ cat >parse0.src <<EOF
-  > type person = { name: string; age: int64 }
+  > type person = { name: str; age: int64 }
   > fn add x y = x + y
   > let z = add 10 20.
   > EOF
