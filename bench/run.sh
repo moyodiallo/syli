@@ -20,7 +20,7 @@ bench() {
 }
 
 bench_mem() {
-  /usr/bin/time -v "./$1.exe" 2>&1 | grep 'Maximum resident' | awk '{print $6}'
+  time -v "./$1.exe" 2>&1 | grep 'Maximum resident' | awk '{print $6}'
 }
 
 BENCHMARKS="tak queens clos clos4"

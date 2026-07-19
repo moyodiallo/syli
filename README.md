@@ -94,6 +94,12 @@ $ dune exec sylic -- build compose.sy && ./compose.exe
 35
 ```
 
+## Benchmarks
+Running the bechmarks, make sure hyperfine is installed.
+```
+./bench/run.sh
+```
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md)
