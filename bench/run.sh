@@ -16,11 +16,16 @@ build() {
 bench() {
   echo ""
   echo "=== $1 ==="
-  hyperfine -w 3 -m 5 "./$1.exe"
+  hyperfine -w 3 -m 5 --shell=none "./$1.exe"
 }
 
 bench_mem() {
-  time -v "./$1.exe" 2>&1 | grep 'Maximum resident' | awk '{print $6}'
+  local exe="$1"
+  case "$(uname -s)" in
+    Linux) command time -v "$exe" 2>&1 | grep 'Maximum resident' | awk '{print $6}' ;;
+    *) peak=$(command time -l "$exe" 2>&1 | grep 'maximum resident set size' | awk '{print $NF}')
+       echo $((peak / 1024)) ;;
+  esac
 }
 
 BENCHMARKS="tak queens clos clos4"
@@ -34,8 +39,8 @@ for b in $BENCHMARKS; do
 done
 
 echo ""
-echo "=== Memory usage ==="
+echo "=== Memory usage peak ==="
 for b in $BENCHMARKS; do
-  mem=$(bench_mem "$b")
-  printf "  %-8s %s KB\n" "$b" "$mem"
+  mem=$(bench_mem "./$b.exe")
+  printf "  %-8s %s KB\n" "$b" "${mem:-N/A}"
 done
