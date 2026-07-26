@@ -116,7 +116,10 @@ let test_single_block () =
   let s4 =
     make_stmt 4 (OR_RC_op { op = OR_RC_check_release; obj = y }) obj_ty
   in
-  let term = make_term 99 (OR_Return None) in
+  let term =
+    make_term 99
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
   let bb = make_block 10 10 [ s1; s2; s3; s4 ] term in
   let fn = make_fn "test_single" ~locals:[ x; y ] bb [ bb ] in
   print_fn "test_single_block: input" fn;
@@ -150,10 +153,16 @@ let test_two_blocks () =
   let s2 =
     make_stmt 2 (OR_RC_op { op = OR_RC_check_release; obj = x }) obj_ty
   in
-  let term2 = make_term 11 (OR_Return None) in
+  let term2 =
+    make_term 11
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
   let bb2 = make_block 100 100 [ s2 ] term2 in
   (* bb3 (else): return (x not used here) *)
-  let term3 = make_term 12 (OR_Return None) in
+  let term3 =
+    make_term 12
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
   let bb3 = make_block 101 101 [] term3 in
   (* entry block must be bb1 *)
   let fn =
@@ -183,7 +192,14 @@ let test_store_global_and_call () =
       obj_ty
   in
   let s2 =
-    make_stmt 2 (OR_Store_global { global = "g_x"; value = OR_OVar x }) i64_ty
+    make_stmt 2
+      (OR_Store_global
+         {
+           global = "g_x";
+           value = OR_OVar x;
+           ownership_store = OR_Ownership_share;
+         })
+      i64_ty
   in
   let s3 =
     make_stmt 3
@@ -200,13 +216,22 @@ let test_store_global_and_call () =
   in
   let s4 =
     make_stmt 4
-      (OR_Call { dst = y; target = Direct "fn"; args = [ OR_OVar y ] })
+      (OR_Call
+         {
+           dst = y;
+           target = Direct "fn";
+           args =
+             [ { operand = OR_OVar y; ownership_arg = OR_Ownership_borrow } ];
+         })
       obj_ty
   in
   let s5 =
     make_stmt 5 (OR_RC_op { op = OR_RC_check_release; obj = x }) obj_ty
   in
-  let term = make_term 99 (OR_Return None) in
+  let term =
+    make_term 99
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
   let bb = make_block 10 10 [ s1; s2; s3; s4; s5 ] term in
   let fn = make_fn "test_store_global_and_call" ~locals:[ x; y ] bb [ bb ] in
   print_fn "test_store_global_and_call: input" fn;

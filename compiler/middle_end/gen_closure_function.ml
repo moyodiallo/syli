@@ -85,6 +85,7 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
                     obj = OR_OVar clos_var;
                     field_idx = int_operand 1;
                     value_ty = i64_ty;
+                    ownership_get = OR_Ownership_borrow;
                   })
                i64_ty;
          })
@@ -121,6 +122,7 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
                     obj = OR_OVar clos_var;
                     field_idx = int_operand 2;
                     value_ty = clos_ty;
+                    ownership_get = OR_Ownership_borrow;
                   })
                clos_ty;
          })
@@ -139,6 +141,7 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
                     obj = OR_OVar parent_clos_var;
                     field_idx = int_operand 0;
                     value_ty = fn_ptr_ty;
+                    ownership_get = OR_Ownership_borrow;
                   })
                fn_ptr_ty;
          })
@@ -159,6 +162,7 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
                           obj = OR_OVar clos_var;
                           field_idx = int_operand (3 + i);
                           value_ty = i64_ty;
+                          ownership_get = OR_Ownership_borrow;
                         })
                      i64_ty;
                })
@@ -169,7 +173,12 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
   in
   let dst_var = fresh_var "Sy_rst" result_ty in
   let return_term =
-    { id = fresh_id (); node = OR_Return (Some (OR_OVar dst_var)) }
+    {
+      id = fresh_id ();
+      node =
+        OR_Return
+          { operand = Some (OR_OVar dst_var); ownership_ret = OR_Ownership_own };
+    }
   in
   let call_stmt =
     make_statement
@@ -178,8 +187,20 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
            dst = dst_var;
            target = Direct_fn_ptr { ptr = parent_accum_var };
            args =
-             List.map (fun v -> OR_OVar v) (stored_vars @ arg_params)
-             @ [ OR_OVar parent_clos_var; OR_OVar accum_dispatch_id_var ];
+             List.map
+               (fun v ->
+                 { operand = OR_OVar v; ownership_arg = OR_Ownership_transfer })
+               (stored_vars @ arg_params)
+             @ [
+                 {
+                   operand = OR_OVar parent_clos_var;
+                   ownership_arg = OR_Ownership_transfer;
+                 };
+                 {
+                   operand = OR_OVar accum_dispatch_id_var;
+                   ownership_arg = OR_Ownership_transfer;
+                 };
+               ];
          })
       dst_var.ty
   in
@@ -258,6 +279,7 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
                     obj = OR_OVar clos_var;
                     field_idx = int_operand 1;
                     value_ty = closure_obj_ptr_ty;
+                    ownership_get = OR_Ownership_borrow;
                   })
                closure_obj_ptr_ty;
          })
@@ -276,6 +298,7 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
                     obj = OR_OVar parent_clos_var;
                     field_idx = int_operand 0;
                     value_ty = fn_ptr_ty;
+                    ownership_get = OR_Ownership_borrow;
                   })
                fn_ptr_ty;
          })
@@ -296,6 +319,7 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
                           obj = OR_OVar clos_var;
                           field_idx = int_operand (2 + i);
                           value_ty = i64_ty;
+                          ownership_get = OR_Ownership_borrow;
                         })
                      i64_ty;
                })
@@ -306,7 +330,12 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
   in
   let dst_var = fresh_var "Sy_rst" result_ty in
   let return_term =
-    { id = fresh_id (); node = OR_Return (Some (OR_OVar dst_var)) }
+    {
+      id = fresh_id ();
+      node =
+        OR_Return
+          { operand = Some (OR_OVar dst_var); ownership_ret = OR_Ownership_own };
+    }
   in
   let call_stmt =
     make_statement
@@ -315,8 +344,20 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
            dst = dst_var;
            target = Direct_fn_ptr { ptr = parent_accum_var };
            args =
-             List.map (fun v -> OR_OVar v) (stored_vars @ arg_params)
-             @ [ OR_OVar parent_clos_var; OR_OVar dispatch_param ];
+             List.map
+               (fun v ->
+                 { operand = OR_OVar v; ownership_arg = OR_Ownership_transfer })
+               (stored_vars @ arg_params)
+             @ [
+                 {
+                   operand = OR_OVar parent_clos_var;
+                   ownership_arg = OR_Ownership_transfer;
+                 };
+                 {
+                   operand = OR_OVar dispatch_param;
+                   ownership_arg = OR_Ownership_transfer;
+                 };
+               ];
          })
       dst_var.ty
   in
@@ -353,7 +394,16 @@ let return_block (label_id : int) (stmts : statement list) (ret_val : var) :
     id = fresh_id ();
     label_id;
     statements = stmts;
-    terminator = { id = fresh_id (); node = OR_Return (Some (OR_OVar ret_val)) };
+    terminator =
+      {
+        id = fresh_id ();
+        node =
+          OR_Return
+            {
+              operand = Some (OR_OVar ret_val);
+              ownership_ret = OR_Ownership_own;
+            };
+      };
     pred_blocks = [];
     succ_blocks = [];
   }
@@ -401,7 +451,11 @@ let build_apply_wrapper ~(fn_name : string) ~(param_tys : ty list)
     List.mapi (fun i _ -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty) param_tys
   in
   let cast_vars, cast_stmts = gen_casts "Sy_s" arg_params param_tys in
-  let casted_args = List.map (fun v -> OR_OVar v) cast_vars in
+  let casted_args =
+    List.map
+      (fun v -> { operand = OR_OVar v; ownership_arg = OR_Ownership_transfer })
+      cast_vars
+  in
   let dst_var = fresh_var "Sy_rst" ret_ty in
   let callee_name =
     let suffix = String.concat "__" (List.map type_key_of_ty param_tys) in
@@ -440,7 +494,11 @@ let build_apply_wrapper_cast ~(fn_name : string) ~(param_tys : ty list)
     List.mapi (fun i _ -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty) param_tys
   in
   let cast_vars, cast_stmts = gen_casts "Sy_s" arg_params param_tys in
-  let casted_args = List.map (fun v -> OR_OVar v) cast_vars in
+  let casted_args =
+    List.map
+      (fun v -> { operand = OR_OVar v; ownership_arg = OR_Ownership_transfer })
+      cast_vars
+  in
   let dst_var = fresh_var "Sy_rst" cast_from in
   let callee_name =
     let suffix = String.concat "__" (List.map type_key_of_ty param_tys) in
@@ -522,6 +580,7 @@ let build_make_closure_accum_dispatch ~stored_args_size ~args_size
                           obj = OR_OVar clos_var;
                           field_idx = int_operand (1 + i);
                           value_ty = i64_ty;
+                          ownership_get = OR_Ownership_borrow;
                         })
                      i64_ty;
                })
@@ -531,7 +590,6 @@ let build_make_closure_accum_dispatch ~stored_args_size ~args_size
     |> List.split
   in
   let all_arg_vars = stored_vars @ apply_arg_params in
-  (* For each case, generate a block that calls the direct wrapper *)
   let case_data =
     List.map
       (fun (tag_id, fn_name, param_tys, spe_ret_ty) ->
@@ -549,7 +607,14 @@ let build_make_closure_accum_dispatch ~stored_args_size ~args_size
                {
                  dst = case_dst;
                  target = Direct direct_fn;
-                 args = List.map (fun v -> OR_OVar v) all_arg_vars;
+                 args =
+                   List.map
+                     (fun v ->
+                       {
+                         operand = OR_OVar v;
+                         ownership_arg = OR_Ownership_transfer;
+                       })
+                     all_arg_vars;
                })
             ret_ty
         in
@@ -623,6 +688,7 @@ let build_make_closure_accum ~(fn_name : string) ~stored_args_size ~args_size
                           obj = OR_OVar clos_var;
                           field_idx = int_operand (1 + i);
                           value_ty = i64_ty;
+                          ownership_get = OR_Ownership_borrow;
                         })
                      i64_ty;
                })
@@ -633,7 +699,12 @@ let build_make_closure_accum ~(fn_name : string) ~stored_args_size ~args_size
   in
   let dst_var = fresh_var "Sy_rst" ret_ty in
   let return_term =
-    { id = fresh_id (); node = OR_Return (Some (OR_OVar dst_var)) }
+    {
+      id = fresh_id ();
+      node =
+        OR_Return
+          { operand = Some (OR_OVar dst_var); ownership_ret = OR_Ownership_own };
+    }
   in
   let specialization_name =
     apply_wrapper_name ~fn_name ~param_tys:specializations ~ret_ty
@@ -644,7 +715,11 @@ let build_make_closure_accum ~(fn_name : string) ~stored_args_size ~args_size
          {
            dst = dst_var;
            target = Direct specialization_name;
-           args = List.map (fun v -> OR_OVar v) (stored_vars @ arg_params);
+           args =
+             List.map
+               (fun v ->
+                 { operand = OR_OVar v; ownership_arg = OR_Ownership_transfer })
+               (stored_vars @ arg_params);
          })
       dst_var.ty
   in

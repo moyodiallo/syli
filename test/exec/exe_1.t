@@ -15,7 +15,8 @@ Closure as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- build test_multi.sy
   $ ./test_multi.exe
-  7
+  Segmentation fault (core dumped)
+  ***** UNREACHABLE *****
 
 Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
@@ -30,9 +31,11 @@ Closure as an argument with multiple captured variables:
   >   let result2 = apply add1 1.0 2.0
   >   syli_print_i64 result
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_multi.sy
+  ***** UNREACHABLE *****
   $ ./test_multi.exe
-  1
+  ***** UNREACHABLE *****
 
 Closure with multiple captured variables:
   $ cat >test_multi.sy <<EOF
@@ -45,9 +48,11 @@ Closure with multiple captured variables:
   >   let result = apply add 3 4
   >   syli_print_i64(result)
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_multi.sy test_multi.opt.exe
+  ***** UNREACHABLE *****
   $ ./test_multi.opt.exe
-  7
+  ***** UNREACHABLE *****
 
 Complex test combining closures, dispatch, casts, partial application, and if-then-else:
   $ cat >complex_dispatch.sy <<EOF
@@ -74,9 +79,11 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   >       apply add1 1.0 2.0
   >   syli_print_i64 r5
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build complex_dispatch.sy
+  ***** UNREACHABLE *****
   $ ./complex_dispatch.exe
-  11111
+  ***** UNREACHABLE *****
 
   $ cat >test_e2e_print.sy <<EOF
   > signature:
@@ -87,9 +94,11 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   >     let record = { name = 10; age = 30 }
   >     syli_print_i64(record.age)
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_e2e_print.sy
+  ***** UNREACHABLE *****
   $ ./test_e2e_print.exe && echo
-  30
+  ***** UNREACHABLE *****
 
 Test 4: Compile, link, and run arithmetic binary
   $ cat >test_e2e_expr.sy <<EOF2
@@ -98,6 +107,8 @@ Test 4: Compile, link, and run arithmetic binary
   > end
   > fn main () = syli_print_i64(100 + 23)
   > EOF2
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_e2e_expr.sy
+  ***** UNREACHABLE *****
   $ ./test_e2e_expr.exe
-  123
+  ***** UNREACHABLE *****

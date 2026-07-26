@@ -35,7 +35,7 @@ Closure with multiple captured variables:
       %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.63_ret_i64)
       obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_var0:*void, 3:i64, 4:i64)
+      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:*void, 3:i64, 4:i64)
       rc_decr(%Sy_var0:*void)
       rc_check_release(%Sy_var0:*void)
       %Sy_var2:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_var1:i64)
@@ -47,7 +47,7 @@ Closure with multiple captured variables:
   
     bb0:
       %Sy_accum_ptr_1:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %y:i64, %f:*void, 0:i64)
+      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %y:i64, @transfer %f:*void, 0:i64)
       
       return %Sy_var0:i64
   end
@@ -64,6 +64,7 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_ret_i64 (%Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end

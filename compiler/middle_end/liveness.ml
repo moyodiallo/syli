@@ -42,8 +42,9 @@ let ref_use_of_stmt (stmt : statement) : IntSet.t =
   | OR_Object_create { size; _ } -> vars_of_operand size
   | OR_Call { args; _ } ->
       List.fold_left
-        (fun s a -> IntSet.union s (vars_of_operand a))
+        (fun s a -> IntSet.union s (vars_of_operand a.operand))
         IntSet.empty args
+  | OR_Release { obj } -> IntSet.singleton obj.id
   | OR_RC_op { obj; _ } -> IntSet.singleton obj.id
   | OR_Store_global { value } -> vars_of_operand value
   | OR_Nop | OR_GC_cycle -> IntSet.empty
@@ -57,10 +58,10 @@ let ref_def_of_stmt (stmt : statement) : IntSet.t =
 
 let terminator_uses (term : terminator) : IntSet.t =
   match term.node with
-  | OR_Return (Some op) -> vars_of_operand op
+  | OR_Return { operand = Some op; _ } -> vars_of_operand op
   | OR_CondBr { cond; _ } -> vars_of_operand (OR_OVar cond)
   | OR_Switch { scrutinee; _ } -> vars_of_operand (OR_OVar scrutinee)
-  | OR_Return None | OR_Goto _ -> IntSet.empty
+  | OR_Return { operand = None; _ } | OR_Goto _ -> IntSet.empty
 
 (* ── Main analysis ────────────────────────────────────────────── *)
 

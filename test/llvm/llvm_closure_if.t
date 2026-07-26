@@ -57,7 +57,11 @@ Closure as an argument with multiple captured variables:
     %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 1
     store i64 1, ptr %Sy_tmp3
     %Sy_tmp4 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 2
-    store ptr %Sy_var0, ptr %Sy_tmp4
+    %Sy_release_tmp_1 = load ptr, ptr %Sy_tmp4
+    call void @syli_rt_object_decr(ptr %Sy_release_tmp_1)
+    call void @syli_rt_object_check_release(ptr %Sy_release_tmp_1)
+    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 2
+    store ptr %Sy_var0, ptr %Sy_tmp5
     call void @syli_rt_object_decr(ptr %Sy_var0)
     call void @syli_rt_object_check_release(ptr %Sy_var0)
     ; nop
@@ -71,10 +75,14 @@ Closure as an argument with multiple captured variables:
     %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_2, ptr %Sy_tmp5
-    %Sy_tmp6 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 1
-    store ptr %Sy_var0, ptr %Sy_tmp6
+    %Sy_tmp6 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 0
+    store ptr %Sy_accum_fn_2, ptr %Sy_tmp6
+    %Sy_tmp7 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 1
+    %Sy_release_tmp_2 = load ptr, ptr %Sy_tmp7
+    call void @syli_rt_object_decr(ptr %Sy_release_tmp_2)
+    call void @syli_rt_object_check_release(ptr %Sy_release_tmp_2)
+    %Sy_tmp8 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 1
+    store ptr %Sy_var0, ptr %Sy_tmp8
     call void @syli_rt_object_decr(ptr %Sy_var0)
     call void @syli_rt_object_check_release(ptr %Sy_var0)
     ; nop
@@ -84,8 +92,8 @@ Closure as an argument with multiple captured variables:
     store i64 %Sy_var4, ptr %Sy_var2
     br label %bb3
   bb3:
-    %Sy_tmp7 = load i64, ptr %Sy_var2
-    ret i64 %Sy_tmp7
+    %Sy_tmp9 = load i64, ptr %Sy_var2
+    ret i64 %Sy_tmp9
   }
   
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr %f, i64 %x, i64 %y) {

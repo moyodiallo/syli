@@ -194,7 +194,7 @@
   
     bb6:
       %Sy_accum_ptr_3:fn_ptr = obj_get(%Sy_var4:*void, 0:i32):fn_ptr
-      %Sy_var7:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (2:i64, %Sy_var4:*void, 0:i64)
+      %Sy_var7:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (2:i64, @transfer %Sy_var4:*void, 0:i64)
       rc_decr(%Sy_var4:*void)
       rc_check_release(%Sy_var4:*void)
       
@@ -231,6 +231,7 @@
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
       return %Sy_rst:i64
   end
@@ -240,6 +241,7 @@
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.mul.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
       return %Sy_rst:i64
   end
@@ -249,6 +251,7 @@
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.sub.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
       return %Sy_rst:i64
   end

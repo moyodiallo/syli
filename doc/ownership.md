@@ -41,7 +41,7 @@ No escape, no lifetime containment – just correct, always‑safe placement of 
 
 | `x` liveness | Operation | Release `x`? |
 |:---|:---|---|
-| **Live** after call | `callee(borrow(x))` | Could be released after |
+| **Live** after call | `callee(borrow(x))` | - |
 | **Dead** after call | `callee(transfer(x))` | No, responsibility moved |
 
 #### `v = get(obj, f)`
@@ -53,16 +53,13 @@ No escape, no lifetime containment – just correct, always‑safe placement of 
 
 #### `set(obj, f, val)`
 
-1. `release(raw_get(obj, f))` – always release the old field value.
+1. `release(transfer(raw_get(obj, f)))` – always release the old field value.
 2. Then:
 
 | `val` liveness | Operation | Release `val` ? |
 |:---|:---|---|
 | **Dead** after | `raw_set(obj, f, own(val))` | No,responsability moved |
-| **Live** after | `raw_set(obj, f, share(val))` | Yes, could be release |
-
-#### Scope exit
-`release(var)` at the end of every variable’s live range.
+| **Live** after | `raw_set(obj, f, share(val))` | - |
 
 ---
 

@@ -35,14 +35,18 @@ Closure with multipble chains of captured variables:
     %Sy_tmp2 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_1, ptr %Sy_tmp2
     %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 1
-    store ptr %Sy_var0, ptr %Sy_tmp3
+    %Sy_release_tmp_1 = load ptr, ptr %Sy_tmp3
+    call void @syli_rt_object_decr(ptr %Sy_release_tmp_1)
+    call void @syli_rt_object_check_release(ptr %Sy_release_tmp_1)
+    %Sy_tmp4 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 1
+    store ptr %Sy_var0, ptr %Sy_tmp4
     call void @syli_rt_object_decr(ptr %Sy_var0)
     call void @syli_rt_object_check_release(ptr %Sy_var0)
-    %Sy_tmp4 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 2
-    store i64 2, ptr %Sy_tmp4
+    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 2
+    store i64 2, ptr %Sy_tmp5
     ; nop
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 0
-    %Sy_accum_ptr_2 = load ptr, ptr %Sy_tmp5
+    %Sy_tmp6 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 0
+    %Sy_accum_ptr_2 = load ptr, ptr %Sy_tmp6
     %Sy_var2 = call i64 %Sy_accum_ptr_2(i64 3, ptr %Sy_var1, i64 0)
     call void @syli_rt_object_decr(ptr %Sy_var1)
     call void @syli_rt_object_check_release(ptr %Sy_var1)

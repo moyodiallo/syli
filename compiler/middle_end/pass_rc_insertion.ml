@@ -25,7 +25,14 @@ let mk_get_value_statement obj field_idx value_ty =
             rvalue =
               {
                 id = fresh_id ();
-                node = OR_Object_get { obj = OR_OVar obj; field_idx; value_ty };
+                node =
+                  OR_Object_get
+                    {
+                      obj = OR_OVar obj;
+                      field_idx;
+                      value_ty;
+                      ownership_get = OR_Ownership_borrow;
+                    };
                 ty = obj.ty;
               };
           };
@@ -50,6 +57,7 @@ let build_var_map (fn : function_oir) : var IntMap.t =
           | OR_Call { dst; _ } ->
               add map dst
           | OR_Object_set { obj; _ } -> add map obj
+          | OR_Release { obj } -> add map obj
           | OR_RC_op { obj; _ } -> add map obj
           | OR_Store_global _ | OR_Nop | OR_GC_cycle -> map)
         map b.statements)
@@ -106,7 +114,7 @@ let process_block_statements (live_map : t) (var_map : var IntMap.t)
       in
       let param_ret_acquire =
         match terminator with
-        | { node = OR_Return (Some (OR_OVar var)) }
+        | { node = OR_Return { operand = Some (OR_OVar var); _ } }
           when is_ref var.ty && IntSet.mem var.id param_ids ->
             [ mk_rc_statement OR_RC_incr var ]
         | _ -> []

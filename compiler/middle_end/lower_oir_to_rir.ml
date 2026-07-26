@@ -319,9 +319,9 @@ let lower_terminator (ctx : ctx) (term : Oir.terminator) : ctx * Rir.terminator
               then_block = lookup_block then_block;
               else_block = lookup_block else_block;
             } )
-    | OR_Return op ->
+    | OR_Return { operand; ownership_ret = _ } ->
         let ctx, op' =
-          match op with
+          match operand with
           | Some o ->
               let ctx, o' = lower_operand ctx o in
               (ctx, Some o')
@@ -417,7 +417,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Object_set { obj; field_idx; value; value_ty } ->
+  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set = _ } ->
       let ctx, obj' = lower_var ctx obj in
       let ctx, field_idx' = lower_operand ctx field_idx in
       let ctx, value' = lower_operand ctx value in
@@ -456,7 +456,9 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
       let ctx, dst' = lower_var ctx dst in
       let ctx, target' = lower_call_target ctx target in
       let ctx, args' =
-        List.fold_left_map (fun ctx a -> lower_operand ctx a) ctx args
+        List.fold_left_map
+          (fun ctx (a : Oir.arg) -> lower_operand ctx a.Oir.operand)
+          ctx args
       in
       ( ctx,
         [
@@ -505,7 +507,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Store_global { global; value } ->
+  | OR_Store_global { global; value; ownership_store = _ } ->
       let ctx, value' = lower_operand ctx value in
       ( ctx,
         [
@@ -515,6 +517,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
+  | OR_Release _ -> (ctx, [])
   | OR_Nop ->
       ( ctx,
         [ { id = fresh_global_id (); node = RR_Nop; ty = lower_ty stmt.ty } ] )

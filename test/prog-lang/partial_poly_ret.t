@@ -70,10 +70,10 @@
       
       %Sy_accum_ptr_1:fn_ptr = obj_get(%Sy_var0:*void, 0:i32):fn_ptr
       %Sy_apply_cast_2:i64 = cast(1.0f:f64 as i64)
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_apply_cast_2:i64, 2:i64, %Sy_var0:*void, 1:i64)
+      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_apply_cast_2:i64, 2:i64, @borrow %Sy_var0:*void, 1:i64)
       
       %Sy_accum_ptr_3:fn_ptr = obj_get(%Sy_var0:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (1:i64, 2:i64, %Sy_var0:*void, 0:i64)
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (1:i64, 2:i64, @transfer %Sy_var0:*void, 0:i64)
       rc_decr(%Sy_var0:*void)
       rc_check_release(%Sy_var0:*void)
       
@@ -101,6 +101,7 @@
   
     bb-1:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       switch %Sy_dp_id:i64 [0: bb0, 1: bb1]
   
     bb0:

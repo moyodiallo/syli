@@ -46,16 +46,17 @@ let run (fmt : t) (filename : string) : string =
       ctx.module_cir |> Syli_ir.Cir_pretty_print.string_of_program
   | Oir ->
       normalized () |> core_to_cir |> mono |> cir_to_oir
-      |> Pass_gc_cycle_insertion.run |> Pass_rc_insertion.run |> pp_oir
+      |> Pass_gc_cycle_insertion.run |> Pass_ownership.run
+      |> Pass_rc_insertion.run |> pp_oir
   | Rir ->
       normalized () |> core_to_cir |> mono |> cir_to_oir
-      |> Pass_gc_cycle_insertion.run |> Pass_rc_insertion.run |> oir_to_rir
-      |> pp_rir
+      |> Pass_gc_cycle_insertion.run |> Pass_ownership.run
+      |> Pass_rc_insertion.run |> oir_to_rir |> pp_rir
   | Llvm ->
       normalized () |> core_to_cir |> mono |> cir_to_oir
-      |> Pass_gc_cycle_insertion.run |> Pass_rc_insertion.run |> oir_to_rir
-      |> prepared |> rir_and_llvm
+      |> Pass_gc_cycle_insertion.run |> Pass_ownership.run
+      |> Pass_rc_insertion.run |> oir_to_rir |> prepared |> rir_and_llvm
   | Exec ->
       normalized () |> core_to_cir |> mono |> cir_to_oir
-      |> Pass_gc_cycle_insertion.run |> Pass_rc_insertion.run |> oir_to_rir
-      |> prepared |> rir_and_llvm
+      |> Pass_gc_cycle_insertion.run |> Pass_ownership.run
+      |> Pass_rc_insertion.run |> oir_to_rir |> prepared |> rir_and_llvm

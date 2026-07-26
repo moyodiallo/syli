@@ -164,13 +164,17 @@
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var1:*void, 1:i32, %Sy_var0:*void):*void
+      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
+      release(%Sy_release_tmp_1:*void)
+      rc_decr(%Sy_release_tmp_1:*void)
+      rc_check_release(%Sy_release_tmp_1:*void)
+      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
       rc_decr(%Sy_var0:*void)
       rc_check_release(%Sy_var0:*void)
       obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, %Sy_var1:*void, 0:i64)
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, @transfer %Sy_var1:*void, 0:i64)
       rc_decr(%Sy_var1:*void)
       rc_check_release(%Sy_var1:*void)
       
@@ -191,6 +195,7 @@
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
@@ -199,10 +204,11 @@
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = obj_get(%Sy_clos:*void, 1:i64):*void
+      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
       %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, %Sy_p_clos:*void, %Sy_dp_id:i64)
+      release(%Sy_clos:*void)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   
@@ -269,14 +275,18 @@
     %Sy_tmp2 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_1, ptr %Sy_tmp2
     %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 1
-    store ptr %Sy_var0, ptr %Sy_tmp3
+    %Sy_release_tmp_1 = load ptr, ptr %Sy_tmp3
+    call void @syli_rt_object_decr(ptr %Sy_release_tmp_1)
+    call void @syli_rt_object_check_release(ptr %Sy_release_tmp_1)
+    %Sy_tmp4 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 1
+    store ptr %Sy_var0, ptr %Sy_tmp4
     call void @syli_rt_object_decr(ptr %Sy_var0)
     call void @syli_rt_object_check_release(ptr %Sy_var0)
-    %Sy_tmp4 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 2
-    store i64 2, ptr %Sy_tmp4
+    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 2
+    store i64 2, ptr %Sy_tmp5
     ; nop
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 0
-    %Sy_accum_ptr_2 = load ptr, ptr %Sy_tmp5
+    %Sy_tmp6 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var1, i32 0, i32 2, i32 0
+    %Sy_accum_ptr_2 = load ptr, ptr %Sy_tmp6
     %Sy_var2 = call i64 %Sy_accum_ptr_2(i64 3, ptr %Sy_var1, i64 0)
     call void @syli_rt_object_decr(ptr %Sy_var1)
     call void @syli_rt_object_check_release(ptr %Sy_var1)

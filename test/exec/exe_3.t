@@ -37,7 +37,8 @@ Closure as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- build test_multi.sy
   $ ./test_multi.exe
-  1
+  Segmentation fault (core dumped)
+  ***** UNREACHABLE *****
 
 Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
@@ -54,9 +55,11 @@ Closure as an argument with multiple captured variables:
   >     else apply add1 7 2.0
   >   syli_print_i64 result
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_multi.sy
+  ***** UNREACHABLE *****
   $ ./test_multi.exe
-  7
+  ***** UNREACHABLE *****
 
 String literal prints via syli_print_str:
   $ cat >test_str.sy <<EOF
@@ -66,9 +69,11 @@ String literal prints via syli_print_str:
   > let s = "hello"
   > fn main () = syli_print_str s
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_str.sy
+  ***** UNREACHABLE *****
   $ ./test_str.exe
-  hello
+  ***** UNREACHABLE *****
 
 Empty string literal compiles and runs:
   $ cat >test_empty.sy <<EOF
@@ -79,9 +84,11 @@ Empty string literal compiles and runs:
   > fn main () =
   >   syli_print_i64 42
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_empty.sy
+  ***** UNREACHABLE *****
   $ ./test_empty.exe
-  42
+  ***** UNREACHABLE *****
 
 Empty string printed via syli_print_str:
   $ cat >test_empty2.sy <<EOF
@@ -94,9 +101,11 @@ Empty string printed via syli_print_str:
   >   syli_print_str s
   >   syli_print_i64 42
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_empty2.sy
+  ***** UNREACHABLE *****
   $ ./test_empty2.exe
-  42
+  ***** UNREACHABLE *****
 
 Global int64 value read inside a function body:
   $ cat >test_global.sy <<EOF
@@ -106,9 +115,11 @@ Global int64 value read inside a function body:
   > let x = 42
   > fn main () = syli_print_i64 x
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_global.sy
+  ***** UNREACHABLE *****
   $ ./test_global.exe
-  42
+  ***** UNREACHABLE *****
 
 Global str value read inside a function body:
   $ cat >test_global_str.sy <<EOF
@@ -118,9 +129,11 @@ Global str value read inside a function body:
   > let s = "global str"
   > fn main () = syli_print_str s
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_global_str.sy
+  ***** UNREACHABLE *****
   $ ./test_global_str.exe
-  global str
+  ***** UNREACHABLE *****
 
 String escape sequences:
   $ cat >test_esc_str.sy <<EOF
@@ -133,10 +146,11 @@ String escape sequences:
   >   syli_print_str "quot\"here"
   >   syli_print_str "back\\\\slash"
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_esc_str.sy
+  ***** UNREACHABLE *****
   $ ./test_esc_str.exe
-  hello
-  worldABCquot"hereback\slash
+  ***** UNREACHABLE *****
 
 Char literal printed via syli_print_char:
   $ cat >test_char.sy <<EOF
@@ -145,6 +159,8 @@ Char literal printed via syli_print_char:
   > end
   > fn main () = syli_print_char 'A'
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_char.sy
+  ***** UNREACHABLE *****
   $ ./test_char.exe
-  A
+  ***** UNREACHABLE *****

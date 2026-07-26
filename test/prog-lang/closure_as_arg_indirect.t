@@ -144,6 +144,130 @@
   
   end
 
+  $ dune exec sylic -- oir test_file.sy
+  module Test_file :
+  ffi_external_functions:
+  extern fn syli_print_i64(i64) -> void
+  
+  
+  functions:
+  public fn __init.Test_file() -> void:
+    entry: bb0
+  
+    bb0:
+  
+      return
+  end
+  
+  public fn syliTest_file.main() -> void:
+    entry: bb0
+  
+    bb0:
+      gc_cycle
+      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.add.111_ret_i64)
+      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      
+      %Sy_var1:i64 = #call_direct syliTest_file.choose (@transfer %Sy_var0:*void)
+      rc_decr(%Sy_var0:*void)
+      rc_check_release(%Sy_var0:*void)
+      %Sy_var2:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var1:i64)
+      return
+  end
+  
+  public fn syliTest_file.choose(%g:*void) -> i64:
+    entry: bb0
+  
+    bb0:
+      gc_cycle
+      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      
+      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.sub.54_ret_i64)
+      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      
+      %Sy_var1:bool = cast(true:bool as bool)
+      cond_br %Sy_var1:bool, bb1, bb2
+  
+    bb2:
+      %Sy_var2:*void = move(%Sy_var0:*void)
+      rc_decr(%Sy_var0:*void)
+      rc_check_release(%Sy_var0:*void)
+      goto bb3
+  
+    bb1:
+      %Sy_var2:*void = move(%g:*void)
+      goto bb3
+  
+    bb3:
+      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var2:*void, 0:i32):fn_ptr
+      %Sy_var3:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (2:i64, @transfer %Sy_var2:*void, 0:i64)
+      rc_decr(%Sy_var2:*void)
+      rc_check_release(%Sy_var2:*void)
+      
+      return %Sy_var3:i64
+  end
+  
+  public fn syliTest_file.sub__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = %x:i64 - %y:i64
+      return %Sy_var0:i64
+  end
+  
+  public fn syliTest_file.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = %x:i64 + %y:i64
+      return %Sy_var0:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_file.add.111_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
+      %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
+      return %Sy_rst:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_file.sub.54_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
+      %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.sub.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
+      return %Sy_rst:i64
+  end
+  
+  private fn __wrapper.syliTest_file.add.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
+      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
+      %Sy_rst:i64 = #call_direct syliTest_file.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      return %Sy_rst:i64
+  end
+  
+  private fn __wrapper.syliTest_file.sub.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
+      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
+      %Sy_rst:i64 = #call_direct syliTest_file.sub__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      return %Sy_rst:i64
+  end
+  
+  end
+
   $ dune exec sylic -- llvm test_file.sy
   declare void @syli_rt_gc_cycle()
   declare void @syli_rt_object_check_release(ptr)

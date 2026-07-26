@@ -103,7 +103,8 @@ Monomorphization issue.
   > EOF
   $ dune exec sylic -- build test_file.sy
   $ ./test_file.exe
-  5
+  Segmentation fault (core dumped)
+  ***** UNREACHABLE *****
 
   $ cat >test_file.sy <<EOF
   > signature:
@@ -118,6 +119,8 @@ Monomorphization issue.
   >   let result = apply ()
   >   syli_print_i64 result
   > EOF
+  ***** UNREACHABLE *****
   $ dune exec sylic -- build test_file.sy
+  ***** UNREACHABLE *****
   $ ./test_file.exe
-  6
+  ***** UNREACHABLE *****

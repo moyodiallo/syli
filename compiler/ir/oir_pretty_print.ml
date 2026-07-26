@@ -80,6 +80,18 @@ let string_of_binop = function
   | OR_Or -> "||"
 
 let string_of_unop = function OR_Neg -> "-" | OR_Not -> "!" | OR_BitNot -> "~"
+let is_ref_ir_type = function OR_Obj _ | OR_Obj_Ptr _ -> true | _ -> false
+
+let string_of_ownership_op = function
+  | OR_Ownership_borrow -> "borrow"
+  | OR_Ownership_transfer -> "transfer"
+  | OR_Ownership_own -> "own"
+  | OR_Ownership_share -> "share"
+
+let own_str (op : ownership_op) (ir_type : ir_type) : string =
+  if is_ref_ir_type ir_type then
+    Printf.sprintf "@%s " (string_of_ownership_op op)
+  else ""
 
 let string_of_rvalue (rv : rvalue) : string =
   match rv.node with
@@ -88,8 +100,10 @@ let string_of_rvalue (rv : rvalue) : string =
         (string_of_operand rhs)
   | OR_UnOp { op; operand } ->
       Printf.sprintf "%s%s" (string_of_unop op) (string_of_operand operand)
-  | OR_Object_get { obj; field_idx; value_ty } ->
-      Printf.sprintf "obj_get(%s, %s):%s" (string_of_operand obj)
+  | OR_Object_get { obj; field_idx; value_ty; ownership_get } ->
+      Printf.sprintf "%sobj_get(%s, %s):%s"
+        (own_str ownership_get value_ty.ir_type)
+        (string_of_operand obj)
         (string_of_operand field_idx)
         (string_of_ty value_ty)
   | OR_Object_length { obj } -> Printf.sprintf "len(%s)" (string_of_operand obj)
@@ -116,9 +130,10 @@ let string_of_statement (stmt : statement) : string =
   match stmt.node with
   | OR_Assign { dst; rvalue } ->
       Printf.sprintf "%s = %s" (var_to_string dst) (string_of_rvalue rvalue)
-  | OR_Object_set { obj; field_idx; value; value_ty } ->
-      Printf.sprintf "obj_set(%s, %s, %s):%s" (var_to_string obj)
+  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set } ->
+      Printf.sprintf "obj_set(%s, %s, %s%s):%s" (var_to_string obj)
         (string_of_operand field_idx)
+        (own_str ownership_set value_ty.ir_type)
         (string_of_operand value) (string_of_ty value_ty)
   | OR_Object_create { dst; size; layout; _ } ->
       Printf.sprintf "%s = object_create{size=%s %s}" (var_to_string dst)
@@ -126,12 +141,27 @@ let string_of_statement (stmt : statement) : string =
         (string_of_object_layout layout)
   | OR_Call { dst; target; args; _ } ->
       let dst_str = var_to_string dst ^ " = " in
-      let args_str = String.concat ", " (List.map string_of_operand args) in
+      let string_of_arg a =
+        match a.Oir.operand with
+        | OR_OVar v ->
+            own_str a.Oir.ownership_arg v.ty.ir_type
+            ^ string_of_operand a.Oir.operand
+        | _ -> string_of_operand a.Oir.operand
+      in
+      let args_str = String.concat ", " (List.map string_of_arg args) in
       Printf.sprintf "%s#call_%s (%s)" dst_str
         (string_of_call_target target)
         args_str
-  | OR_Store_global { global; value } ->
-      Printf.sprintf "store_global %s = %s" global (string_of_operand value)
+  | OR_Store_global { global; value; ownership_store } ->
+      let ir_type =
+        match value with
+        | OR_OVar v -> v.ty.ir_type
+        | OR_OConstant (_, ty) -> ty.ir_type
+      in
+      Printf.sprintf "store_global %s = %s%s" global
+        (own_str ownership_store ir_type)
+        (string_of_operand value)
+  | OR_Release { obj } -> Printf.sprintf "release(%s)" (var_to_string obj)
   | OR_RC_op { op; obj } ->
       let op_str =
         match op with
@@ -167,8 +197,16 @@ let string_of_terminator (lookup : int -> int) (term : terminator) : string =
   | OR_CondBr { cond; then_block; else_block } ->
       Printf.sprintf "cond_br %s, bb%d, bb%d" (var_to_string cond)
         (lookup then_block) (lookup else_block)
-  | OR_Return None -> "return"
-  | OR_Return (Some op) -> Printf.sprintf "return %s" (string_of_operand op)
+  | OR_Return { operand = None; ownership_ret = _ } -> "return"
+  | OR_Return { operand = Some op; ownership_ret } ->
+      let ir_type =
+        match op with
+        | OR_OVar v -> v.ty.ir_type
+        | OR_OConstant (_, ty) -> ty.ir_type
+      in
+      Printf.sprintf "return %s%s"
+        (own_str ownership_ret ir_type)
+        (string_of_operand op)
 
 let string_of_block (lookup : int -> int) (b : block) : string =
   let stmts = List.map (fun s -> "    " ^ string_of_statement s) b.statements in

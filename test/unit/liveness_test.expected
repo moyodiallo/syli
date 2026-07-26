@@ -51,9 +51,9 @@ public fn test_store_global_and_call() -> i64:
 
   bb10:
     %x:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    store_global g_x = %x:Obj
+    store_global g_x = @share %x:Obj
     %y:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    %y:Obj = #call_direct fn (%y:Obj)
+    %y:Obj = #call_direct fn (@borrow %y:Obj)
     rc_check_release(%x:Obj)
     return
 end
