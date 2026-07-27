@@ -1,6 +1,5 @@
 (** Liveness analysis for reference-typed OIR variables (OR_Obj, OR_Obj_Ptr).
-    Used by pass_rc_insertion to decide where reference-counting operations can
-    be inserted. *)
+    Used by pass_ownership to insert OR_Release at scope exit. *)
 
 open Syli_common
 
@@ -12,3 +11,9 @@ type t = live_info IntMap.t
 val analyze : Syli_ir.Oir.function_oir -> t
 (** Single-pass backward dataflow analysis. Relies on SSA property (each var
     defined once in a block) so no fixpoint iteration is needed. *)
+
+val ref_use_of_stmt : Syli_ir.Oir.statement -> IntSet.t
+(** Return the set of reference-typed variable IDs used by a statement. *)
+
+val terminator_uses : Syli_ir.Oir.terminator -> IntSet.t
+(** Return the set of reference-typed variable IDs used by a terminator. *)

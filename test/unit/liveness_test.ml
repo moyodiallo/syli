@@ -110,12 +110,8 @@ let test_single_block () =
          })
       obj_ty
   in
-  let s3 =
-    make_stmt 3 (OR_RC_op { op = OR_RC_check_release; obj = x }) obj_ty
-  in
-  let s4 =
-    make_stmt 4 (OR_RC_op { op = OR_RC_check_release; obj = y }) obj_ty
-  in
+  let s3 = make_stmt 3 (OR_Release { obj = x }) obj_ty in
+  let s4 = make_stmt 4 (OR_Release { obj = y }) obj_ty in
   let term =
     make_term 99
       (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
@@ -150,9 +146,7 @@ let test_two_blocks () =
   in
   let bb1 = make_block 20 20 [ s1 ] term1 in
   (* bb2 (then): use x, return *)
-  let s2 =
-    make_stmt 2 (OR_RC_op { op = OR_RC_check_release; obj = x }) obj_ty
-  in
+  let s2 = make_stmt 2 (OR_Release { obj = x }) obj_ty in
   let term2 =
     make_term 11
       (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
@@ -225,9 +219,7 @@ let test_store_global_and_call () =
          })
       obj_ty
   in
-  let s5 =
-    make_stmt 5 (OR_RC_op { op = OR_RC_check_release; obj = x }) obj_ty
-  in
+  let s5 = make_stmt 5 (OR_Release { obj = x }) obj_ty in
   let term =
     make_term 99
       (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })

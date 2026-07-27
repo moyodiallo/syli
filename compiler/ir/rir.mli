@@ -6,21 +6,17 @@
 val values_offset : int
 
 type runtime_op_name =
-  | RR_RT_rc_alloc_object
   | RR_RT_get_object_length
   | RR_RT_get_object_tag
   | RR_RT_gc_cycle
-  | RR_RT_object_incr
-  | RR_RT_object_decr
-  | RR_RT_object_decr_n
-  | RR_RT_object_decr_drop
-  | RR_RT_object_check_release
-  | RR_RT_object_check_drop
-  | RR_RT_object_check_lost_cyclic_release
-  | RR_RT_object_check_lost_cyclic_drop
   | RR_RT_object_raw_copy
   | RR_RT_object_copy
   | RR_RT_object_check_mutation
+  | RR_RT_object_borrow
+  | RR_RT_object_share
+  | RR_RT_object_own
+  | RR_RT_object_release
+  | RR_RT_object_alloc
 
 val runtime_op_name_to_string : runtime_op_name -> string
 

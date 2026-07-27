@@ -36,8 +36,6 @@ Record object with ref variable death:
       obj_set(%Sy_var0:obj, 1:i64, 30:i64):i64
       %Sy_var1:i64 = obj_get(%Sy_var0:obj, 1:i64):i64
       release(%Sy_var0:obj)
-      rc_decr(%Sy_var0:obj)
-      rc_check_release(%Sy_var0:obj)
       %Sy_var2:void = #call_direct syliTest_rc1.syli_print_i64 (%Sy_var1:i64)
       return
   end
@@ -77,12 +75,8 @@ Multiple ref variables with independent lifetimes:
       obj_set(%Sy_var1:obj, 0:i64, 2:i64):i64
       %Sy_var2:i64 = obj_get(%Sy_var0:obj, 0:i64):i64
       release(%Sy_var0:obj)
-      rc_decr(%Sy_var0:obj)
-      rc_check_release(%Sy_var0:obj)
       %Sy_var3:i64 = obj_get(%Sy_var1:obj, 0:i64):i64
       release(%Sy_var1:obj)
-      rc_decr(%Sy_var1:obj)
-      rc_check_release(%Sy_var1:obj)
       %Sy_var4:i64 = %Sy_var2:i64 + %Sy_var3:i64
       return %Sy_var4:i64
   end
@@ -119,8 +113,6 @@ Closure with captured variable:
       obj_set(%Sy_var0:*void, 1:i32, 10:i64):i64
       
       %Sy_var1:i64 = #call_direct syliTest_rc3.apply__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:*void, 20:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       return %Sy_var1:i64
   end
   
@@ -190,8 +182,6 @@ Closure returned from function — verifies the returned closure is NOT released
       %Sy_var0:*void = #call_direct syliTest_rc_returned.make_adder__i64_ret_fn_i64_i64 (10:i64)
       %Sy_accum_ptr_0:fn_ptr = obj_get(%Sy_var0:*void, 0:i32):fn_ptr
       %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (5:i64, @transfer %Sy_var0:*void, 0:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       
       return %Sy_var1:i64
   end
@@ -269,10 +259,6 @@ Closure compose — two closures passed as borrowed parameters, released in call
       obj_set(%Sy_var1:*void, 1:i32, 20:i64):i64
       
       %Sy_var2:i64 = #call_direct syliTest_rc_compose.compose__fn_i64_i64__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:*void, @transfer %Sy_var1:*void, 5:i64)
-      rc_decr(%Sy_var1:*void)
-      rc_check_release(%Sy_var1:*void)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       return %Sy_var2:i64
   end
   
@@ -360,8 +346,6 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
       obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
       
       %Sy_var1:i64 = #call_direct syliTest_rc_twice.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:*void, 10:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       return %Sy_var1:i64
   end
   

@@ -45,7 +45,6 @@ let ref_use_of_stmt (stmt : statement) : IntSet.t =
         (fun s a -> IntSet.union s (vars_of_operand a.operand))
         IntSet.empty args
   | OR_Release { obj } -> IntSet.singleton obj.id
-  | OR_RC_op { obj; _ } -> IntSet.singleton obj.id
   | OR_Store_global { value } -> vars_of_operand value
   | OR_Nop | OR_GC_cycle -> IntSet.empty
 

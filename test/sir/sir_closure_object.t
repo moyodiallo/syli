@@ -33,8 +33,6 @@ Simple closure with one captured variable:
       obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:*void, 10:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       return %Sy_var1:i64
   end
   
@@ -113,8 +111,6 @@ Closure with multiple captured variables:
       obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:*void, 3:i64, 4:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       return %Sy_var1:i64
   end
   
@@ -195,17 +191,11 @@ Closure with multipble chains of captured variables:
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
       release(%Sy_release_tmp_1:*void)
-      rc_decr(%Sy_release_tmp_1:*void)
-      rc_check_release(%Sy_release_tmp_1:*void)
       obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
       %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, @transfer %Sy_var1:*void, 0:i64)
-      rc_decr(%Sy_var1:*void)
-      rc_check_release(%Sy_var1:*void)
       
       return %Sy_var2:i64
   end
@@ -292,11 +282,7 @@ Closure with multipble chains of captured variables:
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
       release(%Sy_release_tmp_1:*void)
-      rc_decr(%Sy_release_tmp_1:*void)
-      rc_check_release(%Sy_release_tmp_1:*void)
       obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
       
       return @own %Sy_var1:*void
@@ -404,17 +390,11 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
       release(%Sy_release_tmp_1:*void)
-      rc_decr(%Sy_release_tmp_1:*void)
-      rc_check_release(%Sy_release_tmp_1:*void)
       obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       obj_set(%Sy_var1:*void, 2:i32, 10:i64):i64
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
       %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (100:i64, @transfer %Sy_var1:*void, 0:i64)
-      rc_decr(%Sy_var1:*void)
-      rc_check_release(%Sy_var1:*void)
       
       return %Sy_var2:i64
   end

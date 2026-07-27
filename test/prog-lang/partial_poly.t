@@ -106,15 +106,9 @@ Closure as an argument with multiple captured variables:
       obj_set(%Sy_var5:*void, 1:i32, 1:i64):i64
       %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var5:*void, 2:i32):*void
       release(%Sy_release_tmp_1:*void)
-      rc_decr(%Sy_release_tmp_1:*void)
-      rc_check_release(%Sy_release_tmp_1:*void)
       obj_set(%Sy_var5:*void, 2:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       
       %Sy_var6:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (@transfer %Sy_var5:*void, 1.0f:f64, 2.0f:f64)
-      rc_decr(%Sy_var5:*void)
-      rc_check_release(%Sy_var5:*void)
       %Sy_var2:i64 = move(%Sy_var6:i64)
       goto bb3
   
@@ -126,15 +120,9 @@ Closure as an argument with multiple captured variables:
       obj_set(%Sy_var3:*void, 0:i32, %Sy_accum_fn_2:fn_ptr):fn_ptr
       %Sy_release_tmp_2:*void = @transfer obj_get(%Sy_var3:*void, 1:i32):*void
       release(%Sy_release_tmp_2:*void)
-      rc_decr(%Sy_release_tmp_2:*void)
-      rc_check_release(%Sy_release_tmp_2:*void)
       obj_set(%Sy_var3:*void, 1:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       
       %Sy_var4:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var3:*void, 3:i64, 4:i64)
-      rc_decr(%Sy_var3:*void)
-      rc_check_release(%Sy_var3:*void)
       %Sy_var2:i64 = move(%Sy_var4:i64)
       goto bb3
   

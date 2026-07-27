@@ -7,8 +7,8 @@ public fn test_single() -> i64:
   bb10:
     %x:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
     %y:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    rc_check_release(%x:Obj)
-    rc_check_release(%y:Obj)
+    release(%x:Obj)
+    release(%y:Obj)
     return
 end
 
@@ -30,7 +30,7 @@ public fn test_two_blocks() -> i64:
     cond_br %cond:i64, bb100, bb101
 
   bb100:
-    rc_check_release(%x:Obj)
+    release(%x:Obj)
     return
 
   bb101:
@@ -54,7 +54,7 @@ public fn test_store_global_and_call() -> i64:
     store_global g_x = @share %x:Obj
     %y:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
     %y:Obj = #call_direct fn (@borrow %y:Obj)
-    rc_check_release(%x:Obj)
+    release(%x:Obj)
     return
 end
 

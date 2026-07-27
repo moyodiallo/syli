@@ -87,6 +87,8 @@ let string_of_ownership_op = function
   | OR_Ownership_transfer -> "transfer"
   | OR_Ownership_own -> "own"
   | OR_Ownership_share -> "share"
+  | OR_Ownership_constant -> "constant"
+  | OR_Ownership_unknown -> "unknown"
 
 let own_str (op : ownership_op) (ir_type : ir_type) : string =
   if is_ref_ir_type ir_type then
@@ -162,17 +164,6 @@ let string_of_statement (stmt : statement) : string =
         (own_str ownership_store ir_type)
         (string_of_operand value)
   | OR_Release { obj } -> Printf.sprintf "release(%s)" (var_to_string obj)
-  | OR_RC_op { op; obj } ->
-      let op_str =
-        match op with
-        | OR_RC_incr -> "rc_incr"
-        | OR_RC_decr -> "rc_decr"
-        | OR_RC_check_release -> "rc_check_release"
-        | OR_RC_check_drop -> "rc_check_drop"
-        | OR_RC_check_lost_cyclic_release -> "rc_check_lost_cyclic_release"
-        | OR_RC_check_lost_cyclic_drop -> "rc_check_lost_cyclic_drop"
-      in
-      Printf.sprintf "%s(%s)" op_str (var_to_string obj)
   | OR_GC_cycle -> "gc_cycle"
   | OR_Nop -> ""
 

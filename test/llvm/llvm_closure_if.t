@@ -12,9 +12,11 @@ Closure as an argument with multiple captured variables:
   $ dune exec sylic -- llvm test_multi.sy > test_multi.ll
   $ cat test_multi.ll
   declare void @syli_rt_gc_cycle()
-  declare void @syli_rt_object_check_release(ptr)
-  declare void @syli_rt_object_decr(ptr)
-  declare ptr @syli_rt_rc_alloc_object(i64, i32, i32)
+  declare ptr @syli_rt_object_alloc(i64, i32, i32)
+  declare ptr @syli_rt_own(ptr)
+  declare void @syli_rt_release(ptr)
+  declare ptr @syli_rt_share(ptr)
+  declare ptr @syli_rt_untag(ptr)
   
   define i32 @syli_startup_program(i32 %argc, ptr %argv) {
   bb0:
@@ -38,68 +40,70 @@ Closure as an argument with multiple captured variables:
   bb0:
     %Sy_var2 = alloca i64
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_object_alloc(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.66_ret_i64 to ptr
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var0, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_0, ptr %Sy_tmp0
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var0, i32 0, i32 2, i32 1
-    store i64 1, ptr %Sy_tmp1
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
+    store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
+    %Sy_tmp2 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp2, i32 0, i32 2, i32 1
+    store i64 1, ptr %Sy_tmp3
     ; nop
     br i1 true, label %bb1, label %bb2
   bb2:
     call void @syli_rt_gc_cycle()
-    %Sy_var5 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820419, i32 1, i32 3)
+    %Sy_var5 = call ptr @syli_rt_object_alloc(i64 4179340454199820419, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.dispatch.clos0_arg2_ret_i64 to ptr
-    %Sy_tmp2 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_1, ptr %Sy_tmp2
-    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 1
-    store i64 1, ptr %Sy_tmp3
-    %Sy_tmp4 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 2
-    %Sy_release_tmp_1 = load ptr, ptr %Sy_tmp4
-    call void @syli_rt_object_decr(ptr %Sy_release_tmp_1)
-    call void @syli_rt_object_check_release(ptr %Sy_release_tmp_1)
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var5, i32 0, i32 2, i32 2
-    store ptr %Sy_var0, ptr %Sy_tmp5
-    call void @syli_rt_object_decr(ptr %Sy_var0)
-    call void @syli_rt_object_check_release(ptr %Sy_var0)
+    %Sy_tmp4 = call ptr @syli_rt_untag(ptr %Sy_var5)
+    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp4, i32 0, i32 2, i32 0
+    store ptr %Sy_accum_fn_1, ptr %Sy_tmp5
+    %Sy_tmp6 = call ptr @syli_rt_untag(ptr %Sy_var5)
+    %Sy_tmp7 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp6, i32 0, i32 2, i32 1
+    store i64 1, ptr %Sy_tmp7
+    %Sy_tmp8 = call ptr @syli_rt_untag(ptr %Sy_var5)
+    %Sy_tmp9 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp8, i32 0, i32 2, i32 2
+    %Sy_release_tmp_1 = load ptr, ptr %Sy_tmp9
+    call void @syli_rt_release(ptr %Sy_release_tmp_1)
+    %Sy_tmp_1 = call ptr @syli_rt_own(ptr %Sy_var0)
+    %Sy_tmp10 = call ptr @syli_rt_untag(ptr %Sy_var5)
+    %Sy_tmp11 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp10, i32 0, i32 2, i32 2
+    store ptr %Sy_tmp_1, ptr %Sy_tmp11
     ; nop
     %Sy_var6 = call i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr %Sy_var5, double 1., double 2.)
-    call void @syli_rt_object_decr(ptr %Sy_var5)
-    call void @syli_rt_object_check_release(ptr %Sy_var5)
     store i64 %Sy_var6, ptr %Sy_var2
     br label %bb3
   bb1:
     call void @syli_rt_gc_cycle()
-    %Sy_var3 = call ptr @syli_rt_rc_alloc_object(i64 4179340454199820354, i32 1, i32 2)
+    %Sy_var3 = call ptr @syli_rt_object_alloc(i64 4179340454199820354, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
-    %Sy_tmp6 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_2, ptr %Sy_tmp6
-    %Sy_tmp7 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 1
-    %Sy_release_tmp_2 = load ptr, ptr %Sy_tmp7
-    call void @syli_rt_object_decr(ptr %Sy_release_tmp_2)
-    call void @syli_rt_object_check_release(ptr %Sy_release_tmp_2)
-    %Sy_tmp8 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var3, i32 0, i32 2, i32 1
-    store ptr %Sy_var0, ptr %Sy_tmp8
-    call void @syli_rt_object_decr(ptr %Sy_var0)
-    call void @syli_rt_object_check_release(ptr %Sy_var0)
+    %Sy_tmp12 = call ptr @syli_rt_untag(ptr %Sy_var3)
+    %Sy_tmp13 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp12, i32 0, i32 2, i32 0
+    store ptr %Sy_accum_fn_2, ptr %Sy_tmp13
+    %Sy_tmp14 = call ptr @syli_rt_untag(ptr %Sy_var3)
+    %Sy_tmp15 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp14, i32 0, i32 2, i32 1
+    %Sy_release_tmp_2 = load ptr, ptr %Sy_tmp15
+    call void @syli_rt_release(ptr %Sy_release_tmp_2)
+    %Sy_tmp_2 = call ptr @syli_rt_own(ptr %Sy_var0)
+    %Sy_tmp16 = call ptr @syli_rt_untag(ptr %Sy_var3)
+    %Sy_tmp17 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp16, i32 0, i32 2, i32 1
+    store ptr %Sy_tmp_2, ptr %Sy_tmp17
     ; nop
     %Sy_var4 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr %Sy_var3, i64 3, i64 4)
-    call void @syli_rt_object_decr(ptr %Sy_var3)
-    call void @syli_rt_object_check_release(ptr %Sy_var3)
     store i64 %Sy_var4, ptr %Sy_var2
     br label %bb3
   bb3:
-    %Sy_tmp9 = load i64, ptr %Sy_var2
-    ret i64 %Sy_tmp9
+    %Sy_tmp18 = load i64, ptr %Sy_var2
+    ret i64 %Sy_tmp18
   }
   
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr %f, i64 %x, i64 %y) {
   bb0:
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %f, i32 0, i32 2, i32 0
-    %Sy_accum_ptr_3 = load ptr, ptr %Sy_tmp0
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %f)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
+    %Sy_accum_ptr_3 = load ptr, ptr %Sy_tmp1
     %Sy_var0 = call i64 %Sy_accum_ptr_3(i64 %x, i64 %y, ptr %f, i64 0)
     ; nop
     ret i64 %Sy_var0
@@ -107,8 +111,9 @@ Closure as an argument with multiple captured variables:
   
   define i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr %f, double %x, double %y) {
   bb0:
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %f, i32 0, i32 2, i32 0
-    %Sy_accum_ptr_4 = load ptr, ptr %Sy_tmp0
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %f)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
+    %Sy_accum_ptr_4 = load ptr, ptr %Sy_tmp1
     %Sy_apply_cast_5 = bitcast double %x to i64
     %Sy_apply_cast_6 = bitcast double %y to i64
     %Sy_var0 = call i64 %Sy_accum_ptr_4(i64 %Sy_apply_cast_5, i64 %Sy_apply_cast_6, ptr %f, i64 0)
@@ -128,8 +133,10 @@ Closure as an argument with multiple captured variables:
   
   define i64 @__make_closure_accum.dispatch.66_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb-1:
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_clos, i32 0, i32 2, i64 1
-    %Sy_val0 = load i64, ptr %Sy_tmp0
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_clos)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
+    %Sy_val0 = load i64, ptr %Sy_tmp1
+    call void @syli_rt_release(ptr %Sy_clos)
     switch i64 %Sy_dp_id, label %switch_default_unreachable [
       i64 1, label %bb1
       i64 0, label %bb0
@@ -146,23 +153,32 @@ Closure as an argument with multiple captured variables:
   
   define i64 @__partial_closure_accum.clos0_arg2_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_clos, i32 0, i32 2, i64 1
-    %Sy_p_clos = load ptr, ptr %Sy_tmp0
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_p_clos, i32 0, i32 2, i64 0
-    %Sy_p_accum = load ptr, ptr %Sy_tmp1
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_clos)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
+    %Sy_raw_tmp_3 = load ptr, ptr %Sy_tmp1
+    %Sy_p_clos = call ptr @syli_rt_share(ptr %Sy_raw_tmp_3)
+    call void @syli_rt_release(ptr %Sy_clos)
+    %Sy_tmp2 = call ptr @syli_rt_untag(ptr %Sy_p_clos)
+    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp2, i32 0, i32 2, i64 0
+    %Sy_p_accum = load ptr, ptr %Sy_tmp3
     %Sy_rst = call i64 %Sy_p_accum(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_p_clos, i64 %Sy_dp_id)
     ret i64 %Sy_rst
   }
   
   define i64 @__partial_closure_accum.dispatch.clos0_arg2_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_clos, i32 0, i32 2, i64 1
-    %Sy_dp_clos = load i64, ptr %Sy_tmp0
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_clos)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
+    %Sy_dp_clos = load i64, ptr %Sy_tmp1
     %Sy_accum_dp_id = add i64 %Sy_dp_id, %Sy_dp_clos
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_clos, i32 0, i32 2, i64 2
-    %Sy_p_clos = load ptr, ptr %Sy_tmp1
-    %Sy_tmp2 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_p_clos, i32 0, i32 2, i64 0
-    %Sy_p_accum = load ptr, ptr %Sy_tmp2
+    %Sy_tmp2 = call ptr @syli_rt_untag(ptr %Sy_clos)
+    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp2, i32 0, i32 2, i64 2
+    %Sy_raw_tmp_4 = load ptr, ptr %Sy_tmp3
+    %Sy_p_clos = call ptr @syli_rt_share(ptr %Sy_raw_tmp_4)
+    call void @syli_rt_release(ptr %Sy_clos)
+    %Sy_tmp4 = call ptr @syli_rt_untag(ptr %Sy_p_clos)
+    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp4, i32 0, i32 2, i64 0
+    %Sy_p_accum = load ptr, ptr %Sy_tmp5
     %Sy_rst = call i64 %Sy_p_accum(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_p_clos, i64 %Sy_accum_dp_id)
     ret i64 %Sy_rst
   }

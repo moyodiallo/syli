@@ -38,9 +38,9 @@
   $ dune exec sylic -- llvm test_e2e_print.sy > test_e2e_print.ll
   $ cat test_e2e_print.ll
   declare void @syli_rt_gc_cycle()
-  declare void @syli_rt_object_check_release(ptr)
-  declare void @syli_rt_object_decr(ptr)
-  declare ptr @syli_rt_rc_alloc_object(i64, i32, i64)
+  declare ptr @syli_rt_object_alloc(i64, i32, i64)
+  declare void @syli_rt_release(ptr)
+  declare ptr @syli_rt_untag(ptr)
   declare void @syli_print_i64(i64)
   
   define i32 @syli_startup_program(i32 %argc, ptr %argv) {
@@ -64,16 +64,18 @@
   define void @syliTest_e2e_print.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_rc_alloc_object(i64 2305843009213693954, i32 1, i64 2)
+    %Sy_var0 = call ptr @syli_rt_object_alloc(i64 2305843009213693954, i32 1, i64 2)
     ; nop
-    %Sy_tmp0 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var0, i32 0, i32 2, i64 0
-    store i64 10, ptr %Sy_tmp0
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var0, i32 0, i32 2, i64 1
-    store i64 30, ptr %Sy_tmp1
-    %Sy_tmp2 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_var0, i32 0, i32 2, i64 1
-    %Sy_var1 = load i64, ptr %Sy_tmp2
-    call void @syli_rt_object_decr(ptr %Sy_var0)
-    call void @syli_rt_object_check_release(ptr %Sy_var0)
+    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 0
+    store i64 10, ptr %Sy_tmp1
+    %Sy_tmp2 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp2, i32 0, i32 2, i64 1
+    store i64 30, ptr %Sy_tmp3
+    %Sy_tmp4 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp4, i32 0, i32 2, i64 1
+    %Sy_var1 = load i64, ptr %Sy_tmp5
+    call void @syli_rt_release(ptr %Sy_var0)
     call void @syli_print_i64(i64 %Sy_var1)
     ret void
   }

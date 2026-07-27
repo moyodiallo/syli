@@ -6,6 +6,16 @@
 
 #include "syli/syli_state.h"
 
+static inline Object* object_untag(void* ptr)
+{
+    return (Object*)((uintptr_t)ptr & ~1ULL);
+}
+
+static inline bool object_is_own_ref(void* ptr)
+{
+    return ((uintptr_t)ptr & 1ULL) != 0;
+}
+
 static inline void free_released_object(Object* obj)
 {
     if (syli_object_has_flags(obj, Meta_Flags_Suspect_Lost_Cycle)) {
@@ -61,7 +71,7 @@ static inline void child_release_object(Object* obj)
 static inline void gc_one_step_releasing()
 {
     syli_state.releasing_budget--;
-    Object* obj = gc_vector_pop_back(&syli_state.releasing_worklist);
+    Object* obj      = gc_vector_pop_back(&syli_state.releasing_worklist);
     GCObject* gc_obj = as_gc_object(obj);
 
     if (syli_object_is_mono_ref(obj)) {
@@ -70,10 +80,10 @@ static inline void gc_one_step_releasing()
         syli_state.releasing_budget -= (int)length;
         for (uint64_t i = 0; i < length; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value || !object_is_own_ref((void*)field_value)) {
                 continue;
             }
-            child_release_object(((Object*)field_value));
+            child_release_object(object_untag((void*)field_value));
         }
     } else if (syli_object_is_mixed_bitmap(obj)) {
         // All fields are references, traverse all
@@ -85,10 +95,10 @@ static inline void gc_one_step_releasing()
                 continue; // non-reference field
             }
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value || !object_is_own_ref((void*)field_value)) {
                 continue;
             }
-            child_release_object(((Object*)field_value));
+            child_release_object(object_untag((void*)field_value));
         }
     } else if (syli_object_is_mixed_order(obj)) {
         // All fields are references, traverse all
@@ -96,10 +106,10 @@ static inline void gc_one_step_releasing()
         syli_state.releasing_budget -= (int)ptr_count;
         for (size_t i = 0; i < ptr_count; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value || !object_is_own_ref((void*)field_value)) {
                 continue;
             }
-            child_release_object(as_object((GCObject*)field_value));
+            child_release_object(object_untag((void*)field_value));
         }
     }
 
@@ -109,7 +119,7 @@ static inline void gc_one_step_releasing()
 
 void set_releasing_working()
 {
-    vector_GCObject tmp = syli_state.releasing_worklist;
+    vector_GCObject tmp           = syli_state.releasing_worklist;
     syli_state.releasing_worklist = syli_state.releasing_waitlist;
     syli_state.releasing_waitlist = tmp;
     vector_clear_GCObject(&syli_state.releasing_waitlist);

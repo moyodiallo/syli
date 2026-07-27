@@ -16,6 +16,7 @@ type ctx = {
 }
 
 let fresh_global_id = Oir.fresh_id
+let tmp_counter = ref 0
 
 (* Helper constructors *)
 let i32_ty () : Rir.ty = { id = fresh_global_id (); ty = RR_I32 }
@@ -343,7 +344,7 @@ let runtime_call_of_object_create (dst : Rir.var) (size : Rir.operand)
   in
   let header = header_operand_of_layout layout field_types in
   {
-    fn_name = RR_RT_rc_alloc_object;
+    fn_name = RR_RT_object_alloc;
     args = [ header; int_operand 1; size ];
     ret_ty = Some dst.ty;
   }
@@ -392,6 +393,14 @@ let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
   in
   (ctx, { id = fresh_global_id (); node; ty = rir_ty })
 
+let is_var_ref (var : Oir.var) =
+  match var.ty.ir_type with
+  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr _ -> true
+  | _ -> false
+
+let is_ty_ref (ty : Oir.ty) =
+  match ty.ir_type with Oir.OR_Obj _ | Oir.OR_Obj_Ptr _ -> true | _ -> false
+
 let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
     ctx * Rir.statement list =
   match stmt.node with
@@ -406,6 +415,56 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
+  | OR_Assign
+      {
+        dst;
+        rvalue =
+          {
+            node = Oir.OR_Object_get { obj; field_idx; value_ty; ownership_get };
+            _;
+          } as rv;
+      }
+    when is_var_ref dst && not (ownership_get = OR_Ownership_transfer) ->
+      let ctx, dst' = lower_var ctx dst in
+      let ctx, rv' = rvalue_of_oir ctx rv in
+      incr tmp_counter;
+      let raw_tmp =
+        {
+          id = fresh_global_id ();
+          fullname = "Sy_raw_tmp_" ^ string_of_int !tmp_counter;
+          ty = dst'.ty;
+        }
+      in
+      let load_stmt =
+        {
+          id = fresh_global_id ();
+          node = RR_Assign { dst = raw_tmp; rvalue = rv' };
+          ty = lower_ty stmt.ty;
+        }
+      in
+      let fn_name =
+        match ownership_get with
+        | Oir.OR_Ownership_own -> RR_RT_object_own
+        | Oir.OR_Ownership_share -> RR_RT_object_share
+        | Oir.OR_Ownership_borrow -> RR_RT_object_borrow
+        | _ ->
+            failwith
+              "unexpected obj_get ownership: @unknown or @constant or transfer"
+      in
+      let share_stmt =
+        {
+          id = fresh_global_id ();
+          node =
+            RR_Runtime_call
+              {
+                dst = dst';
+                call =
+                  { fn_name; args = [ RR_OVar raw_tmp ]; ret_ty = Some dst'.ty };
+              };
+          ty = lower_ty stmt.ty;
+        }
+      in
+      (ctx, [ load_stmt; share_stmt ])
   | OR_Assign { dst; rvalue } ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, rv' = rvalue_of_oir ctx rvalue in
@@ -417,7 +476,57 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set = _ } ->
+  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set }
+    when is_ty_ref value_ty ->
+      let ctx, obj' = lower_var ctx obj in
+      let ctx, field_idx' = lower_operand ctx field_idx in
+      let ctx, value' = lower_operand ctx value in
+      let rir_ty = lower_ty value_ty in
+      incr tmp_counter;
+      let tmp =
+        {
+          id = fresh_global_id ();
+          fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
+          ty = rir_ty;
+        }
+      in
+      let fn_name =
+        match ownership_set with
+        | Oir.OR_Ownership_own -> RR_RT_object_own
+        | Oir.OR_Ownership_share -> RR_RT_object_share
+        | Oir.OR_Ownership_borrow -> RR_RT_object_borrow
+        | _ ->
+            failwith
+              "unexpected obj_get ownership: @unknown or @constant or transfer"
+      in
+      let share_stmt =
+        {
+          id = fresh_global_id ();
+          node =
+            RR_Runtime_call
+              {
+                dst = tmp;
+                call = { fn_name; args = [ value' ]; ret_ty = Some rir_ty };
+              };
+          ty = rir_ty;
+        }
+      in
+      let store_stmt =
+        {
+          id = fresh_global_id ();
+          node =
+            RR_Object_store
+              {
+                obj = RR_OVar obj';
+                field_idx = field_idx';
+                value = RR_OVar tmp;
+                value_ty = rir_ty;
+              };
+          ty = rir_ty;
+        }
+      in
+      (ctx, [ share_stmt; store_stmt ])
+  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set } ->
       let ctx, obj' = lower_var ctx obj in
       let ctx, field_idx' = lower_operand ctx field_idx in
       let ctx, value' = lower_operand ctx value in
@@ -455,44 +564,67 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
   | OR_Call { dst; target; args } ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, target' = lower_call_target ctx target in
-      let ctx, args' =
-        List.fold_left_map
-          (fun ctx (a : Oir.arg) -> lower_operand ctx a.Oir.operand)
-          ctx args
+      let ctx, share_stmts, args' =
+        List.fold_left
+          (fun (ctx, acc_stmts, acc_args) (a : Oir.arg) ->
+            let ctx, op' = lower_operand ctx a.Oir.operand in
+            match a with
+            | { Oir.operand = OR_OVar v; ownership_arg = OR_Ownership_borrow }
+              when is_var_ref v ->
+                incr tmp_counter;
+                let rir_ty =
+                  match op' with
+                  | RR_OVar v -> v.ty
+                  | RR_OConstant (_, ty) -> ty
+                in
+                let tmp =
+                  {
+                    id = fresh_global_id ();
+                    fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
+                    ty = rir_ty;
+                  }
+                in
+                let borrow_stmt =
+                  {
+                    id = fresh_global_id ();
+                    node =
+                      RR_Runtime_call
+                        {
+                          dst = tmp;
+                          call =
+                            {
+                              fn_name = RR_RT_object_borrow;
+                              args = [ op' ];
+                              ret_ty = Some rir_ty;
+                            };
+                        };
+                    ty = rir_ty;
+                  }
+                in
+                (ctx, borrow_stmt :: acc_stmts, RR_OVar tmp :: acc_args)
+            | { ownership_arg = Oir.OR_Ownership_borrow } ->
+                failwith "unexpected call arg ownership: @borrow is not ref obj"
+            | {
+             ownership_arg =
+               Oir.OR_Ownership_transfer | Oir.OR_Ownership_constant;
+            } ->
+                (ctx, acc_stmts, op' :: acc_args)
+            | { ownership_arg = Oir.OR_Ownership_share } ->
+                failwith "unexpected call arg ownership: @share"
+            | { ownership_arg = Oir.OR_Ownership_unknown } ->
+                failwith "unexpected call arg ownership: @unknown"
+            | { ownership_arg = Oir.OR_Ownership_own } ->
+                failwith "unexpected call arg ownership: @own")
+          (ctx, [], []) args
       in
-      ( ctx,
-        [
-          {
-            id = fresh_global_id ();
-            node = RR_Call { dst = dst'; target = target'; args = args' };
-            ty = lower_ty stmt.ty;
-          };
-        ] )
-  | OR_RC_op { op; obj } ->
-      let ctx, obj' = lower_var ctx obj in
-      let fn_name =
-        match op with
-        | OR_RC_incr -> RR_RT_object_incr
-        | OR_RC_decr -> RR_RT_object_decr
-        | OR_RC_check_release -> RR_RT_object_check_release
-        | OR_RC_check_drop -> RR_RT_object_check_drop
-        | OR_RC_check_lost_cyclic_release ->
-            RR_RT_object_check_lost_cyclic_release
-        | OR_RC_check_lost_cyclic_drop -> RR_RT_object_check_lost_cyclic_drop
+      let call_stmt =
+        {
+          id = fresh_global_id ();
+          node = RR_Call { dst = dst'; target = target'; args = List.rev args' };
+          ty = lower_ty stmt.ty;
+        }
       in
-      ( ctx,
-        [
-          {
-            id = fresh_global_id ();
-            node =
-              RR_Runtime_call
-                {
-                  dst = void_dst ();
-                  call = { fn_name; args = [ RR_OVar obj' ]; ret_ty = None };
-                };
-            ty = lower_ty stmt.ty;
-          };
-        ] )
+      (ctx, List.rev share_stmts @ [ call_stmt ])
   | OR_GC_cycle ->
       ( ctx,
         [
@@ -507,7 +639,51 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Store_global { global; value; ownership_store = _ } ->
+  | OR_Store_global
+      { global; value = Oir.OR_OVar var as value; ownership_store }
+    when is_var_ref var ->
+      let ctx, value' = lower_operand ctx value in
+      let rir_ty =
+        match value' with RR_OVar v -> v.ty | RR_OConstant (_, ty) -> ty
+      in
+      incr tmp_counter;
+      let tmp =
+        {
+          id = fresh_global_id ();
+          fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
+          ty = rir_ty;
+        }
+      in
+      let fn_name =
+        match ownership_store with
+        | Oir.OR_Ownership_own -> RR_RT_object_own
+        | Oir.OR_Ownership_share -> RR_RT_object_share
+        | Oir.OR_Ownership_borrow -> RR_RT_object_borrow
+        | _ ->
+            failwith
+              "unexpected obj_get ownership: @unknown or @constant or transfer"
+      in
+      let ownership_stmt =
+        {
+          id = fresh_global_id ();
+          node =
+            RR_Runtime_call
+              {
+                dst = tmp;
+                call = { fn_name; args = [ value' ]; ret_ty = Some rir_ty };
+              };
+          ty = rir_ty;
+        }
+      in
+      let store_stmt =
+        {
+          id = fresh_global_id ();
+          node = RR_Store_global { global; value = RR_OVar tmp };
+          ty = lower_ty stmt.ty;
+        }
+      in
+      (ctx, [ ownership_stmt; store_stmt ])
+  | OR_Store_global { global; value; ownership_store } ->
       let ctx, value' = lower_operand ctx value in
       ( ctx,
         [
@@ -517,7 +693,26 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Release _ -> (ctx, [])
+  | OR_Release { obj } ->
+      let ctx, obj' = lower_var ctx obj in
+      ( ctx,
+        [
+          {
+            id = fresh_global_id ();
+            node =
+              RR_Runtime_call
+                {
+                  dst = void_dst ();
+                  call =
+                    {
+                      fn_name = RR_RT_object_release;
+                      args = [ RR_OVar obj' ];
+                      ret_ty = None;
+                    };
+                };
+            ty = lower_ty stmt.ty;
+          };
+        ] )
   | OR_Nop ->
       ( ctx,
         [ { id = fresh_global_id (); node = RR_Nop; ty = lower_ty stmt.ty } ] )
@@ -538,11 +733,48 @@ let block_of_oir (ctx : ctx) (block : Oir.block) : ctx * Rir.block =
       ctx block.statements
   in
   let ctx, terminator = lower_terminator ctx block.terminator in
+  let own_stmts, terminator =
+    match block.terminator.node with
+    | Oir.OR_Return
+        { operand = Some (Oir.OR_OVar v); ownership_ret = Oir.OR_Ownership_own }
+      when is_var_ref v ->
+        let _, v' = lower_var ctx v in
+        incr tmp_counter;
+        let tmp =
+          {
+            id = fresh_global_id ();
+            fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
+            ty = v'.ty;
+          }
+        in
+        let own_stmt =
+          {
+            id = fresh_global_id ();
+            node =
+              RR_Runtime_call
+                {
+                  dst = tmp;
+                  call =
+                    {
+                      fn_name = RR_RT_object_own;
+                      args = [ RR_OVar v' ];
+                      ret_ty = Some v'.ty;
+                    };
+                };
+            ty = v'.ty;
+          }
+        in
+        let terminator =
+          { terminator with node = RR_Return (Some (RR_OVar tmp)) }
+        in
+        ([ own_stmt ], terminator)
+    | _ -> ([], terminator)
+  in
   ( ctx,
     {
       id = fresh_id;
       label_id = block.label_id;
-      statements = List.concat statements;
+      statements = List.concat statements @ own_stmts;
       terminator;
     } )
 

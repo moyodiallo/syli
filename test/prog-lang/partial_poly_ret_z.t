@@ -95,8 +95,6 @@
       
       %Sy_accum_ptr_4:fn_ptr = obj_get(%Sy_var0:*void, 0:i32):fn_ptr
       %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_4:fn_ptr)  (1:i64, @transfer %Sy_var0:*void, 0:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       
       %Sy_var3:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_var2:i64)
       %Sy_var4:void = #call_direct syliTest_multi.syli_print_f64 (%Sy_var1:f64)

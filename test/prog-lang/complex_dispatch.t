@@ -180,13 +180,9 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       obj_set(%Sy_var1:*void, 1:i32, 5:i64):i64
       %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 2:i32):*void
       release(%Sy_release_tmp_1:*void)
-      rc_decr(%Sy_release_tmp_1:*void)
-      rc_check_release(%Sy_release_tmp_1:*void)
       obj_set(%Sy_var1:*void, 2:i32, @share %Sy_var0:*void):*void
       
       %Sy_var2:i64 = #call_direct syliComplex_dispatch.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var1:*void, 10:i64, 20:i64)
-      rc_decr(%Sy_var1:*void)
-      rc_check_release(%Sy_var1:*void)
       %Sy_var3:void = #call_direct syliComplex_dispatch.syli_print_i64 (%Sy_var2:i64)
       gc_cycle
       %Sy_var4:*void = object_create{size=3:i32 record{fields=3 tag=0 [fn_ptr; i64; *void]}}
@@ -196,13 +192,9 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       obj_set(%Sy_var4:*void, 1:i32, 4:i64):i64
       %Sy_release_tmp_2:*void = @transfer obj_get(%Sy_var4:*void, 2:i32):*void
       release(%Sy_release_tmp_2:*void)
-      rc_decr(%Sy_release_tmp_2:*void)
-      rc_check_release(%Sy_release_tmp_2:*void)
       obj_set(%Sy_var4:*void, 2:i32, @share %Sy_var0:*void):*void
       
       %Sy_var5:i64 = #call_direct syliComplex_dispatch.apply__fn_f64_f64_i64__f64__f64_ret_i64 (@transfer %Sy_var4:*void, 1.0f:f64, 2.0f:f64)
-      rc_decr(%Sy_var4:*void)
-      rc_check_release(%Sy_var4:*void)
       %Sy_var6:void = #call_direct syliComplex_dispatch.syli_print_i64 (%Sy_var5:i64)
       gc_cycle
       %Sy_var7:*void = object_create{size=4:i32 record{fields=4 tag=0 [fn_ptr; i64; *void; i64]}}
@@ -212,8 +204,6 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       obj_set(%Sy_var7:*void, 1:i32, 2:i64):i64
       %Sy_release_tmp_3:*void = @transfer obj_get(%Sy_var7:*void, 2:i32):*void
       release(%Sy_release_tmp_3:*void)
-      rc_decr(%Sy_release_tmp_3:*void)
-      rc_check_release(%Sy_release_tmp_3:*void)
       obj_set(%Sy_var7:*void, 2:i32, @share %Sy_var0:*void):*void
       obj_set(%Sy_var7:*void, 3:i32, 2:i64):i64
       
@@ -224,8 +214,6 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       %Sy_accum_ptr_5:fn_ptr = obj_get(%Sy_var7:*void, 0:i32):fn_ptr
       %Sy_apply_cast_6:i64 = cast(3.0f:f64 as i64)
       %Sy_var10:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_5:fn_ptr)  (%Sy_apply_cast_6:i64, @transfer %Sy_var7:*void, 0:i64)
-      rc_decr(%Sy_var7:*void)
-      rc_check_release(%Sy_var7:*void)
       
       %Sy_var11:void = #call_direct syliComplex_dispatch.syli_print_i64 (%Sy_var10:i64)
       %Sy_var12:bool = cast(true:bool as bool)
@@ -240,15 +228,9 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       obj_set(%Sy_var16:*void, 1:i32, 1:i64):i64
       %Sy_release_tmp_4:*void = @transfer obj_get(%Sy_var16:*void, 2:i32):*void
       release(%Sy_release_tmp_4:*void)
-      rc_decr(%Sy_release_tmp_4:*void)
-      rc_check_release(%Sy_release_tmp_4:*void)
       obj_set(%Sy_var16:*void, 2:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       
       %Sy_var17:i64 = #call_direct syliComplex_dispatch.apply__fn_f64_f64_i64__f64__f64_ret_i64 (@transfer %Sy_var16:*void, 1.0f:f64, 2.0f:f64)
-      rc_decr(%Sy_var16:*void)
-      rc_check_release(%Sy_var16:*void)
       %Sy_var13:i64 = move(%Sy_var17:i64)
       goto bb3
   
@@ -260,15 +242,9 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       obj_set(%Sy_var14:*void, 0:i32, %Sy_accum_fn_8:fn_ptr):fn_ptr
       %Sy_release_tmp_5:*void = @transfer obj_get(%Sy_var14:*void, 1:i32):*void
       release(%Sy_release_tmp_5:*void)
-      rc_decr(%Sy_release_tmp_5:*void)
-      rc_check_release(%Sy_release_tmp_5:*void)
       obj_set(%Sy_var14:*void, 1:i32, @own %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
       
       %Sy_var15:i64 = #call_direct syliComplex_dispatch.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var14:*void, 100:i64, 200:i64)
-      rc_decr(%Sy_var14:*void)
-      rc_check_release(%Sy_var14:*void)
       %Sy_var13:i64 = move(%Sy_var15:i64)
       goto bb3
   

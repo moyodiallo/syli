@@ -6,6 +6,16 @@
 
 #include "syli/syli_state.h"
 
+static inline Object* object_untag(void* ptr)
+{
+    return (Object*)((uintptr_t)ptr & ~1ULL);
+}
+
+static inline bool object_is_own_ref(void* ptr)
+{
+    return ((uintptr_t)ptr & 1ULL) != 0;
+}
+
 static inline void free_dropping_object(Object* obj)
 {
     // A dropping object will never be reachable from roots.
@@ -36,7 +46,7 @@ static inline void child_dropping_object(Object* obj)
 static inline void gc_one_step_dropping()
 {
     syli_state.dropping_budget--;
-    Object* obj = gc_vector_pop_back(&syli_state.dropping_worklist);
+    Object* obj      = gc_vector_pop_back(&syli_state.dropping_worklist);
     GCObject* gc_obj = as_gc_object(obj);
 
     // when an object is referenced by its sibbling in the scope.
@@ -55,10 +65,10 @@ static inline void gc_one_step_dropping()
         syli_state.dropping_budget -= (int)length;
         for (uint64_t i = 0; i < length; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value || !object_is_own_ref((void*)field_value)) {
                 continue;
             }
-            child_dropping_object(((Object*)field_value));
+            child_dropping_object(object_untag((void*)field_value));
         }
     } else if (syli_object_is_mixed_bitmap(obj)) {
         // All fields are references, traverse all
@@ -70,10 +80,10 @@ static inline void gc_one_step_dropping()
                 continue; // non-reference field
             }
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value || !object_is_own_ref((void*)field_value)) {
                 continue;
             }
-            child_dropping_object(((Object*)field_value));
+            child_dropping_object(object_untag((void*)field_value));
         }
     } else if (syli_object_is_mixed_order(obj)) {
         // All fields are references, traverse all
@@ -81,10 +91,10 @@ static inline void gc_one_step_dropping()
         syli_state.dropping_budget -= (int)ptr_count;
         for (size_t i = 0; i < ptr_count; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value || !object_is_own_ref((void*)field_value)) {
                 continue;
             }
-            child_dropping_object(((Object*)field_value));
+            child_dropping_object(object_untag((void*)field_value));
         }
     }
 
@@ -101,7 +111,7 @@ static inline void gc_one_step_dropping()
 
 void set_dropping_working()
 {
-    vector_GCObject tmp = syli_state.dropping_worklist;
+    vector_GCObject tmp          = syli_state.dropping_worklist;
     syli_state.dropping_worklist = syli_state.dropping_waitlist;
     syli_state.dropping_waitlist = tmp;
     vector_clear_GCObject(&syli_state.dropping_waitlist);

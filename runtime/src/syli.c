@@ -132,12 +132,13 @@ Object* syli_rt_object_copy(Object* src)
     ObjectZone src_zone = syli_object_get_zone(src);
 
     if (src_zone == Zone_GcLocal) {
-        GCObject* src_local = as_gc_object(src);
-        size_t length = syli_object_length(src);
-        object_header_t header = src_local->header_word;
+        GCObject* src_local     = as_gc_object(src);
+        size_t length           = syli_object_length(src);
+        object_header_t header  = src_local->header_word;
         uint64_t meta_ref_count = src_local->meta_ref_count;
 
-        GCObject* dst = (GCObject*)syli_object_alloc(header, meta_ref_count, length);
+        GCObject* dst
+            = (GCObject*)syli_object_alloc(header, meta_ref_count, length);
 
         uint64_t* data_src = src_local->value;
         uint64_t* data_dst = dst->value;
@@ -229,3 +230,73 @@ void syli_rt_object_notify_mutation(Object* obj, Object* target)
 }
 
 void syli_rt_gc_cycle() { syli_state_gc_cycle(); }
+
+/************************************************
+ * Ownership Tag Primitives
+ ************************************************/
+
+#define OWN_REF_TAG 1ULL
+
+static inline void* syli_ownership_untag(void* ptr)
+{
+    return (void*)((uintptr_t)ptr & ~OWN_REF_TAG);
+}
+
+static inline bool syli_ownership_is_own_ref(void* ptr)
+{
+    return ((uintptr_t)ptr & OWN_REF_TAG) != 0;
+}
+
+static inline void* syli_ownership_set_own(void* ptr)
+{
+    return (void*)((uintptr_t)ptr | OWN_REF_TAG);
+}
+
+void* syli_rt_object_alloc(
+    object_header_t header, size_t refcount, size_t words)
+{
+    GCObject* obj = syli_rt_rc_alloc_object(header, refcount, words);
+    return syli_ownership_set_own(obj);
+}
+
+void* syli_rt_untag(void* ptr)
+{
+    assert(ptr != NULL);
+    return syli_ownership_untag(ptr);
+}
+
+void* syli_rt_borrow(void* ptr)
+{
+    assert(syli_ownership_untag(ptr) != NULL);
+    return (void*)((uintptr_t)ptr & ~OWN_REF_TAG);
+}
+
+void* syli_rt_own(void* ptr)
+{
+    if (!syli_ownership_is_own_ref(ptr)) {
+        Object* obj = (Object*)syli_ownership_untag(ptr);
+        assert(obj != NULL);
+        syli_rt_object_incr(obj);
+        return syli_ownership_set_own(ptr);
+    }
+    return ptr;
+}
+
+void* syli_rt_share(void* ptr)
+{
+    assert(syli_ownership_untag(ptr) != NULL);
+    Object* obj = (Object*)syli_ownership_untag(ptr);
+    assert(obj != NULL);
+    syli_rt_object_incr(obj);
+    return syli_ownership_set_own(ptr);
+}
+
+void syli_rt_release(void* ptr)
+{
+    if (syli_ownership_is_own_ref(ptr)) {
+        Object* obj = (Object*)syli_ownership_untag(ptr);
+        assert(obj != NULL);
+        syli_rt_object_decr(obj);
+        syli_rt_object_check_release(obj);
+    }
+}

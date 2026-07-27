@@ -83,19 +83,13 @@ and terminator_node =
 
 and switch_case_node = { value : int; target_block : id }
 
-and rc_op =
-  | OR_RC_incr
-  | OR_RC_decr
-  | OR_RC_check_release
-  | OR_RC_check_drop
-  | OR_RC_check_lost_cyclic_release
-  | OR_RC_check_lost_cyclic_drop
-
 and ownership_op =
   | OR_Ownership_borrow
   | OR_Ownership_transfer
   | OR_Ownership_own
   | OR_Ownership_share
+  | OR_Ownership_constant
+  | OR_Ownership_unknown
 
 type arg = { operand : operand; ownership_arg : ownership_op }
 
@@ -139,7 +133,6 @@ and statement_node =
       ownership_store : ownership_op;
     }
   | OR_Release of { obj : var }
-  | OR_RC_op of { op : rc_op; obj : var }
   | OR_GC_cycle
   | OR_Nop
 

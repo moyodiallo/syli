@@ -15,7 +15,7 @@ let is_ref_ty (t : ty) : bool =
 let mk_release (v : var) : statement =
   { id = fresh_id (); node = OR_Release { obj = v }; ty = void_ty () }
 
-let releases_of (live_map : t) (stmt_id : int) (skip : IntSet.t)
+let releases_of_dead_obj (live_map : t) (stmt_id : int) (skip : IntSet.t)
     (var_map : var IntMap.t) : statement list =
   match IntMap.find_opt stmt_id live_map with
   | Some info ->
@@ -55,7 +55,8 @@ let annotate_function (fn : function_oir) : function_oir =
   let live_map = analyze fn in
   let var_map = build_var_map fn in
   let release_tmp_counter = ref 0 in
-  let mk_get_value_statement (obj : var) (field_idx : operand) (value_ty : ty) =
+  let mk_get_release_tmp_value_statement (obj : var) (field_idx : operand)
+      (value_ty : ty) =
     incr release_tmp_counter;
     let dst =
       {
@@ -138,59 +139,78 @@ let annotate_function (fn : function_oir) : function_oir =
                     ( [ { stmt with node = OR_Assign { dst; rvalue } } ],
                       IntSet.empty )
                 | OR_Object_set ({ obj; field_idx; value; value_ty; _ } as os)
-                  when is_ref_ty value_ty ->
-                    let live_after, ownership_set =
-                      match value with
-                      | OR_OVar v ->
-                          let live_after =
-                            match IntMap.find_opt stmt.id live_map with
-                            | Some info -> IntSet.mem v.id info.live_after
-                            | None -> false
-                          in
-                          ( live_after,
-                            if live_after then OR_Ownership_share
-                            else OR_Ownership_own )
-                      | _ -> (false, OR_Ownership_own)
-                    in
-                    let no_release =
-                      if live_after then IntSet.empty
-                      else
+                  ->
+                    if is_ref_ty value_ty then
+                      let live_after, ownership_set =
                         match value with
-                        | OR_OVar v -> IntSet.singleton v.id
-                        | _ -> IntSet.empty
-                    in
-                    let old_var, old_stmt =
-                      mk_get_value_statement obj field_idx value_ty
-                    in
-                    ( [
-                        old_stmt;
-                        mk_release old_var;
-                        {
-                          stmt with
-                          node = OR_Object_set { os with ownership_set };
-                        };
-                      ],
-                      no_release )
+                        | OR_OVar v ->
+                            let live_after =
+                              match IntMap.find_opt stmt.id live_map with
+                              | Some info -> IntSet.mem v.id info.live_after
+                              | None -> false
+                            in
+                            ( live_after,
+                              if live_after then OR_Ownership_share
+                              else OR_Ownership_own )
+                        | _ -> (false, OR_Ownership_own)
+                      in
+                      let no_release =
+                        if live_after then IntSet.empty
+                        else
+                          match value with
+                          | OR_OVar v -> IntSet.singleton v.id
+                          | _ -> IntSet.empty
+                      in
+                      let old_var, old_stmt =
+                        mk_get_release_tmp_value_statement obj field_idx
+                          value_ty
+                      in
+                      ( [
+                          old_stmt;
+                          mk_release old_var;
+                          {
+                            stmt with
+                            node = OR_Object_set { os with ownership_set };
+                          };
+                        ],
+                        no_release )
+                    else
+                      ( [
+                          {
+                            stmt with
+                            node =
+                              OR_Object_set
+                                {
+                                  os with
+                                  ownership_set = OR_Ownership_constant;
+                                };
+                          };
+                        ],
+                        IntSet.empty )
                 | OR_Call ({ args; _ } as c) ->
                     let args', no_release =
                       List.fold_left
                         (fun (acc_args, acc_nr) a ->
                           match a.operand with
                           | OR_OVar v when is_ref_ty v.ty ->
-                              let la =
+                              let live_after =
                                 match IntMap.find_opt stmt.id live_map with
                                 | Some info -> IntSet.mem v.id info.live_after
                                 | None -> false
                               in
                               let ownership_arg =
-                                if la then OR_Ownership_borrow
+                                if live_after then OR_Ownership_borrow
                                 else OR_Ownership_transfer
                               in
                               let acc_nr =
-                                if la then acc_nr else IntSet.add v.id acc_nr
+                                if live_after then acc_nr
+                                else IntSet.add v.id acc_nr
                               in
                               ({ a with ownership_arg } :: acc_args, acc_nr)
-                          | _ -> (a :: acc_args, acc_nr))
+                          | _ ->
+                              ( { a with ownership_arg = OR_Ownership_constant }
+                                :: acc_args,
+                                acc_nr ))
                         ([], IntSet.empty) args
                     in
                     ( [
@@ -212,7 +232,7 @@ let annotate_function (fn : function_oir) : function_oir =
                           ( live_after,
                             if live_after then OR_Ownership_share
                             else OR_Ownership_transfer )
-                      | _ -> (true, OR_Ownership_share)
+                      | _ -> (true, OR_Ownership_constant)
                     in
                     let no_release =
                       if live_after then IntSet.empty
@@ -236,7 +256,7 @@ let annotate_function (fn : function_oir) : function_oir =
                     ([ stmt ], IntSet.singleton v.id)
                 | _ -> ([ stmt ], IntSet.empty)
               in
-              stmts @ releases_of live_map stmt.id no_release var_map)
+              stmts @ releases_of_dead_obj live_map stmt.id no_release var_map)
             block.statements
         in
         let terminator =

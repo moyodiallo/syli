@@ -77,6 +77,8 @@ type ownership_op =
   | OR_Ownership_transfer
   | OR_Ownership_own
   | OR_Ownership_share
+  | OR_Ownership_constant
+  | OR_Ownership_unknown
 
 type arg = { operand : operand; ownership_arg : ownership_op }
 
@@ -93,17 +95,6 @@ and terminator_node =
   | OR_Return of { operand : operand option; ownership_ret : ownership_op }
 
 and switch_case_node = { value : int; target_block : id }
-
-type rc_op =
-  | OR_RC_incr
-  | OR_RC_decr
-  | OR_RC_check_release  (** Release when ref = 0*)
-  | OR_RC_check_drop  (** Drop non escaping when ref = 0 *)
-  | OR_RC_check_lost_cyclic_release
-      (** Suspect lost cycle when a cyclic object is being to be release and its
-          refcount > 1 this also could be optimize if we know for sure the
-          object is hold by another object that could be release later *)
-  | OR_RC_check_lost_cyclic_drop  (** For non escaping cyclic obj *)
 
 type rvalue_node =
   | OR_BinOp of { op : binop; lhs : operand; rhs : operand }
@@ -145,7 +136,6 @@ and statement_node =
       ownership_store : ownership_op;
     }
   | OR_Release of { obj : var }
-  | OR_RC_op of { op : rc_op; obj : var }
   | OR_GC_cycle  (** GC running *)
   | OR_Nop
 

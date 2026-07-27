@@ -201,12 +201,31 @@ let lower_object_slot_ptr (ctx : lower_ctx) (obj : Rir.operand)
   let offset =
     LV_Constant (LV_Integer (Int64.of_int Rir.values_offset), LV_I32)
   in
+  let untag_fn_ty = LV_Func ([ LV_Ptr ], LV_Ptr) in
+  let ctx = add_decl_if_missing ctx "syli_rt_untag" untag_fn_ty in
+  let ctx, untagged_ptr = fresh_reg ctx LV_Ptr in
+  let untag_call =
+    LV_Assign
+      ( untagged_ptr,
+        LV_Call
+          {
+            fn = global "syli_rt_untag" untag_fn_ty;
+            args = [ obj' ];
+            ret_ty = LV_Ptr;
+          } )
+  in
   let slot_ptr_rhs =
     LV_GEP
-      { base = obj'; indices = [ zero; offset; idx' ]; result_ty = object_ty }
+      {
+        base = untagged_ptr;
+        indices = [ zero; offset; idx' ];
+        result_ty = object_ty;
+      }
   in
   let ctx, slot_reg = fresh_reg ctx LV_Ptr in
-  (ctx, extra1 @ extra2 @ [ LV_Assign (slot_reg, slot_ptr_rhs) ], slot_reg)
+  ( ctx,
+    extra1 @ extra2 @ [ untag_call; LV_Assign (slot_reg, slot_ptr_rhs) ],
+    slot_reg )
 
 type signedness_kind = Signed | Unsigned
 
