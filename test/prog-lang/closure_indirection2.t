@@ -165,14 +165,17 @@
       cond_br %Sy_var3:bool, bb1, bb2
   
     bb2:
+      release(%Sy_var0:*void)
       %Sy_var5:bool = cast(true:bool as bool)
       cond_br %Sy_var5:bool, bb3, bb4
   
     bb4:
+      release(%Sy_var1:*void)
       %Sy_var6:*void = move(%Sy_var2:*void)
       goto bb5
   
     bb3:
+      release(%Sy_var2:*void)
       %Sy_var6:*void = move(%Sy_var1:*void)
       goto bb5
   
@@ -181,6 +184,8 @@
       goto bb6
   
     bb1:
+      release(%Sy_var2:*void)
+      release(%Sy_var1:*void)
       %Sy_var4:*void = move(%Sy_var0:*void)
       goto bb6
   
@@ -341,11 +346,14 @@
     ; nop
     br i1 true, label %bb1, label %bb2
   bb2:
+    call void @syli_ownership_release(ptr %Sy_var0)
     br i1 true, label %bb3, label %bb4
   bb4:
+    call void @syli_ownership_release(ptr %Sy_var1)
     store ptr %Sy_var2, ptr %Sy_var6
     br label %bb5
   bb3:
+    call void @syli_ownership_release(ptr %Sy_var2)
     store ptr %Sy_var1, ptr %Sy_var6
     br label %bb5
   bb5:
@@ -353,6 +361,8 @@
     store ptr %Sy_tmp12, ptr %Sy_var4
     br label %bb6
   bb1:
+    call void @syli_ownership_release(ptr %Sy_var2)
+    call void @syli_ownership_release(ptr %Sy_var1)
     store ptr %Sy_var0, ptr %Sy_var4
     br label %bb6
   bb6:

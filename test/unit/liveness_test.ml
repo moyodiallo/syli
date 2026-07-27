@@ -63,7 +63,10 @@ let var_name_by_id (fn : function_oir) id =
   in
   find all_vars
 
-let print_live_set label fn sid (info : L.live_info) =
+let block_id_set (fn : function_oir) : IntSet.t =
+  List.fold_left (fun s (b : block) -> IntSet.add b.id s) IntSet.empty fn.blocks
+
+let print_live_set label fn sid (info : L.live_info_stmt) dead =
   let before_str =
     String.concat ", "
       (List.map (var_name_by_id fn) (IntSet.elements info.live_before))
@@ -72,12 +75,35 @@ let print_live_set label fn sid (info : L.live_info) =
     String.concat ", "
       (List.map (var_name_by_id fn) (IntSet.elements info.live_after))
   in
-  Printf.printf "  stmt %d: live_before={%s}  live_after={%s}\n" sid before_str
-    after_str
+  let block_ids = block_id_set fn in
+  if IntSet.mem sid block_ids then
+    let dead_str =
+      String.concat ", " (List.map (var_name_by_id fn) (IntSet.elements dead))
+    in
+    Printf.printf "  block %d: live_before={%s}  dead_at_entry={%s}\n" sid
+      before_str dead_str
+  else
+    Printf.printf "  stmt %d: live_before={%s}  live_after={%s}\n" sid
+      before_str after_str
 
 let print_live_map label fn live_map =
   Printf.printf "--- %s\n" label;
-  IntMap.iter (fun sid info -> print_live_set label fn sid info) live_map
+  IntMap.iter
+    (fun sid info ->
+      Printf.printf "  stmt %d: live_before={%s}  live_after={%s}\n" sid
+        (String.concat ", "
+           (List.map (var_name_by_id fn) (IntSet.elements info.live_before)))
+        (String.concat ", "
+           (List.map (var_name_by_id fn) (IntSet.elements info.live_after))))
+    live_map.stmts;
+  IntMap.iter
+    (fun bid info ->
+      Printf.printf "  block %d: live_entry={%s}  dead_entry={%s}\n" bid
+        (String.concat ", "
+           (List.map (var_name_by_id fn) (IntSet.elements info.live_entry)))
+        (String.concat ", "
+           (List.map (var_name_by_id fn) (IntSet.elements info.dead_entry))))
+    live_map.blocks
 
 (* ── Test: single block, two ref vars ─────────────────────────── *)
 
@@ -110,8 +136,28 @@ let test_single_block () =
          })
       obj_ty
   in
-  let s3 = make_stmt 3 (OR_Release { obj = x }) obj_ty in
-  let s4 = make_stmt 4 (OR_Release { obj = y }) obj_ty in
+  let s3 =
+    make_stmt 3
+      (OR_Call
+         {
+           dst = i64_var "_";
+           target = Direct "f";
+           args =
+             [ { operand = OR_OVar x; ownership_arg = OR_Ownership_borrow } ];
+         })
+      i64_ty
+  in
+  let s4 =
+    make_stmt 4
+      (OR_Call
+         {
+           dst = i64_var "_";
+           target = Direct "f";
+           args =
+             [ { operand = OR_OVar y; ownership_arg = OR_Ownership_borrow } ];
+         })
+      i64_ty
+  in
   let term =
     make_term 99
       (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
@@ -146,7 +192,17 @@ let test_two_blocks () =
   in
   let bb1 = make_block 20 20 [ s1 ] term1 in
   (* bb2 (then): use x, return *)
-  let s2 = make_stmt 2 (OR_Release { obj = x }) obj_ty in
+  let s2 =
+    make_stmt 2
+      (OR_Call
+         {
+           dst = i64_var "_";
+           target = Direct "f";
+           args =
+             [ { operand = OR_OVar x; ownership_arg = OR_Ownership_borrow } ];
+         })
+      i64_ty
+  in
   let term2 =
     make_term 11
       (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
@@ -219,7 +275,17 @@ let test_store_global_and_call () =
          })
       obj_ty
   in
-  let s5 = make_stmt 5 (OR_Release { obj = x }) obj_ty in
+  let s5 =
+    make_stmt 5
+      (OR_Call
+         {
+           dst = i64_var "_";
+           target = Direct "f";
+           args =
+             [ { operand = OR_OVar x; ownership_arg = OR_Ownership_borrow } ];
+         })
+      i64_ty
+  in
   let term =
     make_term 99
       (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
@@ -230,6 +296,57 @@ let test_store_global_and_call () =
   let live_map = L.analyze fn in
   print_live_map "test_store_global_and_call: live_map" fn live_map
 
+(* ── Test: dead_at_entry for branch-specific dying ──────────────── *)
+
+let test_dead_at_entry () =
+  let cond = i64_var "cond" in
+  let x = obj_var "x" in
+  let s1 =
+    make_stmt 1
+      (OR_Object_create
+         {
+           dst = x;
+           size = OR_OConstant (OR_IntLit "8", i64_ty);
+           layout =
+             OR_Record
+               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
+           initializer_fn = None;
+         })
+      obj_ty
+  in
+  let term1 =
+    make_term 10 (OR_CondBr { cond; then_block = 100; else_block = 101 })
+  in
+  let bb_entry = make_block 20 20 [ s1 ] term1 in
+  let s2 =
+    make_stmt 2
+      (OR_Call
+         {
+           dst = i64_var "_";
+           target = Direct "f";
+           args =
+             [ { operand = OR_OVar x; ownership_arg = OR_Ownership_borrow } ];
+         })
+      i64_ty
+  in
+  let term2 =
+    make_term 11
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
+  let bb_then = make_block 100 100 [ s2 ] term2 in
+  let term3 =
+    make_term 12
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
+  let bb_else = make_block 101 101 [] term3 in
+  let fn =
+    make_fn "test_dead_at_entry" ~locals:[ cond; x ] bb_entry
+      [ bb_entry; bb_then; bb_else ]
+  in
+  print_fn "test_dead_at_entry: input" fn;
+  let live_map = L.analyze fn in
+  print_live_map "test_dead_at_entry: live_map" fn live_map
+
 (* ── Main ─────────────────────────────────────────────────────── *)
 
 let () =
@@ -237,4 +354,6 @@ let () =
   Printf.printf "\n";
   test_two_blocks ();
   Printf.printf "\n";
-  test_store_global_and_call ()
+  test_store_global_and_call ();
+  Printf.printf "\n";
+  test_dead_at_entry ()

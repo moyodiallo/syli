@@ -73,10 +73,12 @@
       cond_br %Sy_var2:bool, bb1, bb2
   
     bb2:
+      release(%Sy_var0:*void)
       %Sy_var3:*void = move(%Sy_var1:*void)
       goto bb3
   
     bb1:
+      release(%Sy_var1:*void)
       %Sy_var3:*void = move(%Sy_var0:*void)
       goto bb3
   
@@ -256,9 +258,11 @@
     ; nop
     br i1 true, label %bb1, label %bb2
   bb2:
+    call void @syli_ownership_release(ptr %Sy_var0)
     store ptr %Sy_var1, ptr %Sy_var3
     br label %bb3
   bb1:
+    call void @syli_ownership_release(ptr %Sy_var1)
     store ptr %Sy_var0, ptr %Sy_var3
     br label %bb3
   bb3:

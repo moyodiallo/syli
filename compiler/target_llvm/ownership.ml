@@ -214,8 +214,7 @@ let mk_own_fn () : func =
                      local "tag" i64_ty,
                      LV_Constant (LV_Integer 0L, i64_ty) ));
             ];
-          terminator =
-            LV_CondBr (local "is_borrow" LV_I1, "promote", "done");
+          terminator = LV_CondBr (local "is_borrow" LV_I1, "promote", "done");
         };
         {
           label = "promote";
@@ -248,9 +247,16 @@ let mk_own_fn () : func =
   }
 
 let builtins () : func list =
-  [ mk_untag_fn (); mk_borrow_fn (); mk_set_own_fn ();
-    mk_release_fn (); mk_own_fn () ]
+  [
+    mk_untag_fn ();
+    mk_borrow_fn ();
+    mk_set_own_fn ();
+    mk_release_fn ();
+    mk_own_fn ();
+  ]
 
 let builtin_decls () : (string * lltype) list =
-  [ ("syli_rt_object_release_owned", LV_Func ([ LV_Ptr ], LV_Void));
-    ("syli_rt_object_incr", LV_Func ([ LV_Ptr ], LV_Void)) ]
+  [
+    ("syli_rt_object_release_owned", LV_Func ([ LV_Ptr ], LV_Void));
+    ("syli_rt_object_incr", LV_Func ([ LV_Ptr ], LV_Void));
+  ]

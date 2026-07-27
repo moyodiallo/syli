@@ -15,8 +15,16 @@ let is_ref_ty (t : ty) : bool =
 let mk_release (v : var) : statement =
   { id = fresh_id (); node = OR_Release { obj = v }; ty = void_ty () }
 
-let releases_of_dead_obj (live_map : t) (stmt_id : int) (skip : IntSet.t)
-    (var_map : var IntMap.t) : statement list =
+let mk_releases (vars : IntSet.t) var_map =
+  IntSet.fold
+    (fun vid acc ->
+      match IntMap.find_opt vid var_map with
+      | Some v -> mk_release v :: acc
+      | None -> acc)
+    vars []
+
+let releases_of_dead_obj (live_map : live_info_stmt IntMap.t) (stmt_id : int)
+    (skip : IntSet.t) (var_map : var IntMap.t) : statement list =
   match IntMap.find_opt stmt_id live_map with
   | Some info ->
       let dying =
@@ -117,7 +125,7 @@ let annotate_function (fn : function_oir) : function_oir =
                     } ->
                     let ownership_get =
                       if is_ref_ty dst.ty then
-                        match IntMap.find_opt stmt.id live_map with
+                        match IntMap.find_opt stmt.id live_map.stmts with
                         | Some info when IntSet.mem dst.id info.live_after ->
                             OR_Ownership_share
                         | _ -> OR_Ownership_borrow
@@ -145,7 +153,7 @@ let annotate_function (fn : function_oir) : function_oir =
                         match value with
                         | OR_OVar v ->
                             let live_after =
-                              match IntMap.find_opt stmt.id live_map with
+                              match IntMap.find_opt stmt.id live_map.stmts with
                               | Some info -> IntSet.mem v.id info.live_after
                               | None -> false
                             in
@@ -194,7 +202,9 @@ let annotate_function (fn : function_oir) : function_oir =
                           match a.operand with
                           | OR_OVar v when is_ref_ty v.ty ->
                               let live_after =
-                                match IntMap.find_opt stmt.id live_map with
+                                match
+                                  IntMap.find_opt stmt.id live_map.stmts
+                                with
                                 | Some info -> IntSet.mem v.id info.live_after
                                 | None -> false
                               in
@@ -225,7 +235,7 @@ let annotate_function (fn : function_oir) : function_oir =
                       match value with
                       | OR_OVar v when is_ref_ty v.ty ->
                           let live_after =
-                            match IntMap.find_opt stmt.id live_map with
+                            match IntMap.find_opt stmt.id live_map.stmts with
                             | Some info -> IntSet.mem v.id info.live_after
                             | None -> false
                           in
@@ -256,7 +266,8 @@ let annotate_function (fn : function_oir) : function_oir =
                     ([ stmt ], IntSet.singleton v.id)
                 | _ -> ([ stmt ], IntSet.empty)
               in
-              stmts @ releases_of_dead_obj live_map stmt.id no_release var_map)
+              stmts
+              @ releases_of_dead_obj live_map.stmts stmt.id no_release var_map)
             block.statements
         in
         let terminator =
@@ -270,30 +281,17 @@ let annotate_function (fn : function_oir) : function_oir =
               }
           | _ -> block.terminator
         in
-        { block with statements; terminator })
+        let block_entry_dead =
+          match IntMap.find_opt block.id live_map.blocks with
+          | Some info -> info.dead_entry
+          | None -> IntSet.empty
+        in
+        {
+          block with
+          statements = mk_releases block_entry_dead var_map @ statements;
+          terminator;
+        })
       fn.blocks
-  in
-  let seen_vars =
-    IntMap.fold
-      (fun _ info s ->
-        IntSet.union s (IntSet.union info.live_before info.live_after))
-      live_map IntSet.empty
-  in
-  let release_unused_params =
-    List.filter_map
-      (fun (v : var) ->
-        if is_ref_ty v.ty && not (IntSet.mem v.id seen_vars) then
-          Some (mk_release v)
-        else None)
-      fn.params
-  in
-  let blocks =
-    List.map
-      (fun (b : block) ->
-        if b.id = fn.entry_block.id && release_unused_params <> [] then
-          { b with statements = release_unused_params @ b.statements }
-        else b)
-      blocks
   in
   { fn with blocks }
 
