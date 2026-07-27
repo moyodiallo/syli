@@ -37,11 +37,8 @@ void* syli_rt_object_alloc(object_header_t header, size_t refcount, size_t words
  * Ownership Tag Primitives
  ************************************************/
 
-void* syli_rt_untag(void* ptr);
-void* syli_rt_borrow(void* ptr);
-void* syli_rt_own(void* ptr);
 void* syli_rt_share(void* ptr);
-void  syli_rt_release(void* ptr);
+void  syli_rt_object_release_owned(void* ptr);
 
 /************************************************
  * Reference Management Functions

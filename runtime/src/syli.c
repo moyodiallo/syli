@@ -4,6 +4,7 @@
 #include "syli/gc_helpers.h"
 #include "syli/header_object.h"
 #include "syli/object.h"
+#include <stdio.h>
 
 GCObject* syli_rt_rc_alloc_object(
     object_header_t header, size_t refcount, size_t words)
@@ -80,7 +81,11 @@ void syli_rt_object_check_release(Object* obj)
     }
 
     if (syli_object_refcount(obj) == 0) {
-        // Add to releasing worklist
+        if (syli_object_is_mono_imm(obj)) {
+            syli_state.total_objects_memory_freed++;
+            free(obj);
+            return;
+        }
         gc_vector_push_back(&syli_state.releasing_waitlist, obj);
     }
 }
@@ -259,29 +264,6 @@ void* syli_rt_object_alloc(
     return syli_ownership_set_own(obj);
 }
 
-void* syli_rt_untag(void* ptr)
-{
-    assert(ptr != NULL);
-    return syli_ownership_untag(ptr);
-}
-
-void* syli_rt_borrow(void* ptr)
-{
-    assert(syli_ownership_untag(ptr) != NULL);
-    return (void*)((uintptr_t)ptr & ~OWN_REF_TAG);
-}
-
-void* syli_rt_own(void* ptr)
-{
-    if (!syli_ownership_is_own_ref(ptr)) {
-        Object* obj = (Object*)syli_ownership_untag(ptr);
-        assert(obj != NULL);
-        syli_rt_object_incr(obj);
-        return syli_ownership_set_own(ptr);
-    }
-    return ptr;
-}
-
 void* syli_rt_share(void* ptr)
 {
     assert(syli_ownership_untag(ptr) != NULL);
@@ -291,12 +273,11 @@ void* syli_rt_share(void* ptr)
     return syli_ownership_set_own(ptr);
 }
 
-void syli_rt_release(void* ptr)
+void syli_rt_object_release_owned(void* ptr)
 {
-    if (syli_ownership_is_own_ref(ptr)) {
-        Object* obj = (Object*)syli_ownership_untag(ptr);
-        assert(obj != NULL);
-        syli_rt_object_decr(obj);
-        syli_rt_object_check_release(obj);
-    }
+    assert(syli_ownership_is_own_ref(ptr));
+    Object* obj = (Object*)syli_ownership_untag(ptr);
+    assert(obj != NULL);
+    syli_rt_object_decr(obj);
+    syli_rt_object_check_release(obj);
 }

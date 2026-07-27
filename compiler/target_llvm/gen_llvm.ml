@@ -84,7 +84,10 @@ let fresh_reg (ctx : lower_ctx) (ty : lltype) : lower_ctx * operand =
 
 let add_decl_if_missing (ctx : lower_ctx) (name : string) (ty : lltype) :
     lower_ctx =
-  if StringMap.mem name ctx.runtime_decls then ctx
+  (* Builtin ownership functions are define'd via Ownership.builtins(),
+     so no declare is needed. *)
+  if String.starts_with name ~prefix:"syli_ownership_" then ctx
+  else if StringMap.mem name ctx.runtime_decls then ctx
   else { ctx with runtime_decls = StringMap.add name ty ctx.runtime_decls }
 
 let fresh_global_id =
@@ -202,14 +205,13 @@ let lower_object_slot_ptr (ctx : lower_ctx) (obj : Rir.operand)
     LV_Constant (LV_Integer (Int64.of_int Rir.values_offset), LV_I32)
   in
   let untag_fn_ty = LV_Func ([ LV_Ptr ], LV_Ptr) in
-  let ctx = add_decl_if_missing ctx "syli_rt_untag" untag_fn_ty in
   let ctx, untagged_ptr = fresh_reg ctx LV_Ptr in
   let untag_call =
     LV_Assign
       ( untagged_ptr,
         LV_Call
           {
-            fn = global "syli_rt_untag" untag_fn_ty;
+            fn = global "syli_ownership_untag" untag_fn_ty;
             args = [ obj' ];
             ret_ty = LV_Ptr;
           } )
@@ -692,7 +694,9 @@ let lower_program (prog : Rir.program_rir) : module_ =
         (ffi.name, LV_Func (params, lltype_of_ty ffi.ret_ty)))
       prog.ffi_external_functions
   in
-  let declarations = runtime_declarations @ ffi_declarations in
+  let declarations =
+    Ownership.builtin_decls () @ runtime_declarations @ ffi_declarations
+  in
   let globals =
     let str_globals =
       StringMap.fold
@@ -716,7 +720,7 @@ let lower_program (prog : Rir.program_rir) : module_ =
     type_defs;
     declarations;
     globals;
-    functions;
+    functions = functions @ Ownership.builtins ();
     source_filename = prog.name;
   }
 

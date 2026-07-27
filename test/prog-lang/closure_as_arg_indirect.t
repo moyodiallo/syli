@@ -263,10 +263,10 @@
   end
 
   $ dune exec sylic -- llvm test_file.sy
+  declare void @syli_rt_object_release_owned(ptr)
+  declare void @syli_rt_object_incr(ptr)
   declare void @syli_rt_gc_cycle()
   declare ptr @syli_rt_object_alloc(i64, i32, i32)
-  declare void @syli_rt_release(ptr)
-  declare ptr @syli_rt_untag(ptr)
   declare void @syli_print_i64(i64)
   
   define i32 @syli_startup_program(i32 %argc, ptr %argv) {
@@ -293,10 +293,10 @@
     %Sy_var0 = call ptr @syli_rt_object_alloc(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.111_ret_i64 to ptr
-    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp0 = call ptr @syli_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
-    %Sy_tmp2 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp2 = call ptr @syli_ownership_untag(ptr %Sy_var0)
     %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp2, i32 0, i32 2, i32 1
     store i64 1, ptr %Sy_tmp3
     ; nop
@@ -312,10 +312,10 @@
     %Sy_var0 = call ptr @syli_rt_object_alloc(i64 2305843009213693954, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.54_ret_i64 to ptr
-    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp0 = call ptr @syli_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_1, ptr %Sy_tmp1
-    %Sy_tmp2 = call ptr @syli_rt_untag(ptr %Sy_var0)
+    %Sy_tmp2 = call ptr @syli_ownership_untag(ptr %Sy_var0)
     %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp2, i32 0, i32 2, i32 1
     store i64 1, ptr %Sy_tmp3
     ; nop
@@ -328,7 +328,7 @@
     br label %bb3
   bb3:
     %Sy_tmp4 = load ptr, ptr %Sy_var2
-    %Sy_tmp5 = call ptr @syli_rt_untag(ptr %Sy_tmp4)
+    %Sy_tmp5 = call ptr @syli_ownership_untag(ptr %Sy_tmp4)
     %Sy_tmp6 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp5, i32 0, i32 2, i32 0
     %Sy_accum_ptr_2 = load ptr, ptr %Sy_tmp6
     %Sy_tmp7 = load ptr, ptr %Sy_var2
@@ -351,20 +351,20 @@
   
   define i64 @__make_closure_accum.syliTest_file.add.111_ret_i64(i64 %Sy_x0, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
-    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_clos)
+    %Sy_tmp0 = call ptr @syli_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
     %Sy_val0 = load i64, ptr %Sy_tmp1
-    call void @syli_rt_release(ptr %Sy_clos)
+    call void @syli_ownership_release(ptr %Sy_clos)
     %Sy_rst = call i64 @__wrapper.syliTest_file.add.i64_i64_ret_i64(i64 %Sy_val0, i64 %Sy_x0)
     ret i64 %Sy_rst
   }
   
   define i64 @__make_closure_accum.syliTest_file.sub.54_ret_i64(i64 %Sy_x0, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
-    %Sy_tmp0 = call ptr @syli_rt_untag(ptr %Sy_clos)
+    %Sy_tmp0 = call ptr @syli_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
     %Sy_val0 = load i64, ptr %Sy_tmp1
-    call void @syli_rt_release(ptr %Sy_clos)
+    call void @syli_ownership_release(ptr %Sy_clos)
     %Sy_rst = call i64 @__wrapper.syliTest_file.sub.i64_i64_ret_i64(i64 %Sy_val0, i64 %Sy_x0)
     ret i64 %Sy_rst
   }
@@ -379,6 +379,58 @@
   bb0:
     %Sy_rst = call i64 @syliTest_file.sub__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
+  }
+  
+  define ptr @syli_ownership_untag(ptr %p) {
+  bb0:
+    %i = ptrtoint ptr %p to i64
+    %u = and i64 %i, -2
+    %r = inttoptr i64 %u to ptr
+    ret ptr %r
+  }
+  
+  define ptr @syli_ownership_borrow(ptr %p) {
+  bb0:
+    %i = ptrtoint ptr %p to i64
+    %u = and i64 %i, -2
+    %r = inttoptr i64 %u to ptr
+    ret ptr %r
+  }
+  
+  define ptr @syli_ownership_set_own(ptr %p) {
+  bb0:
+    %i = ptrtoint ptr %p to i64
+    %o = or i64 %i, 1
+    %r = inttoptr i64 %o to ptr
+    ret ptr %r
+  }
+  
+  define void @syli_ownership_release(ptr %p) {
+  bb0:
+    %pi = ptrtoint ptr %p to i64
+    %tag = and i64 %pi, 1
+    %is_own = icmp ne i64 %tag, 0
+    br i1 %is_own, label %own, label %done
+  own:
+    call void @syli_rt_object_release_owned(ptr %p)
+    ret void
+  done:
+    ret void
+  }
+  
+  define ptr @syli_ownership_own(ptr %p) {
+  bb0:
+    %pi = ptrtoint ptr %p to i64
+    %tag = and i64 %pi, 1
+    %is_borrow = icmp eq i64 %tag, 0
+    br i1 %is_borrow, label %promote, label %done
+  promote:
+    call void @syli_rt_object_incr(ptr %p)
+    %r = or i64 %pi, 1
+    %rp = inttoptr i64 %r to ptr
+    ret ptr %rp
+  done:
+    ret ptr %p
   }
   
 
