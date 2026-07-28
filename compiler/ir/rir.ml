@@ -16,45 +16,30 @@
 let values_offset = 2
 
 type runtime_op_name =
-  | RR_RT_rc_alloc_object
   | RR_RT_get_object_length
   | RR_RT_get_object_tag
   | RR_RT_gc_cycle
-  | RR_RT_object_incr
-  | RR_RT_object_decr
-  | RR_RT_object_decr_n
-  | RR_RT_object_decr_drop
-  | RR_RT_object_check_release
-  | RR_RT_object_check_drop
-  | RR_RT_object_check_lost_cyclic_release
-  | RR_RT_object_check_lost_cyclic_drop
   | RR_RT_object_raw_copy
   | RR_RT_object_copy
   | RR_RT_object_check_mutation
+  | RR_RT_object_borrow
+  | RR_RT_object_share
+  | RR_RT_object_own
+  | RR_RT_object_release
+  | RR_RT_object_alloc
 
-(* TODO: drop functions for non escaping objects is not ready yet, a work need
-  to be done inside the runtime before:
-    - candidates list for non escaping cyclic objects
-    - during freeing dropped objects free the cyclic objects too
-*)
 let runtime_op_name_to_string = function
-  | RR_RT_rc_alloc_object -> "syli_rt_rc_alloc_object"
   | RR_RT_get_object_length -> "syli_rt_get_object_length"
   | RR_RT_get_object_tag -> "syli_rt_get_object_tag"
   | RR_RT_gc_cycle -> "syli_rt_gc_cycle"
-  | RR_RT_object_incr -> "syli_rt_object_incr"
-  | RR_RT_object_decr -> "syli_rt_object_decr"
-  | RR_RT_object_decr_n -> "syli_rt_object_decr_n"
-  | RR_RT_object_decr_drop -> "syli_rt_object_decr_drop"
-  | RR_RT_object_check_release -> "syli_rt_object_check_release"
-  | RR_RT_object_check_drop -> "syli_rt_object_check_drop"
-  | RR_RT_object_check_lost_cyclic_release ->
-      "syli_rt_object_check_lost_cyclic_release"
-  | RR_RT_object_check_lost_cyclic_drop ->
-      "syli_rt_object_check_lost_cyclic_drop"
   | RR_RT_object_raw_copy -> "syli_rt_object_raw_copy"
   | RR_RT_object_copy -> "syli_rt_object_copy"
   | RR_RT_object_check_mutation -> "syli_rt_object_check_mutation"
+  | RR_RT_object_borrow -> "syli_rt_ownership_borrow"
+  | RR_RT_object_share -> "syli_rt_ownership_share"
+  | RR_RT_object_own -> "syli_rt_ownership_own"
+  | RR_RT_object_release -> "syli_rt_ownership_release"
+  | RR_RT_object_alloc -> "syli_rt_ownership_alloc_object"
 
 type id = Cir.id
 type qualified_name = Cir.qualified_name

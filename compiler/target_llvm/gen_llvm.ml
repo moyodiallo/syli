@@ -2,6 +2,7 @@ open Syli_ir.Rir
 open Llvm_lir
 open Llvm_lir.Types
 module Rir = Syli_ir.Rir
+module Ownership = Inlinable_ownership
 open Syli_common
 
 exception Lowering_error of string
@@ -81,11 +82,6 @@ type lower_ctx = {
 let fresh_reg (ctx : lower_ctx) (ty : lltype) : lower_ctx * operand =
   let n = ctx.next_reg in
   ({ ctx with next_reg = n + 1 }, LV_Local ("Sy_tmp" ^ string_of_int n, ty))
-
-let add_decl_if_missing (ctx : lower_ctx) (name : string) (ty : lltype) :
-    lower_ctx =
-  if StringMap.mem name ctx.runtime_decls then ctx
-  else { ctx with runtime_decls = StringMap.add name ty ctx.runtime_decls }
 
 let fresh_global_id =
   let counter = ref 0 in
@@ -178,7 +174,6 @@ let call_rhs (ctx : lower_ctx) ~(fn_name : string) ~(ret_ty : lltype)
     ~(args : operand list) : lower_ctx * instr_rhs =
   let param_tys = List.map ty_of_operand args in
   let fn_ty = LV_Func (param_tys, ret_ty) in
-  let ctx = add_decl_if_missing ctx fn_name fn_ty in
   (ctx, LV_Call { fn = global fn_name fn_ty; args; ret_ty })
 
 let assign_rhs_to_var (ctx : lower_ctx) (dst : Rir.var) (rhs : instr_rhs) :
@@ -201,12 +196,30 @@ let lower_object_slot_ptr (ctx : lower_ctx) (obj : Rir.operand)
   let offset =
     LV_Constant (LV_Integer (Int64.of_int Rir.values_offset), LV_I32)
   in
+  let untag_fn_ty = LV_Func ([ LV_Ptr ], LV_Ptr) in
+  let ctx, untagged_ptr = fresh_reg ctx LV_Ptr in
+  let untag_call =
+    LV_Assign
+      ( untagged_ptr,
+        LV_Call
+          {
+            fn = global "syli_inlinable_ownership_untag" untag_fn_ty;
+            args = [ obj' ];
+            ret_ty = LV_Ptr;
+          } )
+  in
   let slot_ptr_rhs =
     LV_GEP
-      { base = obj'; indices = [ zero; offset; idx' ]; result_ty = object_ty }
+      {
+        base = untagged_ptr;
+        indices = [ zero; offset; idx' ];
+        result_ty = object_ty;
+      }
   in
   let ctx, slot_reg = fresh_reg ctx LV_Ptr in
-  (ctx, extra1 @ extra2 @ [ LV_Assign (slot_reg, slot_ptr_rhs) ], slot_reg)
+  ( ctx,
+    extra1 @ extra2 @ [ untag_call; LV_Assign (slot_reg, slot_ptr_rhs) ],
+    slot_reg )
 
 type signedness_kind = Signed | Unsigned
 
@@ -352,7 +365,19 @@ let lower_rvalue_rhs (ctx : lower_ctx) (rv : Rir.rvalue) :
       let ret_ty =
         match ret_ty with Some ty -> lltype_of_ty ty | None -> LV_Void
       in
-      let fn_name = Rir.runtime_op_name_to_string fn_name in
+      let fn_name, ctx =
+        match Ownership.use_if_inlinable_runtime_function fn_name with
+        | Some fn_name -> (fn_name, ctx)
+        | None ->
+            let fn_name = Rir.runtime_op_name_to_string fn_name in
+            let param_tys = List.map ty_of_operand args_ops in
+            let fn_ty = LV_Func (param_tys, ret_ty) in
+            ( fn_name,
+              {
+                ctx with
+                runtime_decls = StringMap.add fn_name fn_ty ctx.runtime_decls;
+              } )
+      in
       let ctx, rhs = call_rhs ctx ~fn_name ~ret_ty ~args:args_ops in
       (ctx, rhs, extra)
   | Rir.RR_Object_load _ ->
@@ -423,9 +448,22 @@ let lower_statement (ctx : lower_ctx) (stmt : Rir.statement) :
       let args_ops, extra_list = List.split args_results in
       let extra = List.concat extra_list in
       let ret_ty = lltype_of_ty dst.ty in
-      let fn_name = Rir.runtime_op_name_to_string fn_name in
+      let fn_name, ctx =
+        match Ownership.use_if_inlinable_runtime_function fn_name with
+        | Some fn_name -> (fn_name, ctx)
+        | None ->
+            let fn_name = Rir.runtime_op_name_to_string fn_name in
+            let param_tys = List.map ty_of_operand args_ops in
+            let fn_ty = LV_Func (param_tys, ret_ty) in
+            ( fn_name,
+              {
+                ctx with
+                runtime_decls = StringMap.add fn_name fn_ty ctx.runtime_decls;
+              } )
+      in
       let ctx, rhs = call_rhs ctx ~fn_name ~ret_ty ~args:args_ops in
       let ctx, instrs = assign_rhs_to_var ctx dst rhs in
+
       (ctx, [ extra; instrs ])
   | Rir.RR_Object_store { obj; field_idx; value; value_ty } ->
       let ctx, ptr_instrs, typed_ptr =
@@ -664,7 +702,6 @@ let lower_program (prog : Rir.program_rir) : module_ =
     StringMap.fold
       (fun name ty acc -> (name, ty) :: acc)
       final_ctx.runtime_decls []
-    |> List.sort compare
   in
   let ffi_declarations =
     List.map
@@ -673,7 +710,12 @@ let lower_program (prog : Rir.program_rir) : module_ =
         (ffi.name, LV_Func (params, lltype_of_ty ffi.ret_ty)))
       prog.ffi_external_functions
   in
-  let declarations = runtime_declarations @ ffi_declarations in
+  let declarations =
+    [ Ownership.builtin_decls (); runtime_declarations; ffi_declarations ]
+    |> List.concat
+    |> List.sort_uniq (fun (fname1, _) (fname2, _) ->
+        String.compare fname1 fname2)
+  in
   let globals =
     let str_globals =
       StringMap.fold
@@ -697,7 +739,7 @@ let lower_program (prog : Rir.program_rir) : module_ =
     type_defs;
     declarations;
     globals;
-    functions;
+    functions = functions @ Ownership.builtins ();
     source_filename = prog.name;
   }
 

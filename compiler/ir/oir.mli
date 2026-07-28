@@ -79,22 +79,29 @@ and terminator_node =
       default_block : id option;
     }
   | OR_CondBr of { cond : var; then_block : id; else_block : id }
-  | OR_Return of operand option
+  | OR_Return of { operand : operand option; ownership_ret : ownership_op }
 
 and switch_case_node = { value : int; target_block : id }
 
-type rc_op =
-  | OR_RC_incr
-  | OR_RC_decr
-  | OR_RC_check_release
-  | OR_RC_check_drop
-  | OR_RC_check_lost_cyclic_release
-  | OR_RC_check_lost_cyclic_drop
+and ownership_op =
+  | OR_Ownership_borrow
+  | OR_Ownership_transfer
+  | OR_Ownership_own
+  | OR_Ownership_share
+  | OR_Ownership_constant
+  | OR_Ownership_unknown
+
+type arg = { operand : operand; ownership_arg : ownership_op }
 
 type rvalue_node =
   | OR_BinOp of { op : binop; lhs : operand; rhs : operand }
   | OR_UnOp of { op : unop; operand : operand }
-  | OR_Object_get of { obj : operand; field_idx : operand; value_ty : ty }
+  | OR_Object_get of {
+      obj : operand;
+      field_idx : operand;
+      value_ty : ty;
+      ownership_get : ownership_op;
+    }
   | OR_Object_length of { obj : operand }
   | OR_Object_get_tag of { obj : operand }
   | OR_Cast of { src : operand; to_ty : ty }
@@ -111,6 +118,7 @@ and statement_node =
       field_idx : operand;
       value : operand;
       value_ty : ty;
+      ownership_set : ownership_op;
     }
   | OR_Object_create of {
       dst : var;
@@ -118,9 +126,13 @@ and statement_node =
       layout : object_layout;
       initializer_fn : qualified_name option;
     }
-  | OR_Call of { dst : var; target : call_target; args : operand list }
-  | OR_Store_global of { global : qualified_name; value : operand }
-  | OR_RC_op of { op : rc_op; obj : var }
+  | OR_Call of { dst : var; target : call_target; args : arg list }
+  | OR_Store_global of {
+      global : qualified_name;
+      value : operand;
+      ownership_store : ownership_op;
+    }
+  | OR_Release of { obj : var }
   | OR_GC_cycle
   | OR_Nop
 

@@ -32,6 +32,21 @@ GCObject* syli_rt_rc_alloc_object(
 GCObject* syli_rt_shared_alloc(object_header_t header, size_t words);
 
 /************************************************
+ * Ownership Tag Primitives
+ ************************************************/
+void* syli_rt_ownership_alloc_object(
+    object_header_t header, size_t refcount, size_t words);
+
+void* syli_rt_ownership_untag(void* ptr);
+void* syli_rt_ownership_borrow(void* ptr);
+void* syli_rt_ownership_own(void* ptr);
+void* syli_rt_ownership_share(void* ptr);
+
+void syli_rt_ownership_release(void* ptr);
+void syli_rt_ownership_decr(void* ptr);
+void syli_rt_ownership_incr(void* ptr);
+
+/************************************************
  * Reference Management Functions
  ************************************************/
 
@@ -39,7 +54,8 @@ void syli_rt_object_incr(Object* obj);
 void syli_rt_object_decr(Object* obj);
 void syli_rt_object_decr_n(Object* obj, int n);
 
-// Check if refcount drops to zero — if so, add to release_waitlist or free immediately
+// Check if refcount drops to zero — if so, add to release_waitlist or free
+// immediately
 void syli_rt_object_check_release(Object* obj);
 
 // Add to dropping waitlist regardless of refcount. Does not decrement refcount.

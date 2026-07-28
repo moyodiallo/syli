@@ -32,9 +32,7 @@ Simple closure with one captured variable:
       %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_simple.double_x.57_ret_i64)
       obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
-      %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (%Sy_var0:*void, 10:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
+      %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:*void, 10:i64)
       return %Sy_var1:i64
   end
   
@@ -43,10 +41,10 @@ Simple closure with one captured variable:
   
     bb0:
       %Sy_accum_ptr_1:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %f:*void, 0:i64)
+      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, @borrow %f:*void, 0:i64)
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (%Sy_var0:i64, %f:*void, 0:i64)
+      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (%Sy_var0:i64, @transfer %f:*void, 0:i64)
       
       return %Sy_var1:i64
   end
@@ -63,6 +61,7 @@ Simple closure with one captured variable:
     entry: bb0
   
     bb0:
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_simple.double_x.i64_ret_i64 (%Sy_x0:i64)
       return %Sy_rst:i64
   end
@@ -111,9 +110,7 @@ Closure with multiple captured variables:
       %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.62_ret_i64)
       obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_var0:*void, 3:i64, 4:i64)
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
+      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:*void, 3:i64, 4:i64)
       return %Sy_var1:i64
   end
   
@@ -122,7 +119,7 @@ Closure with multiple captured variables:
   
     bb0:
       %Sy_accum_ptr_1:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %y:i64, %f:*void, 0:i64)
+      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %y:i64, @transfer %f:*void, 0:i64)
       
       return %Sy_var0:i64
   end
@@ -139,6 +136,7 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_ret_i64 (%Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
@@ -191,15 +189,13 @@ Closure with multipble chains of captured variables:
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var1:*void, 1:i32, %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
+      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
+      release(%Sy_release_tmp_1:*void)
+      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
       obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, %Sy_var1:*void, 0:i64)
-      rc_decr(%Sy_var1:*void)
-      rc_check_release(%Sy_var1:*void)
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, @transfer %Sy_var1:*void, 0:i64)
       
       return %Sy_var2:i64
   end
@@ -218,6 +214,7 @@ Closure with multipble chains of captured variables:
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
@@ -226,10 +223,11 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = obj_get(%Sy_clos:*void, 1:i64):*void
+      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
       %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, %Sy_p_clos:*void, %Sy_dp_id:i64)
+      release(%Sy_clos:*void)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   
@@ -282,12 +280,12 @@ Closure with multipble chains of captured variables:
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var1:*void, 1:i32, %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
+      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
+      release(%Sy_release_tmp_1:*void)
+      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
       obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
       
-      return %Sy_var1:*void
+      return @own %Sy_var1:*void
   end
   
   public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
@@ -304,6 +302,7 @@ Closure with multipble chains of captured variables:
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
@@ -312,10 +311,11 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = obj_get(%Sy_clos:*void, 1:i64):*void
+      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
       %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, %Sy_p_clos:*void, %Sy_dp_id:i64)
+      release(%Sy_clos:*void)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   
@@ -388,15 +388,13 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var1:*void, 1:i32, %Sy_var0:*void):*void
-      rc_decr(%Sy_var0:*void)
-      rc_check_release(%Sy_var0:*void)
+      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
+      release(%Sy_release_tmp_1:*void)
+      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
       obj_set(%Sy_var1:*void, 2:i32, 10:i64):i64
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (100:i64, %Sy_var1:*void, 0:i64)
-      rc_decr(%Sy_var1:*void)
-      rc_check_release(%Sy_var1:*void)
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (100:i64, @transfer %Sy_var1:*void, 0:i64)
       
       return %Sy_var2:i64
   end
@@ -415,6 +413,7 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
   
     bb0:
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
+      release(%Sy_clos:*void)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_chain.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
@@ -423,10 +422,11 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = obj_get(%Sy_clos:*void, 1:i64):*void
+      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
       %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
       %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, %Sy_p_clos:*void, %Sy_dp_id:i64)
+      release(%Sy_clos:*void)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   

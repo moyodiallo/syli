@@ -187,7 +187,9 @@ let lower_terminator (ctx : ctx) (term : Cir.terminator) : ctx * Oir.terminator
               (ctx, Some o')
           | None -> (ctx, None)
         in
-        (ctx, Oir.OR_Return op')
+        ( ctx,
+          Oir.OR_Return { operand = op'; ownership_ret = Oir.OR_Ownership_own }
+        )
   in
   (ctx, { id = fresh_global_id (); node })
 
@@ -219,8 +221,12 @@ let rvalue_of_cir (ctx : ctx) (rv : Cir.rvalue) : ctx * Oir.rvalue =
         let ctx, field_idx' = lower_operand ctx field_idx in
         ( ctx,
           Oir.OR_Object_get
-            { obj = obj'; field_idx = field_idx'; value_ty = lower_ty value_ty }
-        )
+            {
+              obj = obj';
+              field_idx = field_idx';
+              value_ty = lower_ty value_ty;
+              ownership_get = Oir.OR_Ownership_unknown;
+            } )
     | Cir.CR_Object_length { obj } ->
         let ctx, obj' = lower_operand ctx obj in
         (ctx, Oir.OR_Object_length { obj = obj' })
@@ -426,6 +432,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
             field_idx = int_operand 0;
             value = var_operand accum_var;
             value_ty = fn_ptr_ty ();
+            ownership_set = Oir.OR_Ownership_constant;
           };
       ty = fn_ptr_ty ();
     }
@@ -451,6 +458,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
                 field_idx = int_operand (1 + i);
                 value;
                 value_ty = i64_ty ();
+                ownership_set = Oir.OR_Ownership_constant;
               };
           ty = fn_ptr_ty ();
         })
@@ -588,6 +596,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
             field_idx = int_operand 0;
             value = var_operand accum_var;
             value_ty = fn_ptr_ty ();
+            ownership_set = Oir.OR_Ownership_constant;
           };
       ty = fn_ptr_ty ();
     }
@@ -610,6 +619,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
                   field_idx = int_operand 1;
                   value = int64_operand (Int64.of_int edge_weight);
                   value_ty = i64_ty ();
+                  ownership_set = Oir.OR_Ownership_constant;
                 };
             ty = fn_ptr_ty ();
           };
@@ -630,6 +640,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
             field_idx = int_operand parent_idx;
             value = closure_operand;
             value_ty = lower_ty sir_void_ptr_ty;
+            ownership_set = Oir.OR_Ownership_unknown;
           };
       ty = fn_ptr_ty ();
     }
@@ -650,6 +661,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
                 field_idx = int_operand (args_idx + i);
                 value;
                 value_ty = i64_ty ();
+                ownership_set = Oir.OR_Ownership_constant;
               };
           ty = fn_ptr_ty ();
         })
@@ -730,6 +742,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
             field_idx = int_operand 0;
             value = var_operand accum_var;
             value_ty = fn_ptr_ty ();
+            ownership_set = Oir.OR_Ownership_constant;
           };
       ty = fn_ptr_ty ();
     }
@@ -752,6 +765,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
                   field_idx = int_operand 1;
                   value = int64_operand (Int64.of_int edge_weight);
                   value_ty = i64_ty ();
+                  ownership_set = Oir.OR_Ownership_constant;
                 };
             ty = fn_ptr_ty ();
           };
@@ -772,6 +786,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
             field_idx = int_operand parent_idx;
             value = src_operand;
             value_ty = lower_ty sir_void_ptr_ty;
+            ownership_set = Oir.OR_Ownership_unknown;
           };
       ty = fn_ptr_ty ();
     }
@@ -835,6 +850,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
                   field_idx = field_idx';
                   value = value';
                   value_ty = lower_ty value_ty;
+                  ownership_set = OR_Ownership_unknown;
                 };
             ty = lower_ty stmt.ty;
           };
@@ -878,6 +894,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
                           obj = closure_op;
                           field_idx = int_operand 0;
                           value_ty = fn_ptr_ty ();
+                          ownership_get = Oir.OR_Ownership_constant;
                         };
                     ty = fn_ptr_ty ();
                   };
@@ -929,13 +946,23 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
       let cast_stmts = List.concat_map fst cast_results in
       let casted_args = List.map snd cast_results in
       let call_args =
-        casted_args
+        List.map
+          (fun op ->
+            { Oir.operand = op; Oir.ownership_arg = Oir.OR_Ownership_constant })
+          casted_args
         @ [
-            closure_op;
-            int64_operand
-              (Int64.of_int
-                 (Closure_graph.dispatch_edge_weight ctx.closure_graph
-                    ~src:closure.id ~target:dst.id));
+            {
+              Oir.operand = closure_op;
+              Oir.ownership_arg = Oir.OR_Ownership_unknown;
+            };
+            {
+              Oir.operand =
+                int64_operand
+                  (Int64.of_int
+                     (Closure_graph.dispatch_edge_weight ctx.closure_graph
+                        ~src:closure.id ~target:dst.id));
+              Oir.ownership_arg = Oir.OR_Ownership_constant;
+            };
           ]
       in
       let is_generic = IntSet.mem closure.id ctx.closure_graph.generic_nodes in
@@ -999,7 +1026,13 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
       let ctx, dst' = lower_var ctx dst in
       let ctx, target' = lower_call_target ctx target in
       let ctx, args' =
-        List.fold_left_map (fun ctx a -> lower_operand ctx a) ctx args
+        List.fold_left_map
+          (fun ctx a ->
+            let ctx, op = lower_operand ctx a in
+            ( ctx,
+              { Oir.operand = op; Oir.ownership_arg = Oir.OR_Ownership_unknown }
+            ))
+          ctx args
       in
       ( ctx,
         [
@@ -1015,7 +1048,13 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
         [
           {
             id = fresh_global_id ();
-            node = Oir.OR_Store_global { global; value = value' };
+            node =
+              Oir.OR_Store_global
+                {
+                  global;
+                  value = value';
+                  ownership_store = Oir.OR_Ownership_unknown;
+                };
             ty = lower_ty stmt.ty;
           };
         ] )
