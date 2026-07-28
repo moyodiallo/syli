@@ -147,8 +147,8 @@ let analyze (fn : function_oir) : t =
                 | first :: _ -> (
                     match IntMap.find_opt first.id result with
                     | Some i -> IntSet.diff info.live_entry i.live_before
-                    | None -> IntSet.empty)
-                | [] -> IntSet.empty
+                    | None -> info.live_entry)
+                | [] -> info.live_entry
               else
                 let pred_ids = Cfg.get_pred cfg block.id in
                 let dead_at_edge p_id =

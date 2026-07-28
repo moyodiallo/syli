@@ -97,3 +97,18 @@ end
   block 20: live_entry={}  dead_entry={}
   block 100: live_entry={x}  dead_entry={}
   block 101: live_entry={}  dead_entry={x}
+
+--- test_empty_entry_block: input
+module Test :
+functions:
+public fn test_empty_entry(%p:Obj) -> i64:
+  entry: bb10
+
+  bb10:
+
+    return
+end
+
+end
+--- test_empty_entry_block: live_map
+  block 10: live_entry={p}  dead_entry={p}

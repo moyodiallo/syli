@@ -347,6 +347,31 @@ let test_dead_at_entry () =
   let live_map = L.analyze fn in
   print_live_map "test_dead_at_entry: live_map" fn live_map
 
+(* ── Test: empty entry block — all seeded params should be dead at entry ── *)
+
+let test_empty_entry_block () =
+  let p = obj_var "p" in
+  let term =
+    make_term 99
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
+  let bb = make_block 10 10 [] term in
+  let fn =
+    {
+      id = fresh ();
+      name = "test_empty_entry";
+      params = [ p ];
+      locals = [];
+      entry_block = bb;
+      blocks = [ bb ];
+      return_ty = i64_ty;
+      visibility = OR_Public;
+    }
+  in
+  print_fn "test_empty_entry_block: input" fn;
+  let live_map = L.analyze fn in
+  print_live_map "test_empty_entry_block: live_map" fn live_map
+
 (* ── Main ─────────────────────────────────────────────────────── *)
 
 let () =
@@ -356,4 +381,6 @@ let () =
   Printf.printf "\n";
   test_store_global_and_call ();
   Printf.printf "\n";
-  test_dead_at_entry ()
+  test_dead_at_entry ();
+  Printf.printf "\n";
+  test_empty_entry_block ()
