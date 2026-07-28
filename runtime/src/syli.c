@@ -257,14 +257,14 @@ static inline void* syli_ownership_set_own(void* ptr)
     return (void*)((uintptr_t)ptr | OWN_REF_TAG);
 }
 
-void* syli_rt_object_alloc(
+void* syli_rt_ownership_alloc_object(
     object_header_t header, size_t refcount, size_t words)
 {
     GCObject* obj = syli_rt_rc_alloc_object(header, refcount, words);
     return syli_ownership_set_own(obj);
 }
 
-void* syli_rt_share(void* ptr)
+void* syli_rt_ownership_share(void* ptr)
 {
     assert(syli_ownership_untag(ptr) != NULL);
     Object* obj = (Object*)syli_ownership_untag(ptr);
@@ -273,7 +273,7 @@ void* syli_rt_share(void* ptr)
     return syli_ownership_set_own(ptr);
 }
 
-void syli_rt_object_release_owned(void* ptr)
+void syli_rt_ownership_decr(void* ptr)
 {
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
@@ -281,3 +281,38 @@ void syli_rt_object_release_owned(void* ptr)
     syli_rt_object_decr(obj);
     syli_rt_object_check_release(obj);
 }
+
+void* syli_rt_ownership_untag(void* ptr) { return syli_ownership_untag(ptr); }
+
+void syli_rt_ownership_incr(void* ptr)
+{
+    assert(syli_ownership_is_own_ref(ptr));
+    Object* obj = (Object*)syli_ownership_untag(ptr);
+    assert(obj != NULL);
+    syli_rt_object_incr(obj);
+}
+
+void syli_rt_ownership_release(void* ptr)
+{
+    if (syli_ownership_is_own_ref(ptr)) {
+        assert(syli_ownership_is_own_ref(ptr));
+        Object* obj = (Object*)syli_ownership_untag(ptr);
+        assert(obj != NULL);
+        syli_rt_object_decr(obj);
+        syli_rt_object_check_release(obj);
+    }
+}
+
+void* syli_rt_ownership_own(void* ptr)
+{
+    if (syli_ownership_is_own_ref(ptr)) {
+        return ptr;
+    }
+    assert(syli_ownership_is_own_ref(ptr));
+    Object* obj = (Object*)syli_ownership_untag(ptr);
+    assert(obj != NULL);
+    syli_rt_object_incr(obj);
+    return syli_ownership_set_own(obj);
+}
+
+void* syli_rt_ownership_borrow(void* ptr) { return syli_ownership_untag(ptr); }

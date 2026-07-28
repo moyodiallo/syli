@@ -35,11 +35,11 @@ let runtime_op_name_to_string = function
   | RR_RT_object_raw_copy -> "syli_rt_object_raw_copy"
   | RR_RT_object_copy -> "syli_rt_object_copy"
   | RR_RT_object_check_mutation -> "syli_rt_object_check_mutation"
-  | RR_RT_object_borrow -> "syli_ownership_borrow"
-  | RR_RT_object_share -> "syli_rt_share"
-  | RR_RT_object_own -> "syli_ownership_own"
-  | RR_RT_object_release -> "syli_ownership_release"
-  | RR_RT_object_alloc -> "syli_rt_object_alloc"
+  | RR_RT_object_borrow -> "syli_rt_ownership_borrow"
+  | RR_RT_object_share -> "syli_rt_ownership_share"
+  | RR_RT_object_own -> "syli_rt_ownership_own"
+  | RR_RT_object_release -> "syli_rt_ownership_release"
+  | RR_RT_object_alloc -> "syli_rt_ownership_alloc_object"
 
 type id = Cir.id
 type qualified_name = Cir.qualified_name

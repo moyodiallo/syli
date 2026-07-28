@@ -5,8 +5,8 @@ Integer literal emits an i64 function:
   > let x = 42
   > EOF
   $ dune exec sylic -- llvm test_int.sy
-  declare void @syli_rt_object_release_owned(ptr)
-  declare void @syli_rt_object_incr(ptr)
+  declare void @syli_rt_ownership_decr(ptr)
+  declare void @syli_rt_ownership_incr(ptr)
   
   @syliTest_int.x = global i64 42
   
@@ -22,7 +22,7 @@ Integer literal emits an i64 function:
     ret i64 42
   }
   
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -30,7 +30,7 @@ Integer literal emits an i64 function:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -38,35 +38,27 @@ Integer literal emits an i64 function:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_set_own(ptr %p) {
-  bb0:
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-  
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
   }
   
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp
@@ -81,8 +73,8 @@ Boolean literals emit i1 functions:
   > let q = false
   > EOF
   $ dune exec sylic -- llvm test_bool.sy
-  declare void @syli_rt_object_release_owned(ptr)
-  declare void @syli_rt_object_incr(ptr)
+  declare void @syli_rt_ownership_decr(ptr)
+  declare void @syli_rt_ownership_incr(ptr)
   
   @syliTest_bool.p = global i1 true
   @syliTest_bool.q = global i1 false
@@ -106,7 +98,7 @@ Boolean literals emit i1 functions:
     ret i1 true
   }
   
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -114,7 +106,7 @@ Boolean literals emit i1 functions:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -122,35 +114,27 @@ Boolean literals emit i1 functions:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_set_own(ptr %p) {
-  bb0:
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-  
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
   }
   
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp
@@ -164,8 +148,8 @@ String literal emits an i8* return:
   > let s = "hello"
   > EOF
   $ dune exec sylic -- llvm test_str.sy
-  declare void @syli_rt_object_release_owned(ptr)
-  declare void @syli_rt_object_incr(ptr)
+  declare void @syli_rt_ownership_decr(ptr)
+  declare void @syli_rt_ownership_incr(ptr)
   
   @syliTest_str.s = global { ptr, i64 } zeroinitializer
   @__str.1 = global [5 x i8] c"hello"
@@ -185,7 +169,7 @@ String literal emits an i8* return:
     ret { ptr, i64 } %Sy_tmp2
   }
   
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -193,7 +177,7 @@ String literal emits an i8* return:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -201,35 +185,27 @@ String literal emits an i8* return:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_set_own(ptr %p) {
-  bb0:
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-  
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
   }
   
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp
@@ -246,8 +222,8 @@ Arithmetic operations emit the corresponding LLVM instructions:
   > let d = 20 / 4
   > EOF
   $ dune exec sylic -- llvm test_arith.sy
-  declare void @syli_rt_object_release_owned(ptr)
-  declare void @syli_rt_object_incr(ptr)
+  declare void @syli_rt_ownership_decr(ptr)
+  declare void @syli_rt_ownership_incr(ptr)
   
   @syliTest_arith.a = global i64 zeroinitializer
   @syliTest_arith.b = global i64 zeroinitializer
@@ -291,7 +267,7 @@ Arithmetic operations emit the corresponding LLVM instructions:
     ret i64 %Sy_var0
   }
   
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -299,7 +275,7 @@ Arithmetic operations emit the corresponding LLVM instructions:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -307,35 +283,27 @@ Arithmetic operations emit the corresponding LLVM instructions:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_set_own(ptr %p) {
-  bb0:
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-  
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
   }
   
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp
@@ -351,8 +319,8 @@ Comparison operations emit icmp instructions:
   > let lt = 2 < 5
   > EOF
   $ dune exec sylic -- llvm test_cmp.sy
-  declare void @syli_rt_object_release_owned(ptr)
-  declare void @syli_rt_object_incr(ptr)
+  declare void @syli_rt_ownership_decr(ptr)
+  declare void @syli_rt_ownership_incr(ptr)
   
   @syliTest_cmp.eq = global i1 zeroinitializer
   @syliTest_cmp.lt = global i1 zeroinitializer
@@ -378,7 +346,7 @@ Comparison operations emit icmp instructions:
     ret i1 %Sy_var0
   }
   
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -386,7 +354,7 @@ Comparison operations emit icmp instructions:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -394,35 +362,27 @@ Comparison operations emit icmp instructions:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_set_own(ptr %p) {
-  bb0:
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-  
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
   }
   
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp
@@ -436,8 +396,8 @@ Simple Function:
   > fn add x y = x + 20 + y
   > EOF
   $ dune exec sylic -- llvm test_fn.sy
-  declare void @syli_rt_object_release_owned(ptr)
-  declare void @syli_rt_object_incr(ptr)
+  declare void @syli_rt_ownership_decr(ptr)
+  declare void @syli_rt_ownership_incr(ptr)
   
   define void @__init.Test_fn() {
   bb0:
@@ -451,7 +411,7 @@ Simple Function:
     ret i64 %Sy_var1
   }
   
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -459,7 +419,7 @@ Simple Function:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
   bb0:
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
@@ -467,35 +427,27 @@ Simple Function:
     ret ptr %r
   }
   
-  define ptr @syli_ownership_set_own(ptr %p) {
-  bb0:
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-  
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
   }
   
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
   bb0:
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp

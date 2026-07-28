@@ -1,3 +1,4 @@
+open Syli_common
 (** LLVM function definitions for ownership bit operations. These are appended
     to the module after lowering, so clang -O3 can inline them into call sites.
 *)
@@ -11,7 +12,7 @@ let i64_ty = LV_I64
 let ptr_ty = LV_Ptr
 
 (*
-  define ptr @syli_ownership_untag(ptr %p) {
+  define ptr @syli_inlinable_ownership_untag(ptr %p) {
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
     %r = inttoptr i64 %u to ptr
@@ -20,7 +21,7 @@ let ptr_ty = LV_Ptr
 *)
 let mk_untag_fn () : func =
   {
-    name = "syli_ownership_untag";
+    name = "syli_inlinable_ownership_untag";
     ret_type = ptr_ty;
     params = [ (ptr_ty, "p") ];
     blocks =
@@ -46,7 +47,7 @@ let mk_untag_fn () : func =
   }
 
 (*
-  define ptr @syli_ownership_borrow(ptr %p) {
+  define ptr @syli_inlinable_ownership_borrow(ptr %p) {
     %i = ptrtoint ptr %p to i64
     %u = and i64 %i, -2
     %r = inttoptr i64 %u to ptr
@@ -55,7 +56,7 @@ let mk_untag_fn () : func =
 *)
 let mk_borrow_fn () : func =
   {
-    name = "syli_ownership_borrow";
+    name = "syli_inlinable_ownership_borrow";
     ret_type = ptr_ty;
     params = [ (ptr_ty, "p") ];
     blocks =
@@ -81,48 +82,13 @@ let mk_borrow_fn () : func =
   }
 
 (*
-  define ptr @syli_ownership_set_own(ptr %p) {
-    %i = ptrtoint ptr %p to i64
-    %o = or i64 %i, 1
-    %r = inttoptr i64 %o to ptr
-    ret ptr %r
-  }
-*)
-let mk_set_own_fn () : func =
-  {
-    name = "syli_ownership_set_own";
-    ret_type = ptr_ty;
-    params = [ (ptr_ty, "p") ];
-    blocks =
-      [
-        {
-          label = "bb0";
-          instructions =
-            [
-              assign (local "i" i64_ty)
-                (LV_Cast (LV_PtrToInt, local "p" ptr_ty, i64_ty));
-              assign (local "o" i64_ty)
-                (LV_IBinOp
-                   ( LV_IBitOr,
-                     local "i" i64_ty,
-                     LV_Constant (LV_Integer 1L, i64_ty) ));
-              assign (local "r" ptr_ty)
-                (LV_Cast (LV_IntToPtr, local "o" i64_ty, ptr_ty));
-            ];
-          terminator = LV_Ret (Some (local "r" ptr_ty));
-        };
-      ];
-    linkage = Private;
-  }
-
-(*
-  define void @syli_ownership_release(ptr %p) {
+  define void @syli_inlinable_ownership_release(ptr %p) {
     %pi = ptrtoint ptr %p to i64
     %tag = and i64 %pi, 1
     %is_own = icmp ne i64 %tag, 0
     br i1 %is_own, label %own, label %done
   own:
-    call void @syli_rt_object_release_owned(ptr %p)
+    call void @syli_rt_ownership_decr(ptr %p)
     ret void
   done:
     ret void
@@ -131,7 +97,7 @@ let mk_set_own_fn () : func =
 let mk_release_fn () : func =
   let owned_fn_ty = LV_Func ([ ptr_ty ], LV_Void) in
   {
-    name = "syli_ownership_release";
+    name = "syli_inlinable_ownership_release";
     ret_type = LV_Void;
     params = [ (ptr_ty, "p") ];
     blocks =
@@ -162,7 +128,7 @@ let mk_release_fn () : func =
               assign (local "_r" LV_Void)
                 (LV_Call
                    {
-                     fn = global "syli_rt_object_release_owned" owned_fn_ty;
+                     fn = global "syli_rt_ownership_decr" owned_fn_ty;
                      args = [ local "p" ptr_ty ];
                      ret_ty = LV_Void;
                    });
@@ -175,13 +141,13 @@ let mk_release_fn () : func =
   }
 
 (*
-  define ptr @syli_ownership_own(ptr %p) {
+  define ptr @syli_inlinable_ownership_own(ptr %p) {
     %i = ptrtoint ptr %p to i64
     %t = and i64 %i, 1
     %is_borrow = icmp eq i64 %t, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_object_incr(ptr %p)
+    call void @syli_rt_ownership_incr(ptr %p)
     %r = or i64 %i, 1
     %rp = inttoptr i64 %r to ptr
     ret ptr %rp
@@ -192,7 +158,7 @@ let mk_release_fn () : func =
 let mk_own_fn () : func =
   let incr_fn_ty = LV_Func ([ ptr_ty ], LV_Void) in
   {
-    name = "syli_ownership_own";
+    name = "syli_inlinable_ownership_own";
     ret_type = ptr_ty;
     params = [ (ptr_ty, "p") ];
     blocks =
@@ -223,7 +189,7 @@ let mk_own_fn () : func =
               assign (local "_inc" LV_Void)
                 (LV_Call
                    {
-                     fn = global "syli_rt_object_incr" incr_fn_ty;
+                     fn = global "syli_rt_ownership_incr" incr_fn_ty;
                      args = [ local "p" ptr_ty ];
                      ret_ty = LV_Void;
                    });
@@ -247,16 +213,28 @@ let mk_own_fn () : func =
   }
 
 let builtins () : func list =
-  [
-    mk_untag_fn ();
-    mk_borrow_fn ();
-    mk_set_own_fn ();
-    mk_release_fn ();
-    mk_own_fn ();
-  ]
+  [ mk_untag_fn (); mk_borrow_fn (); mk_release_fn (); mk_own_fn () ]
 
 let builtin_decls () : (string * lltype) list =
   [
-    ("syli_rt_object_release_owned", LV_Func ([ LV_Ptr ], LV_Void));
-    ("syli_rt_object_incr", LV_Func ([ LV_Ptr ], LV_Void));
+    ("syli_rt_ownership_decr", LV_Func ([ LV_Ptr ], LV_Void));
+    ("syli_rt_ownership_incr", LV_Func ([ LV_Ptr ], LV_Void));
   ]
+
+let inlinable_runtime_functions =
+  let open Syli_ir.Rir in
+  StringMap.of_list
+    [
+      ( runtime_op_name_to_string RR_RT_object_borrow,
+        "syli_inlinable_ownership_borrow" );
+      ( runtime_op_name_to_string RR_RT_object_own,
+        "syli_inlinable_ownership_own" );
+      ( runtime_op_name_to_string RR_RT_object_release,
+        "syli_inlinable_ownership_release" );
+    ]
+
+let use_if_inlinable_runtime_function rt_fn_name =
+  let rt_fn_name = Syli_ir.Rir.runtime_op_name_to_string rt_fn_name in
+  match StringMap.find_opt rt_fn_name inlinable_runtime_functions with
+  | Some fn -> Some fn
+  | None -> None
