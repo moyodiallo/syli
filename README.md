@@ -4,13 +4,13 @@
 
 ## Overview
 
-Syli is a general-purpose programming language with a core functional language. The runtime is a refcount based system with tracing fallback for completeness to avoid supporting weak-references.
+Syli is a general-purpose programming language with a functional core, statically typed and Pythonic-ML-like syntax. The runtime is a based on refcount memory management system with [ownership](doc/ownership.md) tag pointers (release happens on only tagged pointers). The closure concept is based on a closure call graph that uses **Ball-Larus** algorithm in order to allow polymorphism with monomorphization.
 
-The goal of this language is to have low latency, high performance with more expressivity. The language is compiled into native code.
+The goal of the language is to have expressivity, low latency and high performance, It is compiled into native code.
 
-The closure concept is based on a closure graph that uses **Ball-Larus** algorithm which unlock polymorphism with monomorphization combined with modules and functions boundaries. This is the only exclusive thing of the language.
 
-This language is not doing something totally new, it is trying to hold on giants, to borrow from languages that are mature and doing amazing things for years.
+
+This language is not doing something totally new, it is trying to hold on giants, to borrow from languages that are mature and are doing amazing things for years.
 
 > [!CAUTION]
 > The project is under development, it is not ready for production yet.
@@ -54,29 +54,6 @@ dune runtest
 
 ## Examples
 
-### Fibonacci
-
-```sy
-signature:
-  extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-end
-let rec fib n =
-  if n == 0 then
-    0
-  else if n == 1 then
-    1
-  else
-    fib (n - 1) + fib (n - 2)
-fn main () = syli_print_i64 (fib 10)
-```
-
-```sh
-$ dune exec sylic -- build fib.sy && ./fib.exe
-55
-```
-
-### Function composition
-
 ```sy
 signature:
   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
@@ -89,15 +66,67 @@ fn main () =
     syli_print_i64 r
 ```
 
-```sh
-$ dune exec sylic -- build compose.sy && ./compose.exe
-35
 ```
+$ cat bench/clos4.sy
+signature:
+  extern syli_print_i64 : int64 -> unit = "syli_print_i64"
+end
+let rec add_n n x = n + x
+let rec apply_n f x n =
+  if n == 0 then
+    x
+  else
+    apply_n f (f x) (n - 1)
+let rec stress n acc =
+  if n == 0 then
+    acc
+  else
+    let f = add_n n
+    let r = apply_n f 0 100
+    stress (n - 1) (acc + r)
+fn main () = syli_print_i64(stress 1000 0)
+```
+
 
 ## Benchmarks
 Running the bechmarks, make sure `hyperfine` is installed.
 ```
-./bench/run.sh
+$ ./bench/run.sh 
+Building tak...
+Building queens...
+Building clos...
+Building clos4...
+
+=== tak ===
+Benchmark 1: ./tak.exe
+  Time (mean ± σ):     387.9 ms ±  13.1 ms    [User: 386.0 ms, System: 1.4 ms]
+  Range (min … max):   368.6 ms … 409.6 ms    7 runs
+ 
+
+=== queens ===
+Benchmark 1: ./queens.exe
+  Time (mean ± σ):     962.4 µs ± 187.7 µs    [User: 275.5 µs, System: 549.3 µs]
+  Range (min … max):   671.4 µs … 1818.7 µs    2132 runs
+ 
+
+=== clos ===
+Benchmark 1: ./clos.exe
+  Time (mean ± σ):       1.5 ms ±   0.2 ms    [User: 0.6 ms, System: 0.7 ms]
+  Range (min … max):     1.1 ms …   2.4 ms    1796 runs
+ 
+
+=== clos4 ===
+Benchmark 1: ./clos4.exe
+  Time (mean ± σ):      1.052 s ±  0.021 s    [User: 1.051 s, System: 0.001 s]
+  Range (min … max):    1.026 s …  1.082 s    5 runs
+ 
+
+=== Memory usage peak ===
+  tak      1800 KB
+  queens   1936 KB
+  clos     1740 KB
+  clos4    1788 KB
+
 ```
 
 ## Roadmap
