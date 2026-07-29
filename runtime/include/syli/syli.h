@@ -18,9 +18,9 @@
  */
 
 #include "header_object.h"
-#include "immediate.h"
 #include "object.h"
 #include "stack_frame.h"
+#include "syli_primitives.h"
 
 /************************************************
  * Object Creation Functions
@@ -34,39 +34,36 @@ GCObject* syli_rt_shared_alloc(object_header_t header, size_t words);
 /************************************************
  * Ownership Tag Primitives
  ************************************************/
-void* syli_rt_ownership_alloc_object(
+obj_ptr syli_rt_ownership_alloc_object(
     object_header_t header, size_t refcount, size_t words);
 
-void* syli_rt_ownership_untag(void* ptr);
-void* syli_rt_ownership_borrow(void* ptr);
-void* syli_rt_ownership_own(void* ptr);
-void* syli_rt_ownership_share(void* ptr);
+obj_ptr syli_rt_ownership_untag(obj_ptr ptr);
+obj_ptr syli_rt_ownership_borrow(obj_ptr ptr);
+obj_ptr syli_rt_ownership_own(obj_ptr ptr);
+obj_ptr syli_rt_ownership_share(obj_ptr ptr);
 
-void syli_rt_ownership_release(void* ptr);
-void syli_rt_ownership_decr(void* ptr);
-void syli_rt_ownership_incr(void* ptr);
+void syli_rt_ownership_release(obj_ptr ptr);
+void syli_rt_ownership_decr(obj_ptr ptr);
+void syli_rt_ownership_incr(obj_ptr ptr);
 
 /************************************************
  * Reference Management Functions
  ************************************************/
 
 void syli_rt_object_incr(Object* obj);
-void syli_rt_object_decr(Object* obj);
+void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr);
 void syli_rt_object_decr_n(Object* obj, int n);
 
-// Check if refcount drops to zero — if so, add to release_waitlist or free
-// immediately
-void syli_rt_object_check_release(Object* obj);
-
 // If refcount is still above zero, mark as suspect lost cycle
-void syli_rt_object_check_lost_cyclic_release(Object* obj);
+void syli_rt_object_check_lost_cyclic_release(Object* obj, obj_ptr ptr);
 
 // Write barrier: notify the GC that `obj` was mutated to point to `target`
 // during tracing. If `obj` is marked but `target` is not, `target` is added
 // to the mutation worklist. Used for objects that could be cyclic:
 //   - obj points to cyclic objects (directly or indirectly)
 //   - obj could be cyclic
-void syli_rt_object_notify_mutation(Object* obj, Object* target);
+void syli_rt_object_notify_mutation(
+    Object* obj, Object* target, obj_ptr target_ptr);
 
 /************************************************
  * Object Field Access Functions

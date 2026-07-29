@@ -6,20 +6,23 @@
 
 #include "syli/syli_state.h"
 
-static void gc_worklist_push(Object* child)
+static void gc_worklist_push(obj_ptr obj_p)
 {
+    Object* child = syli_object_of_obj_ptr(obj_p);
     if (syli_object_has_flags(child, Meta_Flags_Tracing)) {
         return; // already queued
     }
     syli_object_set_flags(child, Meta_Flags_Tracing);
-    gc_vector_push_back(&syli_state.tracing_worklist, child);
+    gc_vector_push_back(&syli_state.tracing_worklist, obj_p);
 }
 
 // Non-recursive DFS marking (precise - uses type descriptors)
 static void gc_one_step_tracing(void)
 {
 
-    Object* obj = gc_vector_pop_back(&syli_state.tracing_worklist);
+    Object* obj = syli_object_of_obj_ptr(
+        gc_vector_pop_back(&syli_state.tracing_worklist));
+
     assert(obj != NULL && "Null GCObject in tracing worklist");
 
     // Clear the in-worklist guard now that we've popped it
@@ -51,11 +54,11 @@ static void gc_one_step_tracing(void)
         syli_state.tracing_budget -= (int)length;
         for (size_t i = 0; i < length; i++) {
             uint64_t field_value = current->value[i];
-            if (!field_value) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            Object* child = as_object((void*)field_value);
-            gc_worklist_push(child);
+            gc_worklist_push((obj_ptr)field_value);
         }
         return;
     }
@@ -64,19 +67,19 @@ static void gc_one_step_tracing(void)
     if (syli_object_is_mixed_bitmap(obj)) {
         // All fields are references, traverse all
         size_t length = syli_object_bitmap_length(obj);
-        int bitmap = syli_object_bitmap_bits(obj);
+        int bitmap    = syli_object_bitmap_bits(obj);
         syli_state.tracing_budget -= (int)length;
         for (size_t i = 0; i < length; i++) {
             if (bitmap & (1 << i)) {
                 continue; // non-reference field
             }
             uint64_t field_value = current->value[i];
-            if (!field_value) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
             assert(syli_object_get_zone((Object*)field_value) == Zone_GcLocal);
-            Object* child = as_object((void*)field_value);
-            gc_worklist_push(child);
+            gc_worklist_push((obj_ptr)field_value);
         }
         return;
     }
@@ -87,12 +90,12 @@ static void gc_one_step_tracing(void)
         syli_state.tracing_budget -= ptr_count;
         for (size_t i = 0; i < ptr_count; i++) {
             uint64_t field_value = current->value[i];
-            if (!field_value) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
             assert(syli_object_get_zone((Object*)field_value) == Zone_GcLocal);
-            Object* child = as_object((void*)field_value);
-            gc_worklist_push(child);
+            gc_worklist_push((obj_ptr)field_value);
         }
         return;
     }
@@ -101,7 +104,9 @@ static void gc_one_step_tracing(void)
 static void gc_one_step_prepare_tracing_mutations()
 {
 
-    Object* obj = gc_vector_pop_back(&syli_state.tracing_mutations_worklist);
+    obj_ptr obj_p = gc_vector_pop_back(&syli_state.tracing_mutations_worklist);
+    assert(syli_ownership_is_own_ref(obj_p));
+    Object* obj      = syli_object_of_obj_ptr(obj_p);
     GCObject* gc_obj = as_gc_object(obj);
 
     assert(gc_obj != NULL);
@@ -118,10 +123,11 @@ static void gc_one_step_prepare_tracing_mutations()
         syli_state.tracing_budget -= (int)length;
         for (size_t i = 0; i < length; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value)
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
-            Object* child = (Object*)field_value;
-            gc_worklist_push(child);
+            }
+            gc_worklist_push((obj_ptr)field_value);
         }
         return;
     }
@@ -135,11 +141,11 @@ static void gc_one_step_prepare_tracing_mutations()
                 continue; // non-reference field
             }
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            Object* child = (Object*)field_value;
-            gc_worklist_push(child);
+            gc_worklist_push((obj_ptr)field_value);
         }
         return;
     }
@@ -150,17 +156,17 @@ static void gc_one_step_prepare_tracing_mutations()
         syli_state.tracing_budget -= (int)ptr_count;
         for (size_t i = 0; i < ptr_count; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            Object* child = (Object*)field_value;
-            gc_worklist_push(child);
+            gc_worklist_push((obj_ptr)field_value);
         }
         return;
     }
 }
 
-// TODO: this function will changed/updated since the frame_stack will 
+// TODO: this function will changed/updated since the frame_stack will
 // change with the llvm gc_root support.
 void push_next_frame_stack_roots()
 {
@@ -175,14 +181,16 @@ void push_next_frame_stack_roots()
                                .frames[syli_state.current_frame_stack_index];
     syli_state.current_frame_stack_index++;
     for (uint32_t i = 0; i < current_frame->root_count; i++) {
-        Object* root_obj = *current_frame->roots[i];
+        obj_ptr obj_ptr = *current_frame->roots[i];
+        if (!syli_ownership_is_own_ref(obj_ptr))
+            continue;
+        Object* root_obj = syli_object_of_obj_ptr(obj_ptr);
         if (root_obj) {
-
             // we are not expecting acyclic roots objects here
             // with the current shadow stack design
             assert(syli_object_has_pointers(as_object(root_obj)) != 0);
 
-            gc_worklist_push(root_obj);
+            gc_worklist_push(obj_ptr);
         }
     }
 }
@@ -225,15 +233,15 @@ void syli_state_gc_tracing()
 
             push_next_frame_stack_roots();
 
-            if (vector_size_GCObject(&syli_state.tracing_worklist) == 0
-                && vector_size_GCObject(&syli_state.tracing_mutations_worklist)
+            if (vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
+                && vector_size_obj_ptr(&syli_state.tracing_mutations_worklist)
                     == 0) {
                 syli_state.tracing_state = Checking_Suspect_Lost_Cycle;
                 syli_state.suspect_objects_notifications = 0;
                 break;
             }
 
-            if (vector_size_GCObject(&syli_state.tracing_mutations_worklist)
+            if (vector_size_obj_ptr(&syli_state.tracing_mutations_worklist)
                 > 0) {
                 syli_state.tracing_state = Mutation_Prepare;
                 break;
@@ -244,8 +252,8 @@ void syli_state_gc_tracing()
             gc_one_step_prepare_tracing_mutations();
             syli_state.mutation_steps++;
 
-            if (vector_size_GCObject(&syli_state.tracing_worklist) > 0
-                && vector_size_GCObject(&syli_state.tracing_mutations_worklist)
+            if (vector_size_obj_ptr(&syli_state.tracing_worklist) > 0
+                && vector_size_obj_ptr(&syli_state.tracing_mutations_worklist)
                     == 0) {
                 syli_state.tracing_state = Tracing;
             }
@@ -264,16 +272,16 @@ void syli_state_gc_tracing()
                     &syli_state.suspect_lost_cycle,
                     syli_state.current_suspected_check_index);
 
-                GCObject* obj = suspected_obj->obj;
+                Object* obj = syli_object_of_obj_ptr(suspected_obj->obj);
 
-                if (gc_is_object_mark_tagged(as_object(obj))) {
+                if (gc_is_object_mark_tagged(obj)) {
                     // Object is still reachable, could be removed from suspects
 
                     if (vector_size_Suspected(&syli_state.suspect_lost_cycle)
                         >= syli_state.FULL_BUCKET_SUSPECT_LOST_CYCLE) {
 
                         syli_object_clear_flags(
-                            as_object(obj), Meta_Flags_Suspect_Lost_Cycle);
+                            obj, Meta_Flags_Suspect_Lost_Cycle);
                         gc_remove_suspect_at(
                             syli_state.current_suspected_check_index);
                     }
@@ -292,7 +300,7 @@ void syli_state_gc_tracing()
                 if (syli_state.current_suspected_check_index >= suspect_size) {
                     // Finished checking all suspects, reset for next cycle
                     syli_state.current_suspected_check_index = 0;
-                    syli_state.tracing_state = Tracing_Idle;
+                    syli_state.tracing_state                 = Tracing_Idle;
                 }
             }
 

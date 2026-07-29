@@ -32,10 +32,10 @@ void syli_state_init()
     syli_state.checking_budget = 0;
 
     // Initialize GC worklists (vectors of GCObject*)
-    vector_init_GCObject(&syli_state.tracing_worklist);
-    vector_init_GCObject(&syli_state.tracing_mutations_worklist);
-    vector_init_GCObject(&syli_state.releasing_worklist);
-    vector_init_GCObject(&syli_state.releasing_waitlist);
+    vector_init_obj_ptr(&syli_state.tracing_worklist);
+    vector_init_obj_ptr(&syli_state.tracing_mutations_worklist);
+    vector_init_obj_ptr(&syli_state.releasing_worklist);
+    vector_init_obj_ptr(&syli_state.releasing_waitlist);
 
     // Initialize suspect lost cycle vector
     vector_init_Suspected(&syli_state.suspect_lost_cycle);
@@ -76,10 +76,10 @@ void syli_state_init()
 void syli_state_destroy()
 {
     // Clean up GC worklists
-    vector_destroy_GCObject(&syli_state.tracing_worklist);
-    vector_destroy_GCObject(&syli_state.tracing_mutations_worklist);
-    vector_destroy_GCObject(&syli_state.releasing_worklist);
-    vector_destroy_GCObject(&syli_state.releasing_waitlist);
+    vector_destroy_obj_ptr(&syli_state.tracing_worklist);
+    vector_destroy_obj_ptr(&syli_state.tracing_mutations_worklist);
+    vector_destroy_obj_ptr(&syli_state.releasing_worklist);
+    vector_destroy_obj_ptr(&syli_state.releasing_waitlist);
 
     // Clean up suspect lost cycle vector
     vector_destroy_Suspected(&syli_state.suspect_lost_cycle);

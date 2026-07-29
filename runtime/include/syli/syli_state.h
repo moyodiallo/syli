@@ -10,7 +10,7 @@
 #include "stack_frame.h"
 
 typedef struct Suspected {
-    GCObject* obj;
+    obj_ptr obj;
 } Suspected;
 
 typedef enum Tracing_state_machine {
@@ -25,10 +25,10 @@ typedef enum Releasing_state_machine {
     Releasing      = 1
 } Releasing_state_machine;
 
-CHUNK_VECTOR_STRUCT(GCObject);
+CHUNK_VECTOR_STRUCT(obj_ptr);
 CHUNK_VECTOR_STRUCT(Suspected);
 
-CHUNK_VECTOR_IMPLEMENT(GCObject);
+CHUNK_VECTOR_IMPLEMENT(obj_ptr);
 CHUNK_VECTOR_IMPLEMENT(Suspected);
 
 // ==================== Syli State ====================
@@ -47,12 +47,12 @@ typedef struct Syli_state {
     int releasing_budget;
     int checking_budget;
 
-    vector_GCObject tracing_worklist;
-    vector_GCObject tracing_mutations_worklist;
+    vector_obj_ptr tracing_worklist;
+    vector_obj_ptr tracing_mutations_worklist;
 
-    vector_GCObject releasing_worklist;
+    vector_obj_ptr releasing_worklist;
 
-    vector_GCObject releasing_waitlist;
+    vector_obj_ptr releasing_waitlist;
 
     vector_Suspected suspect_lost_cycle;
 
