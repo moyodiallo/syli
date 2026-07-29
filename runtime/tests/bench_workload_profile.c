@@ -9,6 +9,7 @@
 #include "syli/gc_helpers.h"
 #include "syli/header_object.h"
 #include "syli/object.h"
+#include "syli/syli.h"
 #include "syli/syli_state.h"
 
 static uint64_t time_diff_ns(
@@ -18,25 +19,24 @@ static uint64_t time_diff_ns(
         + (uint64_t)(end->tv_nsec - start->tv_nsec);
 }
 
-static Object* make_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
 {
     object_payload_t payload = syli_object_make_mono_payload(words);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
-    uint64_t meta = make_meta_refcount(
-        Meta_Flags_None, (ObjectMetaFlags)syli_state.tracing_current_bit_mark);
-    Object* obj = syli_object_alloc(header, meta, words);
-    memset(syli_object_data(obj), 0, words * sizeof(uint64_t));
+    obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, words);
+    Object* o   = syli_object_of_obj_ptr(obj);
+    memset(syli_object_data(o), 0, words * sizeof(uint64_t));
     return obj;
 }
 
 /* Returns true when all GC queues are drained and state machines are idle. */
 static bool gc_is_done(void)
 {
-    return vector_size_GCObject(&syli_state.releasing_waitlist) == 0
-        && vector_size_GCObject(&syli_state.releasing_worklist) == 0
-        && vector_size_GCObject(&syli_state.tracing_worklist) == 0
-        && vector_size_GCObject(&syli_state.tracing_mutations_worklist) == 0
+    return vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0
+        && vector_size_obj_ptr(&syli_state.releasing_worklist) == 0
+        && vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
+        && vector_size_obj_ptr(&syli_state.tracing_mutations_worklist) == 0
         && syli_state.tracing_state == Tracing_Idle
         && syli_state.releasing_state == Releasing_Idle;
 }
@@ -71,17 +71,20 @@ static void run_profile(
         struct timespec t0, t1;
         clock_gettime(CLOCK_MONOTONIC, &t0);
 
-        Object** root_slots
-            = (Object**)malloc(long_lived_count * sizeof(Object*));
-        Object*** roots = (Object***)malloc(long_lived_count * sizeof(Object**));
-        Object** children = (Object**)malloc(long_lived_count * sizeof(Object*));
+        obj_ptr* root_slots
+            = (obj_ptr*)malloc(long_lived_count * sizeof(obj_ptr));
+        obj_ptr** roots
+            = (obj_ptr**)malloc(long_lived_count * sizeof(obj_ptr*));
+        obj_ptr* children
+            = (obj_ptr*)malloc(long_lived_count * sizeof(obj_ptr));
 
         /* Long-lived cyclic pairs in frame roots */
         for (size_t i = 0; i < long_lived_count; i++) {
-            root_slots[i]                      = make_ref_object(1, Cyclic);
-            children[i]                        = make_ref_object(1, Cyclic);
-            syli_object_data(root_slots[i])[0] = (uint64_t)children[i];
-            roots[i]                           = &root_slots[i];
+            root_slots[i] = make_ref_object(1, Cyclic);
+            children[i]   = make_ref_object(1, Cyclic);
+            syli_object_data(syli_object_of_obj_ptr(root_slots[i]))[0]
+                = (uint64_t)children[i];
+            roots[i] = &root_slots[i];
         }
         Frame frame
             = { .root_count = (uint32_t)long_lived_count, .roots = roots };
@@ -89,8 +92,8 @@ static void run_profile(
 
         /* Short-lived leaf objects pushed to releasing waitlist */
         for (size_t i = 0; i < short_lived_count; i++) {
-            Object* obj = make_ref_object(0, Acyclic);
-            syli_object_decr_local(obj);
+            obj_ptr obj = make_ref_object(0, Acyclic);
+            syli_rt_ownership_decr(obj);
             gc_vector_push_back(&syli_state.releasing_waitlist, obj);
         }
 
@@ -124,8 +127,8 @@ static void run_profile(
         syli_state_pop_frame_scope();
 
         for (size_t i = 0; i < long_lived_count; i++) {
-            free(root_slots[i]);
-            free(children[i]);
+            syli_free_ptr(root_slots[i]);
+            syli_free_ptr(children[i]);
         }
         free(children);
         free(roots);
@@ -159,6 +162,7 @@ int main(void)
     run_profile("Profile 2 (80/20)", 80000, 10000);
     run_profile("Profile 3 (50/50)", 50000, 25000);
 
-    printf("\n\033[1;32m=== Workload Profile Benchmarks Complete ===\033[0m\n\n");
+    printf(
+        "\n\033[1;32m=== Workload Profile Benchmarks Complete ===\033[0m\n\n");
     return 0;
 }

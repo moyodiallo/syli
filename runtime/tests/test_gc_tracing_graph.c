@@ -6,23 +6,23 @@
 #include "syli/gc_helpers.h"
 #include "syli/header_object.h"
 #include "syli/object.h"
+#include "syli/syli.h"
 #include "syli/syli_state.h"
 
-static Object* make_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
 {
     object_payload_t payload = syli_object_make_mono_payload(words);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
-    uint64_t meta = make_meta_refcount(
-        Meta_Flags_None, syli_state.tracing_current_bit_mark);
-    Object* obj    = syli_object_alloc(header, meta, words);
-    uint64_t* data = syli_object_data(obj);
+    obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, words);
+    Object* o      = syli_object_of_obj_ptr(obj);
+    uint64_t* data = syli_object_data(o);
     for (size_t i = 0; i < words; i++)
         data[i] = 0;
     return obj;
 }
 
-static void run_tracing(Object* root)
+static void run_tracing(obj_ptr root)
 {
     gc_add_suspect(root);
     syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
@@ -39,18 +39,18 @@ static void test_linear_chain_marking(void)
 
     syli_state_init();
 
-    Object* root = make_ref_object(1, Cyclic);
-    Object* n1   = make_ref_object(1, Cyclic);
-    Object* n2   = make_ref_object(1, Cyclic);
-    Object* n3   = make_ref_object(1, Cyclic);
-    Object* n4   = make_ref_object(1, Cyclic);
+    obj_ptr root = make_ref_object(1, Cyclic);
+    obj_ptr n1   = make_ref_object(1, Cyclic);
+    obj_ptr n2   = make_ref_object(1, Cyclic);
+    obj_ptr n3   = make_ref_object(1, Cyclic);
+    obj_ptr n4   = make_ref_object(1, Cyclic);
 
-    syli_object_data(root)[0] = (uint64_t)n1;
-    syli_object_data(n1)[0]   = (uint64_t)n2;
-    syli_object_data(n2)[0]   = (uint64_t)n3;
-    syli_object_data(n3)[0]   = (uint64_t)n4;
+    syli_object_data(syli_object_of_obj_ptr(root))[0] = (uint64_t)n1;
+    syli_object_data(syli_object_of_obj_ptr(n1))[0]   = (uint64_t)n2;
+    syli_object_data(syli_object_of_obj_ptr(n2))[0]   = (uint64_t)n3;
+    syli_object_data(syli_object_of_obj_ptr(n3))[0]   = (uint64_t)n4;
 
-    Object** roots[] = { &root };
+    obj_ptr* roots[] = { &root };
     Frame frame      = { .root_count = 1, .roots = roots };
     syli_state_push_frame_scope(&frame);
 
@@ -63,11 +63,11 @@ static void test_linear_chain_marking(void)
     assert(gc_is_object_mark_tagged(n4));
 
     syli_state_pop_frame_scope();
-    free(root);
-    free(n1);
-    free(n2);
-    free(n3);
-    free(n4);
+    syli_free_ptr(root);
+    syli_free_ptr(n1);
+    syli_free_ptr(n2);
+    syli_free_ptr(n3);
+    syli_free_ptr(n4);
     syli_state_destroy();
     printf("✓ Linear chain marking works\n\n");
 }
@@ -86,22 +86,22 @@ static void test_binary_tree_marking(void)
 
     syli_state_init();
 
-    Object* root = make_ref_object(2, Cyclic);
-    Object* n1   = make_ref_object(2, Cyclic);
-    Object* n2   = make_ref_object(2, Cyclic);
-    Object* n3   = make_ref_object(1, Cyclic);
-    Object* n4   = make_ref_object(1, Cyclic);
-    Object* n5   = make_ref_object(1, Cyclic);
-    Object* n6   = make_ref_object(1, Cyclic);
+    obj_ptr root = make_ref_object(2, Cyclic);
+    obj_ptr n1   = make_ref_object(2, Cyclic);
+    obj_ptr n2   = make_ref_object(2, Cyclic);
+    obj_ptr n3   = make_ref_object(1, Cyclic);
+    obj_ptr n4   = make_ref_object(1, Cyclic);
+    obj_ptr n5   = make_ref_object(1, Cyclic);
+    obj_ptr n6   = make_ref_object(1, Cyclic);
 
-    syli_object_data(root)[0] = (uint64_t)n1;
-    syli_object_data(root)[1] = (uint64_t)n2;
-    syli_object_data(n1)[0]   = (uint64_t)n3;
-    syli_object_data(n1)[1]   = (uint64_t)n4;
-    syli_object_data(n2)[0]   = (uint64_t)n5;
-    syli_object_data(n2)[1]   = (uint64_t)n6;
+    syli_object_data(syli_object_of_obj_ptr(root))[0] = (uint64_t)n1;
+    syli_object_data(syli_object_of_obj_ptr(root))[1] = (uint64_t)n2;
+    syli_object_data(syli_object_of_obj_ptr(n1))[0]   = (uint64_t)n3;
+    syli_object_data(syli_object_of_obj_ptr(n1))[1]   = (uint64_t)n4;
+    syli_object_data(syli_object_of_obj_ptr(n2))[0]   = (uint64_t)n5;
+    syli_object_data(syli_object_of_obj_ptr(n2))[1]   = (uint64_t)n6;
 
-    Object** roots[] = { &root };
+    obj_ptr* roots[] = { &root };
     Frame frame      = { .root_count = 1, .roots = roots };
     syli_state_push_frame_scope(&frame);
 
@@ -116,13 +116,13 @@ static void test_binary_tree_marking(void)
     assert(gc_is_object_mark_tagged(n6));
 
     syli_state_pop_frame_scope();
-    free(root);
-    free(n1);
-    free(n2);
-    free(n3);
-    free(n4);
-    free(n5);
-    free(n6);
+    syli_free_ptr(root);
+    syli_free_ptr(n1);
+    syli_free_ptr(n2);
+    syli_free_ptr(n3);
+    syli_free_ptr(n4);
+    syli_free_ptr(n5);
+    syli_free_ptr(n6);
     syli_state_destroy();
     printf("✓ Binary tree marking works\n\n");
 }
@@ -141,17 +141,22 @@ static void test_diamond_graph_marking(void)
 
     syli_state_init();
 
-    Object* root   = make_ref_object(2, Cyclic);
-    Object* n1     = make_ref_object(1, Cyclic);
-    Object* n2     = make_ref_object(1, Cyclic);
-    Object* shared = make_ref_object(1, Cyclic);
+    obj_ptr root = make_ref_object(2, Cyclic);
 
-    syli_object_data(root)[0] = (uint64_t)n1;
-    syli_object_data(root)[1] = (uint64_t)n2;
-    syli_object_data(n1)[0]   = (uint64_t)shared;
-    syli_object_data(n2)[0]   = (uint64_t)shared;
+    obj_ptr n1     = make_ref_object(2, Cyclic);
+    obj_ptr n2     = make_ref_object(2, Cyclic);
+    obj_ptr n3     = make_ref_object(2, Cyclic);
+    obj_ptr n4     = make_ref_object(2, Cyclic);
+    obj_ptr n5     = make_ref_object(2, Cyclic);
+    obj_ptr n6     = make_ref_object(2, Cyclic);
+    obj_ptr shared = make_ref_object(1, Cyclic);
 
-    Object** roots[] = { &root };
+    syli_object_data(syli_object_of_obj_ptr(root))[0] = (uint64_t)n1;
+    syli_object_data(syli_object_of_obj_ptr(root))[1] = (uint64_t)n2;
+    syli_object_data(syli_object_of_obj_ptr(n1))[0]   = (uint64_t)shared;
+    syli_object_data(syli_object_of_obj_ptr(n2))[0]   = (uint64_t)shared;
+
+    obj_ptr* roots[] = { &root };
     Frame frame      = { .root_count = 1, .roots = roots };
     syli_state_push_frame_scope(&frame);
 
@@ -163,10 +168,10 @@ static void test_diamond_graph_marking(void)
     assert(gc_is_object_mark_tagged(shared));
 
     syli_state_pop_frame_scope();
-    free(root);
-    free(n1);
-    free(n2);
-    free(shared);
+    syli_free_ptr(root);
+    syli_free_ptr(n1);
+    syli_free_ptr(n2);
+    syli_free_ptr(shared);
     syli_state_destroy();
     printf("✓ Diamond graph marking works\n\n");
 }
@@ -181,18 +186,18 @@ static void test_multiple_roots_shared_graph(void)
 
     syli_state_init();
 
-    Object* root1  = make_ref_object(1, Cyclic);
-    Object* root2  = make_ref_object(1, Cyclic);
-    Object* n1     = make_ref_object(1, Cyclic);
-    Object* n2     = make_ref_object(1, Cyclic);
-    Object* shared = make_ref_object(1, Cyclic);
+    obj_ptr root1  = make_ref_object(1, Cyclic);
+    obj_ptr root2  = make_ref_object(1, Cyclic);
+    obj_ptr n1     = make_ref_object(1, Cyclic);
+    obj_ptr n2     = make_ref_object(1, Cyclic);
+    obj_ptr shared = make_ref_object(1, Cyclic);
 
-    syli_object_data(root1)[0] = (uint64_t)n1;
-    syli_object_data(root2)[0] = (uint64_t)n2;
-    syli_object_data(n1)[0]    = (uint64_t)shared;
-    syli_object_data(n2)[0]    = (uint64_t)shared;
+    syli_object_data(syli_object_of_obj_ptr(root1))[0] = (uint64_t)n1;
+    syli_object_data(syli_object_of_obj_ptr(root2))[0] = (uint64_t)n2;
+    syli_object_data(syli_object_of_obj_ptr(n1))[0]    = (uint64_t)shared;
+    syli_object_data(syli_object_of_obj_ptr(n2))[0]    = (uint64_t)shared;
 
-    Object** roots[] = { &root1, &root2 };
+    obj_ptr* roots[] = { &root1, &root2 };
     Frame frame      = { .root_count = 2, .roots = roots };
     syli_state_push_frame_scope(&frame);
 
@@ -212,11 +217,11 @@ static void test_multiple_roots_shared_graph(void)
     assert(gc_is_object_mark_tagged(shared));
 
     syli_state_pop_frame_scope();
-    free(root1);
-    free(root2);
-    free(n1);
-    free(n2);
-    free(shared);
+    syli_free_ptr(root1);
+    syli_free_ptr(root2);
+    syli_free_ptr(n1);
+    syli_free_ptr(n2);
+    syli_free_ptr(shared);
     syli_state_destroy();
     printf("✓ Multiple roots with shared graph works\n\n");
 }
@@ -232,17 +237,18 @@ static void test_disconnected_components(void)
 
     syli_state_init();
 
-    Object* root      = make_ref_object(1, Cyclic);
-    Object* n1        = make_ref_object(1, Cyclic);
-    Object* n2        = make_ref_object(1, Cyclic);
-    Object* isolated1 = make_ref_object(1, Cyclic);
-    Object* isolated2 = make_ref_object(1, Cyclic);
+    obj_ptr root      = make_ref_object(1, Cyclic);
+    obj_ptr n1        = make_ref_object(1, Cyclic);
+    obj_ptr n2        = make_ref_object(1, Cyclic);
+    obj_ptr isolated1 = make_ref_object(1, Cyclic);
+    obj_ptr isolated2 = make_ref_object(1, Cyclic);
 
-    syli_object_data(root)[0]      = (uint64_t)n1;
-    syli_object_data(n1)[0]        = (uint64_t)n2;
-    syli_object_data(isolated1)[0] = (uint64_t)isolated2;
+    syli_object_data(syli_object_of_obj_ptr(root))[0] = (uint64_t)n1;
+    syli_object_data(syli_object_of_obj_ptr(n1))[0]   = (uint64_t)n2;
+    syli_object_data(syli_object_of_obj_ptr(isolated1))[0]
+        = (uint64_t)isolated2;
 
-    Object** roots[] = { &root };
+    obj_ptr* roots[] = { &root };
     Frame frame      = { .root_count = 1, .roots = roots };
     syli_state_push_frame_scope(&frame);
 
@@ -258,11 +264,11 @@ static void test_disconnected_components(void)
     assert(!gc_is_object_mark_tagged(isolated2));
 
     syli_state_pop_frame_scope();
-    free(root);
-    free(n1);
-    free(n2);
-    free(isolated1);
-    free(isolated2);
+    syli_free_ptr(root);
+    syli_free_ptr(n1);
+    syli_free_ptr(n2);
+    syli_free_ptr(isolated1);
+    syli_free_ptr(isolated2);
     syli_state_destroy();
     printf("✓ Disconnected components correctly handled\n\n");
 }

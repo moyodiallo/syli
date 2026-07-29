@@ -251,6 +251,19 @@ void syli_rt_ownership_incr(obj_ptr ptr)
     syli_rt_object_incr(obj);
 }
 
+void syli_rt_ownership_check_lost_cyclic_release(obj_ptr ptr)
+{
+    Object* obj = syli_object_of_obj_ptr(ptr);
+    syli_rt_object_check_lost_cyclic_release(obj, ptr);
+}
+
+void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr)
+{
+    Object* obj = syli_object_of_obj_ptr(ptr);
+    Object* target = syli_object_of_obj_ptr(target_ptr);
+    syli_rt_object_notify_mutation(obj, target, target_ptr);
+}
+
 void syli_rt_ownership_release(void* ptr)
 {
     if (syli_ownership_is_own_ref(ptr)) {

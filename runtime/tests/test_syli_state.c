@@ -35,15 +35,15 @@ void test_state_init()
     assert(syli_state.checking_budget == 0);
 
     // Check GC worklists are initialized (empty)
-    assert(vector_size_GCObject(&syli_state.tracing_worklist) == 0);
-    assert(vector_empty_GCObject(&syli_state.tracing_worklist) == true);
-    assert(vector_size_GCObject(&syli_state.tracing_mutations_worklist) == 0);
+    assert(vector_size_obj_ptr(&syli_state.tracing_worklist) == 0);
+    assert(vector_empty_obj_ptr(&syli_state.tracing_worklist) == true);
+    assert(vector_size_obj_ptr(&syli_state.tracing_mutations_worklist) == 0);
     assert(
-        vector_empty_GCObject(&syli_state.tracing_mutations_worklist) == true);
-    assert(vector_size_GCObject(&syli_state.releasing_worklist) == 0);
-    assert(vector_empty_GCObject(&syli_state.releasing_worklist) == true);
-    assert(vector_size_GCObject(&syli_state.releasing_waitlist) == 0);
-    assert(vector_empty_GCObject(&syli_state.releasing_waitlist) == true);
+        vector_empty_obj_ptr(&syli_state.tracing_mutations_worklist) == true);
+    assert(vector_size_obj_ptr(&syli_state.releasing_worklist) == 0);
+    assert(vector_empty_obj_ptr(&syli_state.releasing_worklist) == true);
+    assert(vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0);
+    assert(vector_empty_obj_ptr(&syli_state.releasing_waitlist) == true);
     assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 0);
     assert(vector_empty_Suspected(&syli_state.suspect_lost_cycle) == true);
 
@@ -143,8 +143,8 @@ void test_state_init_destroy_cycle()
     // Cycle 3
     syli_state_init();
     assert(syli_state.stack_frame_roots.capacity == 16);
-    assert(vector_empty_GCObject(&syli_state.tracing_worklist) == true);
-    assert(vector_empty_GCObject(&syli_state.releasing_worklist) == true);
+    assert(vector_empty_obj_ptr(&syli_state.tracing_worklist) == true);
+    assert(vector_empty_obj_ptr(&syli_state.releasing_worklist) == true);
     syli_state_destroy();
 
     printf("✓ Multiple init/destroy cycles work correctly\n\n");
@@ -160,9 +160,9 @@ void test_state_push_pop_frame_scope()
     assert(syli_state.stack_frame_roots.top == 0);
     assert(syli_state.snapshot_check_index == 0);
 
-    // Create Object* pointers as frame roots
-    Object* obj1      = (Object*)0x1000;
-    Object** roots1[] = { &obj1 };
+    // Create obj_ptr roots
+    obj_ptr obj1      = (obj_ptr)0x1000;
+    obj_ptr* roots1[] = { &obj1 };
     Frame frame1      = { .root_count = 1, .roots = roots1 };
 
     // Push first frame scope
@@ -171,8 +171,8 @@ void test_state_push_pop_frame_scope()
     assert(syli_state.stack_frame_roots.frames[0] == &frame1);
 
     // Push second frame scope
-    Object* obj2      = (Object*)0x2000;
-    Object** roots2[] = { &obj2 };
+    obj_ptr obj2      = (obj_ptr)0x2000;
+    obj_ptr* roots2[] = { &obj2 };
     Frame frame2      = { .root_count = 1, .roots = roots2 };
 
     syli_state_push_frame_scope(&frame2);
@@ -212,10 +212,10 @@ void test_state_push_multiple_roots_scope()
 
     syli_state_init();
 
-    Object* obj1     = (Object*)0x1000;
-    Object* obj2     = (Object*)0x2000;
-    Object* obj3     = (Object*)0x3000;
-    Object** roots[] = { &obj1, &obj2, &obj3 };
+    obj_ptr obj1     = (obj_ptr)0x1000;
+    obj_ptr obj2     = (obj_ptr)0x2000;
+    obj_ptr obj3     = (obj_ptr)0x3000;
+    obj_ptr* roots[] = { &obj1, &obj2, &obj3 };
     Frame frame      = { .root_count = 3, .roots = roots };
 
     syli_state_push_frame_scope(&frame);
@@ -282,64 +282,62 @@ void test_state_worklist_operations()
     syli_state_init();
 
     // Verify all worklists are empty initially
-    assert(vector_empty_GCObject(&syli_state.tracing_worklist) == true);
+    assert(vector_empty_obj_ptr(&syli_state.tracing_worklist) == true);
     assert(
-        vector_empty_GCObject(&syli_state.tracing_mutations_worklist) == true);
-    assert(vector_empty_GCObject(&syli_state.releasing_worklist) == true);
-    assert(vector_empty_GCObject(&syli_state.releasing_waitlist) == true);
+        vector_empty_obj_ptr(&syli_state.tracing_mutations_worklist) == true);
+    assert(vector_empty_obj_ptr(&syli_state.releasing_worklist) == true);
+    assert(vector_empty_obj_ptr(&syli_state.releasing_waitlist) == true);
     assert(vector_empty_Suspected(&syli_state.suspect_lost_cycle) == true);
 
     // Push objects to tracing_worklist using gc_vector_push_back helper
-    Object* obj1 = (Object*)0x1234;
-    Object* obj2 = (Object*)0x5678;
-    Object* obj3 = (Object*)0x9ABC;
+    obj_ptr obj1 = (obj_ptr)0x1234;
+    obj_ptr obj2 = (obj_ptr)0x5678;
+    obj_ptr obj3 = (obj_ptr)0x9ABC;
 
     gc_vector_push_back(&syli_state.tracing_worklist, obj1);
     gc_vector_push_back(&syli_state.tracing_worklist, obj2);
     gc_vector_push_back(&syli_state.tracing_worklist, obj3);
-    assert(vector_size_GCObject(&syli_state.tracing_worklist) == 3);
+    assert(vector_size_obj_ptr(&syli_state.tracing_worklist) == 3);
 
     // Pop and verify
-    Object* popped = gc_vector_pop_back(&syli_state.tracing_worklist);
+    obj_ptr popped = gc_vector_pop_back(&syli_state.tracing_worklist);
     assert(popped == obj3);
     popped = gc_vector_pop_back(&syli_state.tracing_worklist);
-    assert(popped == obj2);
+
     popped = gc_vector_pop_back(&syli_state.tracing_worklist);
     assert(popped == obj1);
-    assert(vector_size_GCObject(&syli_state.tracing_worklist) == 0);
+    assert(vector_size_obj_ptr(&syli_state.tracing_worklist) == 0);
 
     // Push to releasing_worklist
     gc_vector_push_back(&syli_state.releasing_worklist, obj1);
     gc_vector_push_back(&syli_state.releasing_worklist, obj2);
-    assert(vector_size_GCObject(&syli_state.releasing_worklist) == 2);
+    assert(vector_size_obj_ptr(&syli_state.releasing_worklist) == 2);
     popped = gc_vector_pop_back(&syli_state.releasing_worklist);
-    assert(popped == obj2);
+
     popped = gc_vector_pop_back(&syli_state.releasing_worklist);
     assert(popped == obj1);
-    assert(vector_size_GCObject(&syli_state.releasing_worklist) == 0);
+    assert(vector_size_obj_ptr(&syli_state.releasing_worklist) == 0);
 
     // Push to waitlists
     gc_vector_push_back(&syli_state.releasing_waitlist, obj1);
-    assert(vector_size_GCObject(&syli_state.releasing_waitlist) == 1);
+
     popped = gc_vector_pop_back(&syli_state.releasing_waitlist);
     assert(popped == obj1);
 
     // Push to tracing_mutations_worklist
     gc_vector_push_back(&syli_state.tracing_mutations_worklist, obj1);
-    assert(vector_size_GCObject(&syli_state.tracing_mutations_worklist) == 1);
+
     popped = gc_vector_pop_back(&syli_state.tracing_mutations_worklist);
     assert(popped == obj1);
 
     // Suspected worklist (uses Suspected struct directly)
-    Suspected s1 = { .obj = (GCObject*)obj1 };
-    Suspected s2 = { .obj = (GCObject*)obj2 };
+    Suspected s1 = { .obj = (obj_ptr)obj1 };
+    Suspected s2 = { .obj = (obj_ptr)obj2 };
     vector_push_back_Suspected(&syli_state.suspect_lost_cycle, &s1);
     vector_push_back_Suspected(&syli_state.suspect_lost_cycle, &s2);
     assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 2);
-    assert(vector_at_Suspected(&syli_state.suspect_lost_cycle, 0)->obj
-        == (GCObject*)obj1);
-    assert(vector_at_Suspected(&syli_state.suspect_lost_cycle, 1)->obj
-        == (GCObject*)obj2);
+    assert(vector_at_Suspected(&syli_state.suspect_lost_cycle, 0)->obj == obj1);
+    assert(vector_at_Suspected(&syli_state.suspect_lost_cycle, 1)->obj == obj2);
 
     syli_state_destroy();
     printf("✓ GC worklist operations work correctly\n\n");

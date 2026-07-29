@@ -45,6 +45,8 @@ obj_ptr syli_rt_ownership_share(obj_ptr ptr);
 void syli_rt_ownership_release(obj_ptr ptr);
 void syli_rt_ownership_decr(obj_ptr ptr);
 void syli_rt_ownership_incr(obj_ptr ptr);
+void syli_rt_ownership_check_lost_cyclic_release(obj_ptr ptr);
+void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr);
 
 /************************************************
  * Reference Management Functions

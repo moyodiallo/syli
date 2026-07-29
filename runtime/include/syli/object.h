@@ -64,12 +64,13 @@ typedef void* obj_ptr;
 
 #define OWN_REF_TAG 1ULL
 
-static inline obj_ptr* syli_ownership_untag(obj_ptr ptr)
+static inline obj_ptr syli_ownership_untag(obj_ptr ptr)
 {
     return (obj_ptr)((uintptr_t)ptr & ~OWN_REF_TAG);
 }
 
-static inline Object* syli_object_of_obj_ptr(obj_ptr ptr){
+static inline Object* syli_object_of_obj_ptr(obj_ptr ptr)
+{
     return (Object*)syli_ownership_untag(ptr);
 }
 
@@ -78,9 +79,14 @@ static inline bool syli_ownership_is_own_ref(obj_ptr ptr)
     return ((uintptr_t)ptr & OWN_REF_TAG) != 0;
 }
 
-static inline void* syli_ownership_set_own(obj_ptr ptr)
+static inline obj_ptr syli_ownership_set_own(obj_ptr ptr)
 {
     return (obj_ptr)((uintptr_t)ptr | OWN_REF_TAG);
+}
+
+static inline void syli_free_ptr(obj_ptr ptr)
+{
+    free(syli_ownership_untag(ptr));
 }
 
 static inline uint64_t make_meta_refcount(

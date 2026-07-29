@@ -78,7 +78,6 @@ static void gc_one_step_tracing(void)
                 || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            assert(syli_object_get_zone((Object*)field_value) == Zone_GcLocal);
             gc_worklist_push((obj_ptr)field_value);
         }
         return;
@@ -94,7 +93,6 @@ static void gc_one_step_tracing(void)
                 || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            assert(syli_object_get_zone((Object*)field_value) == Zone_GcLocal);
             gc_worklist_push((obj_ptr)field_value);
         }
         return;
@@ -289,7 +287,14 @@ void syli_state_gc_tracing()
                 } else {
                     // Object is not reachable, free it
                     syli_state.total_objects_memory_freed++;
-                    free(obj);
+                    if (syli_object_is_mono(obj)) {
+                        free(obj);
+                    } else {
+                        syli_object_clear_flags(
+                            obj, Meta_Flags_Suspect_Lost_Cycle);
+                        gc_vector_push_back(
+                            &syli_state.releasing_waitlist, suspected_obj->obj);
+                    }
                 }
 
                 syli_state.current_suspected_check_index++;

@@ -42,7 +42,8 @@ static inline obj_ptr gc_vector_pop_back(vector_obj_ptr* vector)
 
 static inline void gc_vector_push_back(vector_obj_ptr* vector, obj_ptr obj)
 {
-    vector_push_back_obj_ptr(vector, obj);
+    obj_ptr* slot = (obj_ptr*)vector_alloc_slot_obj_ptr(vector);
+    *slot = obj;
 }
 
 // ========================
