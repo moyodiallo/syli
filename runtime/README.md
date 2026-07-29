@@ -5,44 +5,16 @@ A high-performance runtime for the Syli programming language, implemented in C.
 > [!WARNING]
 > The benchmark are not realworld usage, it is for validating the runtime.
 
-## Runtime API
-
-### Object Management
-
-- `syli_rt_rc_alloc_object(header, refcount, words)` — allocate a reference-counted GC object
-- `syli_rt_shared_alloc(header, words)` — allocate a shared (non-RC) object
-
-### Reference Counting
-
-- `syli_rt_object_incr(obj)` / `syli_rt_object_decr(obj)` / `syli_rt_object_decr_n(obj, n)`
-- `syli_rt_object_check_release(obj)` — free if refcount drops to zero
-- `syli_rt_object_decr_drop(obj)` — unconditional drop; caller guarantees the object is no longer reachable
-- `syli_rt_object_check_lost_cyclic_release(obj)` — flag object as a potential cycle root
-- `syli_rt_object_notify_mutation(obj, target)` — write barrier: notify the GC that a reference from `obj` to `target` during the tracing phase. If the target is not marked yet, the target is added to the mutation worklist.
+## Runtime
 
 ### GC — reference counting + tracing with cycle detection
 
-Three independent incremental state machines, each with its own worklist and budget:
+Two independent incremental state machines, each with its own worklist and budget:
 
+- **Releasing**: processes the refcount-zero waitlist. Traverses reference graphs, decrements child refcounts, and frees objects.
 - **Tracing** (`Sy_Tracing`): 2-color mark from stack roots. The tracing flag guarantees each object is processed at most once per tracing phase. Iterates the tracing worklist; the mutations worklist captures unmarked children of objects modified by write barriers during tracing.
-- **Dropping** (`Sy_Dropping`): processes the unreachable set. Traverses their reference graph, decrements child refcounts, and frees objects when their refcount reaches zero. Objects still referenced by siblings go to the dropping waitlist. It is scope freeing.
-- **Releasing** (`Sy_Releasing`): frees memory for objects whose reference count reached zero. It for escaped objects and non escaped, this is general purpose usage.
+`syli_rt_gc_cycle()` sets budgets for both phases and calls them (releasing → tracing). Each phase is incremental — it processes a budgeted number of objects per invocation and returns to idle when its worklist is empty.
 
-`syli_rt_gc_cycle()` sets budgets for all three phases and calls them (releasing → dropping → tracing). Each phase is incremental — it processes a budgeted number of objects per invocation and returns to idle when its worklist is empty.
-
-### Object Access
-
-- `syli_rt_get_object_tag(obj)` — read object tag
-- `syli_rt_get_object_length(obj)` — read object logical length
-
-### Stack Frames
-
-- `syli_rt_push_frame_scope(frame)` / `syli_rt_pop_frame_scope()` — register/unregister GC roots via the current stack frame. But it will not be used in native compiled program, it was introduced for testing puporse and may be used for a VM when it is available.
-
-### Utility
-
-- `syli_rt_object_copy(src)` — shallow copy an object
-- `syli_rt_object_raw_copy(src, dst)` — raw memory copy between two objects
 
 ### Makefile
 

@@ -1,15 +1,16 @@
 #include "syli/object.h"
 #include "syli/syli_state.h"
 
-static inline void gc_add_suspect(Object* obj)
+static inline void gc_add_suspect(obj_ptr obj_ptr)
 {
+    Object* obj = syli_object_of_obj_ptr(obj_ptr);
     syli_state.suspect_objects_notifications++;
     if (syli_object_has_flags(as_object(obj), Meta_Flags_Suspect_Lost_Cycle)) {
         return;
     }
     Suspected* suspected_obj
         = vector_alloc_slot_Suspected(&syli_state.suspect_lost_cycle);
-    suspected_obj->obj = (GCObject*)obj;
+    suspected_obj->obj = obj_ptr;
     size_t last_index
         = vector_size_Suspected(&syli_state.suspect_lost_cycle) - 1;
 
@@ -20,29 +21,29 @@ static inline void gc_add_suspect(Object* obj)
 static inline void gc_remove_suspect_at(size_t index)
 {
     vector_Suspected* vector = &syli_state.suspect_lost_cycle;
-    size_t last = vector_size_Suspected(vector) - 1;
+    size_t last              = vector_size_Suspected(vector) - 1;
     if (index != last) {
-        Suspected* data = (Suspected*)vector_at_Suspected(vector, index);
+        Suspected* data      = (Suspected*)vector_at_Suspected(vector, index);
         Suspected* last_data = (Suspected*)vector_at_Suspected(vector, last);
-        *data = *last_data;
+        *data                = *last_data;
     }
     vector_pop_back_Suspected(vector);
 }
 
-static inline Object* gc_vector_pop_back(vector_GCObject* vector)
+static inline obj_ptr gc_vector_pop_back(vector_obj_ptr* vector)
 {
     assert(
-        vector_size_GCObject(vector) > 0 && "pop_stack called on empty vector");
-    Object** back = (Object**)vector_back_GCObject(vector);
-    Object* obj = *back;
-    vector_pop_back_GCObject(vector);
+        vector_size_obj_ptr(vector) > 0 && "pop_stack called on empty vector");
+    obj_ptr* back = (obj_ptr*)vector_back_obj_ptr(vector);
+    obj_ptr obj   = *back;
+    vector_pop_back_obj_ptr(vector);
     return obj;
 }
 
-static inline void gc_vector_push_back(vector_GCObject* vector, Object* obj)
+static inline void gc_vector_push_back(vector_obj_ptr* vector, obj_ptr obj)
 {
-    GCObject** new_obj = (GCObject**)vector_alloc_slot_GCObject(vector);
-    *new_obj = (GCObject*)obj;
+    obj_ptr* slot = (obj_ptr*)vector_alloc_slot_obj_ptr(vector);
+    *slot = obj;
 }
 
 // ========================

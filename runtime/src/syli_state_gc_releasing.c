@@ -6,16 +6,6 @@
 
 #include "syli/syli_state.h"
 
-static inline Object* object_untag(void* ptr)
-{
-    return (Object*)((uintptr_t)ptr & ~1ULL);
-}
-
-static inline bool object_is_own_ref(void* ptr)
-{
-    return ((uintptr_t)ptr & 1ULL) != 0;
-}
-
 static inline void free_released_object(Object* obj)
 {
     if (syli_object_has_flags(obj, Meta_Flags_Suspect_Lost_Cycle)) {
@@ -33,9 +23,11 @@ static inline void free_released_object(Object* obj)
     free(obj);
 }
 
-static inline void child_release_object(Object* obj)
+static inline void child_release_object(obj_ptr obj_ptr)
 {
-    assert(obj != NULL);
+    assert(obj_ptr != NULL);
+
+    Object* obj = syli_object_of_obj_ptr(obj_ptr);
 
     GCObject* gc_obj = as_gc_object(obj);
     syli_object_decr_local(obj);
@@ -43,7 +35,7 @@ static inline void child_release_object(Object* obj)
     const int ref_count = (gc_obj->meta_ref_count & REFCOUNT_MASK);
 
     if (ref_count > 0 && syli_object_is_cyclic(obj)) {
-        gc_add_suspect(obj);
+        gc_add_suspect(obj_ptr);
         return;
     }
 
@@ -65,13 +57,14 @@ static inline void child_release_object(Object* obj)
     }
 
     // we need to process its children before we can free it
-    gc_vector_push_back(&syli_state.releasing_waitlist, obj);
+    gc_vector_push_back(&syli_state.releasing_waitlist, obj_ptr);
 }
 
 static inline void gc_one_step_releasing()
 {
     syli_state.releasing_budget--;
-    Object* obj      = gc_vector_pop_back(&syli_state.releasing_worklist);
+    Object* obj = syli_object_of_obj_ptr(
+        gc_vector_pop_back(&syli_state.releasing_worklist));
     GCObject* gc_obj = as_gc_object(obj);
 
     if (syli_object_is_mono_ref(obj)) {
@@ -80,10 +73,11 @@ static inline void gc_one_step_releasing()
         syli_state.releasing_budget -= (int)length;
         for (uint64_t i = 0; i < length; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value || !object_is_own_ref((void*)field_value)) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            child_release_object(object_untag((void*)field_value));
+            child_release_object(((obj_ptr)field_value));
         }
     } else if (syli_object_is_mixed_bitmap(obj)) {
         // All fields are references, traverse all
@@ -95,10 +89,11 @@ static inline void gc_one_step_releasing()
                 continue; // non-reference field
             }
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value || !object_is_own_ref((void*)field_value)) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            child_release_object(object_untag((void*)field_value));
+            child_release_object(((obj_ptr)field_value));
         }
     } else if (syli_object_is_mixed_order(obj)) {
         // All fields are references, traverse all
@@ -106,10 +101,11 @@ static inline void gc_one_step_releasing()
         syli_state.releasing_budget -= (int)ptr_count;
         for (size_t i = 0; i < ptr_count; i++) {
             uint64_t field_value = gc_obj->value[i];
-            if (!field_value || !object_is_own_ref((void*)field_value)) {
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
                 continue;
             }
-            child_release_object(object_untag((void*)field_value));
+            child_release_object(((obj_ptr)field_value));
         }
     }
 
@@ -119,10 +115,10 @@ static inline void gc_one_step_releasing()
 
 void set_releasing_working()
 {
-    vector_GCObject tmp           = syli_state.releasing_worklist;
+    vector_obj_ptr tmp            = syli_state.releasing_worklist;
     syli_state.releasing_worklist = syli_state.releasing_waitlist;
     syli_state.releasing_waitlist = tmp;
-    vector_clear_GCObject(&syli_state.releasing_waitlist);
+    vector_clear_obj_ptr(&syli_state.releasing_waitlist);
 }
 
 void syli_state_gc_releasing()
@@ -136,7 +132,7 @@ void syli_state_gc_releasing()
         switch (syli_state.releasing_state) {
         case Releasing_Idle:
 
-            if (vector_size_GCObject(&syli_state.releasing_waitlist)
+            if (vector_size_obj_ptr(&syli_state.releasing_waitlist)
                 < syli_state.THRESHOLD_RELEASING_BUCKET) {
                 return; // Not enough objects to release
             }
@@ -150,7 +146,7 @@ void syli_state_gc_releasing()
             gc_one_step_releasing();
             syli_state.releasing_steps++;
 
-            if (vector_size_GCObject(&syli_state.releasing_worklist) == 0) {
+            if (vector_size_obj_ptr(&syli_state.releasing_worklist) == 0) {
                 syli_state.releasing_state = Releasing_Idle;
             }
             break;

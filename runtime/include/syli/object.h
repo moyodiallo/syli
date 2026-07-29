@@ -11,13 +11,13 @@
 
 #include "header_object.h" // header layout, masks, ObjectZone, ObjectFlags
 
-#define INITIAL_REFCOUNT 1
+#define INITIAL_REFCOUNT   1
 #define REFCOUNT_SIZE_BITS 56
-#define FLAGS_SHIFT REFCOUNT_SIZE_BITS
+#define FLAGS_SHIFT        REFCOUNT_SIZE_BITS
 
-#define REFCOUNT_MASK 0x00FFFFFFFFFFFFFF
+#define REFCOUNT_MASK    0x00FFFFFFFFFFFFFF
 #define MASK_MARKING_BIT (1ULL << 63)
-#define MARKING_SHIFT 63
+#define MARKING_SHIFT    63
 
 #define META_FLAGS_MASK                                                        \
     (0x7F00000000000000ULL) // bits 56-62 (7 bits for meta flags)
@@ -47,26 +47,54 @@ typedef struct StackObject {
     uint64_t value[];
 } StackObject;
 
-// - Dropping & Releasing are mutually exclusive
-// - Tracing object inside tracing worklist:
-//     - Could be inside dropping at the same time
-//     - Could be inside releasing at the same time
 typedef enum ObjectMetaFlags {
-    Meta_Flags_None = 0,
+    Meta_Flags_None               = 0,
     Meta_Flags_Suspect_Lost_Cycle = 1ULL << 56,
-    Meta_Flags_Releasing = 1ULL << (56 + 1),
-    Meta_Flags_Dropping = 1ULL << (56 + 2),
-    Meta_Flags_Tracing = 1ULL << (56 + 3),
-    Meta_Flags_Waiting_Remove = 1ULL << (56 + 4)
+    Meta_Flags_Releasing          = 1ULL << (56 + 1),
+    Meta_Flags_Tracing            = 1ULL << (56 + 2),
+    Meta_Flags_Waiting_Remove     = 1ULL << (56 + 3)
 } ObjectMetaFlags;
+
+/*
+    A tagged pointer at the lowest bit for onwership:
+        1 -> Own the object, have responsibility to release
+        0 -> Borrowed the release is no-op
+*/
+typedef void* obj_ptr;
+
+#define OWN_REF_TAG 1ULL
+
+static inline obj_ptr syli_ownership_untag(obj_ptr ptr)
+{
+    return (obj_ptr)((uintptr_t)ptr & ~OWN_REF_TAG);
+}
+
+static inline Object* syli_object_of_obj_ptr(obj_ptr ptr)
+{
+    return (Object*)syli_ownership_untag(ptr);
+}
+
+static inline bool syli_ownership_is_own_ref(obj_ptr ptr)
+{
+    return ((uintptr_t)ptr & OWN_REF_TAG) != 0;
+}
+
+static inline obj_ptr syli_ownership_set_own(obj_ptr ptr)
+{
+    return (obj_ptr)((uintptr_t)ptr | OWN_REF_TAG);
+}
+
+static inline void syli_free_ptr(obj_ptr ptr)
+{
+    free(syli_ownership_untag(ptr));
+}
 
 static inline uint64_t make_meta_refcount(
     uint64_t current_state_bit_mark, ObjectMetaFlags flags)
 {
     assert(flags == Meta_Flags_None || flags == Meta_Flags_Suspect_Lost_Cycle
-        || flags == Meta_Flags_Releasing || flags == Meta_Flags_Dropping
-        || flags == Meta_Flags_Tracing
-        || flags == Meta_Flags_Waiting_Remove); // 5-bit flags
+        || flags == Meta_Flags_Releasing || flags == Meta_Flags_Tracing
+        || flags == Meta_Flags_Waiting_Remove); // 4-bit flags
     return (current_state_bit_mark) | ((uint64_t)flags) | INITIAL_REFCOUNT;
 }
 
@@ -89,7 +117,7 @@ static inline Object* as_object(void* o) { return (Object*)o; }
 static inline uint64_t syli_object_mark_tag_shift(Object* obj)
 {
     GCObject* gc_obj = as_gc_object(obj);
-    ObjectZone zone = syli_object_get_zone(obj);
+    ObjectZone zone  = syli_object_get_zone(obj);
     if (zone == Zone_GcLocal) {
         return gc_obj->meta_ref_count & MASK_MARKING_BIT;
     } else if (zone == Zone_GcShared) {
@@ -241,7 +269,7 @@ static inline void syli_object_decr_shared_n(Object* o, size_t n)
 {
     assert(o != NULL);
     GCObject* gc_obj = as_gc_object(o);
-    
+
     assert((gc_obj->meta_ref_count & REFCOUNT_MASK) >= n);
     atomic_fetch_sub((_Atomic uint64_t*)&gc_obj->meta_ref_count, n);
 }
@@ -306,7 +334,7 @@ static inline Object* syli_object_alloc(
     GCObject* obj = (GCObject*)malloc(
         sizeof(GCObject) + words * sizeof(uint64_t) + cyclic_index);
 
-    obj->header_word = header;
+    obj->header_word    = header;
     obj->meta_ref_count = meta_ref_count;
     return as_object(obj);
 }
@@ -334,9 +362,9 @@ static inline void syli_object_set_cyclic_index(GCObject* obj, uint32_t index)
     switch (zone) {
     case Zone_GcLocal:
     case Zone_GcShared: {
-        size_t len = syli_object_length(as_object((void*)obj));
+        size_t len                 = syli_object_length(as_object((void*)obj));
         uint32_t* cyclic_index_ptr = (uint32_t*)(obj->value + len);
-        *cyclic_index_ptr = index;
+        *cyclic_index_ptr          = index;
         break;
     }
     default:
@@ -352,7 +380,7 @@ static inline uint32_t syli_object_get_cyclic_index(GCObject* obj)
     switch (zone) {
     case Zone_GcLocal:
     case Zone_GcShared: {
-        size_t len = syli_object_length(as_object(obj));
+        size_t len                 = syli_object_length(as_object(obj));
         uint32_t* cyclic_index_ptr = (uint32_t*)(obj->value + len);
         return *cyclic_index_ptr;
     }

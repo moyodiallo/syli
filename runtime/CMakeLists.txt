@@ -24,8 +24,7 @@ endif()
 set(COMMON_C_FLAGS
     -Wall
     -Wextra
-    -Wno-stringop-overflow
-    -Wno-maybe-uninitialized
+    -Wno-uninitialized
 )
 
 # Optional native architecture optimization
@@ -42,9 +41,7 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 \
     -g \
     -fno-omit-frame-pointer \
     -fno-inline \
-    -fno-inline-functions \
-    -fno-inline-small-functions \
-    -fkeep-inline-functions"
+    -fno-inline-functions"
 )
 
 # Release flags
@@ -55,10 +52,9 @@ add_library(syliruntime STATIC
     src/syli_state.c
     src/syli_state_gc_releasing.c
     src/syli_state_gc_tracing.c
-    src/syli_state_gc_dropping.c
     src/stack_frame.c
     src/main.c
-    src/immediate.c
+    src/syli_primitives.c
     src/syli.c
 )
 

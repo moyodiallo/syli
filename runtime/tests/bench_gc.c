@@ -9,6 +9,7 @@
 #include "syli/gc_helpers.h"
 #include "syli/header_object.h"
 #include "syli/object.h"
+#include "syli/syli.h"
 #include "syli/syli_state.h"
 
 typedef enum {
@@ -28,8 +29,6 @@ typedef struct {
     size_t suspected_lost_cycle;
     size_t releasing_worklist;
     size_t releasing_waitlist;
-    size_t dropping_worklist;
-    size_t dropping_waitlist;
     size_t tracing_worklist;
     size_t tracing_mutations;
 } CycleMetrics;
@@ -37,11 +36,9 @@ typedef struct {
 typedef struct {
     size_t releasing_steps;
     size_t tracing_steps;
-    size_t dropping_steps;
     size_t mutation_steps;
     size_t checking_steps;
 
-    size_t total_dropped;
     size_t total_traced;
     size_t total_released;
     size_t total_memory_freed;
@@ -66,16 +63,13 @@ typedef struct {
 
     size_t releasing_steps;
     size_t tracing_steps;
-    size_t dropping_steps;
     size_t mutation_steps;
     size_t checking_steps;
 
-    size_t total_dropped;
     size_t total_traced;
     size_t total_released;
     size_t total_memory_freed;
 
-    size_t total_dropped_derived;
     size_t total_released_derived;
 
     CycleMetrics* cycles;
@@ -127,15 +121,14 @@ static double percentile_ns_sorted(const uint64_t* sorted, size_t n, double p)
         + ((double)sorted[hi] - (double)sorted[lo]) * frac;
 }
 
-static Object* make_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
 {
     object_payload_t payload = syli_object_make_mono_payload(words);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
-    uint64_t meta = make_meta_refcount(
-        Meta_Flags_None, (ObjectMetaFlags)syli_state.tracing_current_bit_mark);
-    Object* obj = syli_object_alloc(header, meta, words);
-    memset(syli_object_data(obj), 0, words * sizeof(uint64_t));
+    obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, words);
+    Object* o   = syli_object_of_obj_ptr(obj);
+    memset(syli_object_data(o), 0, words * sizeof(uint64_t));
     return obj;
 }
 
@@ -196,11 +189,9 @@ static CounterSnapshot take_counter_snapshot(void)
     CounterSnapshot s;
     s.releasing_steps = syli_state.releasing_steps;
     s.tracing_steps   = syli_state.tracing_steps;
-    s.dropping_steps  = syli_state.dropping_steps;
     s.mutation_steps  = syli_state.mutation_steps;
     s.checking_steps  = syli_state.checking_steps;
 
-    s.total_dropped      = syli_state.total_objects_dropped;
     s.total_traced       = syli_state.total_objects_traced;
     s.total_released     = syli_state.total_objects_released;
     s.total_memory_freed = syli_state.total_objects_memory_freed;
@@ -219,21 +210,17 @@ static size_t delta_size(size_t before, size_t after)
 /* Returns true when all GC queues are drained and state machines are idle. */
 static bool gc_is_done(void)
 {
-    return vector_size_GCObject(&syli_state.releasing_waitlist) == 0
-        && vector_size_GCObject(&syli_state.releasing_worklist) == 0
-        && vector_size_GCObject(&syli_state.dropping_waitlist) == 0
-        && vector_size_GCObject(&syli_state.dropping_worklist) == 0
-        && vector_size_GCObject(&syli_state.tracing_worklist) == 0
-        && vector_size_GCObject(&syli_state.tracing_mutations_worklist) == 0
+    return vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0
+        && vector_size_obj_ptr(&syli_state.releasing_worklist) == 0
+        && vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
+        && vector_size_obj_ptr(&syli_state.tracing_mutations_worklist) == 0
         && syli_state.tracing_state == Tracing_Idle
-        && syli_state.releasing_state == Releasing_Idle
-        && syli_state.dropping_state == Dropping_Idle;
+        && syli_state.releasing_state == Releasing_Idle;
 }
 
 static void init_runtime_defaults(void)
 {
     syli_state.THRESHOLD_RELEASING_BUCKET    = 1;
-    syli_state.THRESHOLD_DROPPING_BUCKET     = 1;
     syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
 }
 
@@ -256,17 +243,13 @@ static void run_drain_and_collect(RoundResult* round)
         metric.suspected_lost_cycle
             = vector_size_Suspected(&syli_state.suspect_lost_cycle);
         metric.releasing_worklist
-            = vector_size_GCObject(&syli_state.releasing_worklist);
+            = vector_size_obj_ptr(&syli_state.releasing_worklist);
         metric.releasing_waitlist
-            = vector_size_GCObject(&syli_state.releasing_waitlist);
-        metric.dropping_worklist
-            = vector_size_GCObject(&syli_state.dropping_worklist);
-        metric.dropping_waitlist
-            = vector_size_GCObject(&syli_state.dropping_waitlist);
+            = vector_size_obj_ptr(&syli_state.releasing_waitlist);
         metric.tracing_worklist
-            = vector_size_GCObject(&syli_state.tracing_worklist);
+            = vector_size_obj_ptr(&syli_state.tracing_worklist);
         metric.tracing_mutations
-            = vector_size_GCObject(&syli_state.tracing_mutations_worklist);
+            = vector_size_obj_ptr(&syli_state.tracing_mutations_worklist);
 
         append_cycle_metric(round, &metric);
 
@@ -305,22 +288,17 @@ static void finalize_round_metrics(RoundResult* round, size_t total_objects,
         = delta_size(before->releasing_steps, after->releasing_steps);
     round->tracing_steps
         = delta_size(before->tracing_steps, after->tracing_steps);
-    round->dropping_steps
-        = delta_size(before->dropping_steps, after->dropping_steps);
     round->mutation_steps
         = delta_size(before->mutation_steps, after->mutation_steps);
     round->checking_steps
         = delta_size(before->checking_steps, after->checking_steps);
 
-    round->total_dropped
-        = delta_size(before->total_dropped, after->total_dropped);
     round->total_traced = delta_size(before->total_traced, after->total_traced);
     round->total_released
         = delta_size(before->total_released, after->total_released);
     round->total_memory_freed
         = delta_size(before->total_memory_freed, after->total_memory_freed);
 
-    round->total_dropped_derived  = round->dropping_steps;
     round->total_released_derived = round->releasing_steps;
 
     round->generation_tracing
@@ -331,38 +309,29 @@ static void finalize_round_metrics(RoundResult* round, size_t total_objects,
 
 static void setup_releasing_workload(size_t chain_count, size_t chain_len)
 {
-    Object** roots = (Object**)malloc(chain_count * sizeof(Object*));
+    obj_ptr* roots = (obj_ptr*)malloc(chain_count * sizeof(obj_ptr));
     if (!roots) {
         fprintf(stderr, "bench_gc: failed to allocate releasing roots\n");
         exit(1);
     }
 
     for (size_t i = 0; i < chain_count; i++) {
-        Object* head = make_ref_object(1, Acyclic);
-        Object* cur  = head;
+        obj_ptr head = make_ref_object(1, Acyclic);
+        obj_ptr cur  = head;
         for (size_t j = 1; j < chain_len; j++) {
-            Object* next             = make_ref_object(1, Acyclic);
-            syli_object_data(cur)[0] = (uint64_t)next;
-            cur                      = next;
+            obj_ptr next = make_ref_object(1, Acyclic);
+            syli_object_data(syli_object_of_obj_ptr(cur))[0] = (uint64_t)next;
+            cur                                              = next;
         }
         roots[i] = head;
     }
 
     for (size_t i = 0; i < chain_count; i++) {
-        syli_object_decr_local(roots[i]);
+        syli_rt_ownership_decr(roots[i]);
         gc_vector_push_back(&syli_state.releasing_waitlist, roots[i]);
     }
 
     free(roots);
-}
-
-static void setup_dropping_workload(size_t leaf_count)
-{
-    for (size_t i = 0; i < leaf_count; i++) {
-        Object* leaf = make_ref_object(0, Acyclic);
-        syli_object_decr_local(leaf);
-        gc_vector_push_back(&syli_state.dropping_waitlist, leaf);
-    }
 }
 
 static ScenarioResult run_releasing_scenario(size_t rounds)
@@ -408,57 +377,15 @@ static ScenarioResult run_releasing_scenario(size_t rounds)
     return scenario;
 }
 
-static ScenarioResult run_dropping_scenario(size_t rounds)
-{
-    const size_t leaf_count = 250000;
-
-    ScenarioResult scenario;
-    scenario.name          = "dropping_stress";
-    scenario.workload      = "250000 leaf objects";
-    scenario.rounds        = rounds;
-    scenario.total_objects = leaf_count;
-    scenario.round_results = (RoundResult*)calloc(rounds, sizeof(RoundResult));
-    if (!scenario.round_results) {
-        fprintf(stderr, "bench_gc: failed to allocate dropping scenario\n");
-        exit(1);
-    }
-
-    for (size_t r = 0; r < rounds; r++) {
-        RoundResult* round = &scenario.round_results[r];
-        init_round_result(round);
-
-        syli_state_init();
-        init_runtime_defaults();
-
-        CounterSnapshot before = take_counter_snapshot();
-
-        struct timespec t0;
-        struct timespec t1;
-        clock_gettime(CLOCK_MONOTONIC, &t0);
-        setup_dropping_workload(leaf_count);
-        clock_gettime(CLOCK_MONOTONIC, &t1);
-
-        run_drain_and_collect(round);
-        CounterSnapshot after = take_counter_snapshot();
-        finalize_round_metrics(
-            round, leaf_count, &before, &after, time_diff_ns(&t0, &t1));
-
-        syli_state_destroy();
-    }
-
-    return scenario;
-}
-
 static ScenarioResult run_mixed_scenario(size_t rounds)
 {
-    const size_t release_count = 80000;
-    const size_t drop_count    = 80000;
+    const size_t release_count = 160000;
     const size_t trace_pairs   = 2048;
-    const size_t total_objects = release_count + drop_count + trace_pairs * 2;
+    const size_t total_objects = release_count + trace_pairs * 2;
 
     ScenarioResult scenario;
     scenario.name          = "mixed_stress";
-    scenario.workload      = "80000 release + 80000 drop + 2048 traced cycles";
+    scenario.workload      = "160000 release + 2048 traced cycles";
     scenario.rounds        = rounds;
     scenario.total_objects = total_objects;
     scenario.round_results = (RoundResult*)calloc(rounds, sizeof(RoundResult));
@@ -474,9 +401,9 @@ static ScenarioResult run_mixed_scenario(size_t rounds)
         syli_state_init();
         init_runtime_defaults();
 
-        Object** root_slots = (Object**)malloc(trace_pairs * sizeof(Object*));
-        Object*** roots     = (Object***)malloc(trace_pairs * sizeof(Object**));
-        Object** children   = (Object**)malloc(trace_pairs * sizeof(Object*));
+        obj_ptr* root_slots = (obj_ptr*)malloc(trace_pairs * sizeof(obj_ptr));
+        obj_ptr** roots     = (obj_ptr**)malloc(trace_pairs * sizeof(obj_ptr*));
+        obj_ptr* children   = (obj_ptr*)malloc(trace_pairs * sizeof(obj_ptr));
         if (!root_slots || !roots || !children) {
             fprintf(
                 stderr, "bench_gc: failed to allocate mixed tracing roots\n");
@@ -493,26 +420,22 @@ static ScenarioResult run_mixed_scenario(size_t rounds)
         clock_gettime(CLOCK_MONOTONIC, &t0);
 
         for (size_t i = 0; i < trace_pairs; i++) {
-            root_slots[i]                      = make_ref_object(1, Cyclic);
-            children[i]                        = make_ref_object(1, Cyclic);
-            syli_object_data(root_slots[i])[0] = (uint64_t)children[i];
-            syli_object_data(children[i])[0]   = (uint64_t)root_slots[i];
-            roots[i]                           = &root_slots[i];
+            root_slots[i] = make_ref_object(1, Cyclic);
+            children[i]   = make_ref_object(1, Cyclic);
+            syli_object_data(syli_object_of_obj_ptr(root_slots[i]))[0]
+                = (uint64_t)children[i];
+            syli_object_data(syli_object_of_obj_ptr(children[i]))[0]
+                = (uint64_t)root_slots[i];
+            roots[i] = &root_slots[i];
         }
 
         Frame frame = { .root_count = (uint32_t)trace_pairs, .roots = roots };
         syli_state_push_frame_scope(&frame);
 
         for (size_t i = 0; i < release_count; i++) {
-            Object* rel = make_ref_object(0, Acyclic);
-            syli_object_decr_local(rel);
+            obj_ptr rel = make_ref_object(0, Acyclic);
+            syli_rt_ownership_decr(rel);
             gc_vector_push_back(&syli_state.releasing_waitlist, rel);
-        }
-
-        for (size_t i = 0; i < drop_count; i++) {
-            Object* drp = make_ref_object(0, Acyclic);
-            syli_object_decr_local(drp);
-            gc_vector_push_back(&syli_state.dropping_waitlist, drp);
         }
 
         for (size_t i = 0; i < trace_pairs; i++) {
@@ -528,8 +451,8 @@ static ScenarioResult run_mixed_scenario(size_t rounds)
 
         syli_state_pop_frame_scope();
         for (size_t i = 0; i < trace_pairs; i++) {
-            free(root_slots[i]);
-            free(children[i]);
+            syli_free_ptr(root_slots[i]);
+            syli_free_ptr(children[i]);
         }
         free(children);
         free(roots);
@@ -559,18 +482,14 @@ static void print_json_round(const RoundResult* r)
     printf("        \"steps\": {\n");
     printf("          \"releasing\": %zu,\n", r->releasing_steps);
     printf("          \"tracing\": %zu,\n", r->tracing_steps);
-    printf("          \"dropping\": %zu,\n", r->dropping_steps);
     printf("          \"mutations\": %zu,\n", r->mutation_steps);
     printf("          \"checking\": %zu\n", r->checking_steps);
     printf("        },\n");
 
     printf("        \"total\": {\n");
-    printf("          \"dropped\": %zu,\n", r->total_dropped);
     printf("          \"traced\": %zu,\n", r->total_traced);
     printf("          \"released\": %zu,\n", r->total_released);
     printf("          \"memory_freed\": %zu,\n", r->total_memory_freed);
-    printf("          \"dropped_derived_steps\": %zu,\n",
-        r->total_dropped_derived);
     printf("          \"released_derived_steps\": %zu\n",
         r->total_released_derived);
     printf("        },\n");
@@ -584,8 +503,6 @@ static void print_json_round(const RoundResult* r)
         printf("\"suspected_lost_cycle\": %zu, ", c->suspected_lost_cycle);
         printf("\"releasing_worklist\": %zu, ", c->releasing_worklist);
         printf("\"releasing_waitlist\": %zu, ", c->releasing_waitlist);
-        printf("\"dropping_worklist\": %zu, ", c->dropping_worklist);
-        printf("\"dropping_waitlist\": %zu, ", c->dropping_waitlist);
         printf("\"tracing_worklist\": %zu, ", c->tracing_worklist);
         printf("\"tracing_mutations\": %zu", c->tracing_mutations);
         printf("}");
@@ -639,29 +556,28 @@ static void print_csv_output(
     printf("scenario,round,alloc_time_ms,gc_time_ms,all_time_ms,gc_cycles,peak_"
            "candidates,max_pause_ms,throughput_objects_per_ms,suspect_"
            "notifications,generation_tracing,tracing_generations,releasing_"
-           "steps,tracing_steps,dropping_steps,mutation_steps,checking_steps,"
-           "total_dropped,total_traced,total_released,total_memory_freed,total_"
-           "dropped_derived_steps,total_released_derived_steps\n");
+           "steps,tracing_steps,mutation_steps,checking_steps,"
+           "total_traced,total_released,total_memory_freed,"
+           "total_released_derived_steps\n");
     for (size_t i = 0; i < scenario_count; i++) {
         const ScenarioResult* s = &scenarios[i];
         for (size_t r = 0; r < s->rounds; r++) {
             const RoundResult* rr = &s->round_results[r];
             printf("%s,%zu,%.6f,%.6f,%.6f,%zu,%zu,%.6f,%.6f,%zu,%zu,%zu,%zu,%"
-                   "zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n",
+                   "zu,%zu,%zu,%zu,%zu,%zu,%zu\n",
                 s->name, r, rr->alloc_time_ms, rr->gc_time_ms, rr->all_time_ms,
                 rr->gc_cycles, rr->peak_candidates, ns_to_ms(rr->max_pause_ns),
                 rr->throughput_objects_per_ms, rr->suspect_notifications,
                 rr->generation_tracing, rr->tracing_generations,
-                rr->releasing_steps, rr->tracing_steps, rr->dropping_steps,
-                rr->mutation_steps, rr->checking_steps, rr->total_dropped,
-                rr->total_traced, rr->total_released, rr->total_memory_freed,
-                rr->total_dropped_derived, rr->total_released_derived);
+                rr->releasing_steps, rr->tracing_steps, rr->mutation_steps,
+                rr->checking_steps, rr->total_traced, rr->total_released,
+                rr->total_memory_freed, rr->total_released_derived);
         }
     }
 
     printf("\n");
     printf("scenario,round,cycle,pause_ms,suspected_lost_cycle,releasing_"
-           "worklist,releasing_waitlist,dropping_worklist,dropping_waitlist,"
+           "worklist,releasing_waitlist,"
            "tracing_worklist,tracing_mutations\n");
     for (size_t i = 0; i < scenario_count; i++) {
         const ScenarioResult* s = &scenarios[i];
@@ -669,11 +585,10 @@ static void print_csv_output(
             const RoundResult* rr = &s->round_results[r];
             for (size_t c = 0; c < rr->cycle_count; c++) {
                 const CycleMetrics* cm = &rr->cycles[c];
-                printf("%s,%zu,%zu,%.6f,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n", s->name,
-                    r, cm->cycle_index, ns_to_ms(cm->pause_ns),
+                printf("%s,%zu,%zu,%.6f,%zu,%zu,%zu,%zu,%zu\n", s->name, r,
+                    cm->cycle_index, ns_to_ms(cm->pause_ns),
                     cm->suspected_lost_cycle, cm->releasing_worklist,
-                    cm->releasing_waitlist, cm->dropping_worklist,
-                    cm->dropping_waitlist, cm->tracing_worklist,
+                    cm->releasing_waitlist, cm->tracing_worklist,
                     cm->tracing_mutations);
             }
         }
@@ -815,13 +730,12 @@ static RunConfig parse_args(int argc, char** argv)
 int main(int argc, char** argv)
 {
     const size_t rounds         = 3;
-    const size_t scenario_count = 3;
+    const size_t scenario_count = 2;
     RunConfig cfg               = parse_args(argc, argv);
 
-    ScenarioResult scenarios[3];
+    ScenarioResult scenarios[2];
     scenarios[0] = run_releasing_scenario(rounds);
-    scenarios[1] = run_dropping_scenario(rounds);
-    scenarios[2] = run_mixed_scenario(rounds);
+    scenarios[1] = run_mixed_scenario(rounds);
 
     if (cfg.output_mode == Output_SILENT) {
         return 0;

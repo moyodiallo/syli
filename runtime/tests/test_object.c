@@ -107,23 +107,23 @@ void test_object_meta_flags()
         Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
 
     uint64_t meta_ref_count
-        = make_meta_refcount(Meta_Flags_Dropping | Meta_Flags_Tracing,
+        = make_meta_refcount(Meta_Flags_Releasing | Meta_Flags_Tracing,
             syli_state.tracing_current_bit_mark);
 
     Object* obj = syli_object_alloc(header, meta_ref_count, word_size);
 
     assert(obj != NULL);
-    assert(syli_object_has_flags(obj, Meta_Flags_Dropping) == true);
+    assert(syli_object_has_flags(obj, Meta_Flags_Releasing) == true);
     assert(syli_object_has_flags(obj, Meta_Flags_Tracing) == true);
-    assert(syli_object_has_flags(obj, Meta_Flags_Releasing) == false);
+    assert(syli_object_has_flags(obj, Meta_Flags_Waiting_Remove) == false);
     assert(syli_object_has_flags(obj, Meta_Flags_Suspect_Lost_Cycle) == false);
 
     syli_object_set_flags(obj, Meta_Flags_Suspect_Lost_Cycle);
     syli_object_clear_flags(obj, Meta_Flags_Tracing);
     assert(syli_object_has_flags(obj, Meta_Flags_Suspect_Lost_Cycle) == true);
-    assert(syli_object_has_flags(obj, Meta_Flags_Dropping) == true);
+    assert(syli_object_has_flags(obj, Meta_Flags_Releasing) == true);
     assert(syli_object_has_flags(obj, Meta_Flags_Tracing) == false);
-    assert(syli_object_has_flags(obj, Meta_Flags_Releasing) == false);
+    assert(syli_object_has_flags(obj, Meta_Flags_Waiting_Remove) == false);
 
     free(obj);
     syli_state_destroy();

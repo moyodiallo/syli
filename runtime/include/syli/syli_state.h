@@ -10,7 +10,7 @@
 #include "stack_frame.h"
 
 typedef struct Suspected {
-    GCObject* obj;
+    obj_ptr obj;
 } Suspected;
 
 typedef enum Tracing_state_machine {
@@ -25,15 +25,10 @@ typedef enum Releasing_state_machine {
     Releasing      = 1
 } Releasing_state_machine;
 
-typedef enum Dropping_state_machine {
-    Dropping_Idle = 0,
-    Dropping      = 1
-} Dropping_state_machine;
-
-CHUNK_VECTOR_STRUCT(GCObject);
+CHUNK_VECTOR_STRUCT(obj_ptr);
 CHUNK_VECTOR_STRUCT(Suspected);
 
-CHUNK_VECTOR_IMPLEMENT(GCObject);
+CHUNK_VECTOR_IMPLEMENT(obj_ptr);
 CHUNK_VECTOR_IMPLEMENT(Suspected);
 
 // ==================== Syli State ====================
@@ -41,38 +36,31 @@ typedef struct Syli_state {
 
     size_t THRESHOLD_SUSPECTS_LOST_CYCLE;
     size_t THRESHOLD_RELEASING_BUCKET;
-    size_t THRESHOLD_DROPPING_BUCKET;
 
     size_t FULL_BUCKET_SUSPECT_LOST_CYCLE;
 
     size_t BUDGET_GC_TRACING;
     size_t BUDGET_GC_RELEASING;
-    size_t BUDGET_GC_DROPPING;
     size_t BUDGET_GC_CHECKING;
 
     int tracing_budget;
     int releasing_budget;
-    int dropping_budget;
     int checking_budget;
 
-    vector_GCObject tracing_worklist;
-    vector_GCObject tracing_mutations_worklist;
+    vector_obj_ptr tracing_worklist;
+    vector_obj_ptr tracing_mutations_worklist;
 
-    vector_GCObject releasing_worklist;
-    vector_GCObject dropping_worklist;
+    vector_obj_ptr releasing_worklist;
 
-    vector_GCObject releasing_waitlist;
-    vector_GCObject dropping_waitlist;
+    vector_obj_ptr releasing_waitlist;
 
     vector_Suspected suspect_lost_cycle;
 
     size_t releasing_steps;
     size_t tracing_steps;
-    size_t dropping_steps;
     size_t mutation_steps;
     size_t checking_steps;
 
-    size_t total_objects_dropped;
     size_t total_objects_traced;
     size_t total_objects_released;
     size_t total_objects_memory_freed;
@@ -92,7 +80,6 @@ typedef struct Syli_state {
     // State machines for GC phases
     Tracing_state_machine tracing_state;
     Releasing_state_machine releasing_state;
-    Dropping_state_machine dropping_state;
 
     size_t suspect_objects_notifications;
 
@@ -143,18 +130,15 @@ void syli_state_pop_frame_scope(void);
 
 void syli_state_gc_tracing(void);
 void syli_state_gc_releasing(void);
-void syli_state_gc_dropping(void);
 
 static inline void syli_state_gc_cycle()
 {
     syli_state.tracing_budget   = syli_state.BUDGET_GC_TRACING;
     syli_state.releasing_budget = syli_state.BUDGET_GC_RELEASING;
 
-    syli_state.dropping_budget = syli_state.BUDGET_GC_DROPPING;
     syli_state.checking_budget = syli_state.BUDGET_GC_CHECKING;
 
     syli_state_gc_releasing();
-    syli_state_gc_dropping();
     syli_state_gc_tracing();
 }
 

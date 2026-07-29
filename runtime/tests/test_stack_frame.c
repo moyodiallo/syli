@@ -4,19 +4,17 @@
 
 #include "syli/object.h"
 #include "syli/stack_frame.h"
+#include "syli/syli.h"
 #include "syli/syli_state.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
-static Object* make_test_mono_imm_object(size_t word_size)
+static obj_ptr make_test_mono_imm_object(size_t word_size)
 {
     object_payload_t payload = syli_object_make_mono_payload(word_size);
-    object_header_t header = syli_object_make_header(
+    object_header_t header   = syli_object_make_header(
         Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
-    uint64_t meta_ref_count = make_meta_refcount(
-        Meta_Flags_None, syli_state.tracing_current_bit_mark);
-    return syli_object_alloc(header, meta_ref_count, word_size);
+    return syli_rt_ownership_alloc_object(header, 1, word_size);
 }
 
 int main()
@@ -37,9 +35,9 @@ int main()
 
     // Test 2: Push scope with StackFrame1
     printf("Test 2: Push scope with single root\n");
-    Object* obj1 = (Object*)0x1000;
-    Object** roots1[] = { &obj1 };
-    Frame frame1 = { .root_count = 1, .roots = roots1 };
+    obj_ptr obj1      = (obj_ptr)0x1000;
+    obj_ptr* roots1[] = { &obj1 };
+    Frame frame1      = { .root_count = 1, .roots = roots1 };
 
     int result = syli_stack_frame_push_scope(&stack, &frame1);
     assert(result == 1);
@@ -49,10 +47,10 @@ int main()
 
     // Test 3: Push scope with StackFrame2
     printf("Test 3: Push scope with two roots\n");
-    Object* obj2a = (Object*)0x2000;
-    Object* obj2b = (Object*)0x2001;
-    Object** roots2[] = { &obj2a, &obj2b };
-    Frame frame2 = { .root_count = 2, .roots = roots2 };
+    obj_ptr obj2a     = (obj_ptr)0x2000;
+    obj_ptr obj2b     = (obj_ptr)0x2001;
+    obj_ptr* roots2[] = { &obj2a, &obj2b };
+    Frame frame2      = { .root_count = 2, .roots = roots2 };
 
     result = syli_stack_frame_push_scope(&stack, &frame2);
     assert(result == 1);
@@ -62,11 +60,11 @@ int main()
 
     // Test 4: Push scope with StackFrame3
     printf("Test 4: Push scope with three roots\n");
-    Object* obj3a = (Object*)0x3000;
-    Object* obj3b = (Object*)0x3001;
-    Object* obj3c = (Object*)0x3002;
-    Object** roots3[] = { &obj3a, &obj3b, &obj3c };
-    Frame frame3 = { .root_count = 3, .roots = roots3 };
+    obj_ptr obj3a     = (obj_ptr)0x3000;
+    obj_ptr obj3b     = (obj_ptr)0x3001;
+    obj_ptr obj3c     = (obj_ptr)0x3002;
+    obj_ptr* roots3[] = { &obj3a, &obj3b, &obj3c };
+    Frame frame3      = { .root_count = 3, .roots = roots3 };
 
     result = syli_stack_frame_push_scope(&stack, &frame3);
     assert(result == 1);
@@ -76,14 +74,14 @@ int main()
 
     // Test 5: Push dynamic StackFrame
     printf("Test 5: Push dynamic StackFrame\n");
-    Object* obj4a = (Object*)0x4000;
-    Object* obj4b = (Object*)0x4001;
-    Object* obj4c = (Object*)0x4002;
-    Object* obj4d = (Object*)0x4003;
-    Object* obj4e = (Object*)0x4004;
+    obj_ptr obj4a = (obj_ptr)0x4000;
+    obj_ptr obj4b = (obj_ptr)0x4001;
+    obj_ptr obj4c = (obj_ptr)0x4002;
+    obj_ptr obj4d = (obj_ptr)0x4003;
+    obj_ptr obj4e = (obj_ptr)0x4004;
 
     // Create array of root pointers
-    Object** roots4[] = { &obj4a, &obj4b, &obj4c, &obj4d, &obj4e };
+    obj_ptr* roots4[]   = { &obj4a, &obj4b, &obj4c, &obj4d, &obj4e };
     Frame dynamic_frame = { .root_count = 5, .roots = roots4 };
 
     result = syli_stack_frame_push_scope(&stack, &dynamic_frame);
@@ -99,9 +97,9 @@ int main()
 
     // Test 7: Push one more to trigger resize
     printf("Test 7: Push to trigger resize\n");
-    Object* obj5 = (Object*)0x5000;
-    Object** roots5[] = { &obj5 };
-    Frame frame5 = { .root_count = 1, .roots = roots5 };
+    obj_ptr obj5      = (obj_ptr)0x5000;
+    obj_ptr* roots5[] = { &obj5 };
+    Frame frame5      = { .root_count = 1, .roots = roots5 };
 
     result = syli_stack_frame_push_scope(&stack, &frame5);
     assert(result == 1);
@@ -130,26 +128,28 @@ int main()
     printf("Test 10: Create objects and test root tracking\n");
 
     // Create a monotype object with 3 fields
-    Object* test_obj1 = make_test_mono_imm_object(3);
+    obj_ptr test_obj1 = make_test_mono_imm_object(3);
     assert(test_obj1 != NULL);
-    assert(syli_object_length(test_obj1) == 3);
+    Object* o1 = syli_object_of_obj_ptr(test_obj1);
+    assert(syli_object_length(o1) == 3);
 
     // Set some values in the object
-    uint64_t* data1 = syli_object_data(test_obj1);
-    data1[0] = 42;
-    data1[1] = 123;
-    data1[2] = 999;
+    uint64_t* data1 = syli_object_data(o1);
+    data1[0]        = 42;
+    data1[1]        = 123;
+    data1[2]        = 999;
 
     // Create another object
-    Object* test_obj2 = make_test_mono_imm_object(2);
+    obj_ptr test_obj2 = make_test_mono_imm_object(2);
     assert(test_obj2 != NULL);
-    uint64_t* data2 = syli_object_data(test_obj2);
-    data2[0] = 777;
-    data2[1] = 555;
+    Object* o2      = syli_object_of_obj_ptr(test_obj2);
+    uint64_t* data2 = syli_object_data(o2);
+    data2[0]        = 777;
+    data2[1]        = 555;
 
     // Push a frame with these objects as roots
-    Object** root_slots[] = { &test_obj1, &test_obj2 };
-    Frame root_frame = { .root_count = 2, .roots = root_slots };
+    obj_ptr* root_slots[] = { &test_obj1, &test_obj2 };
+    Frame root_frame      = { .root_count = 2, .roots = root_slots };
 
     result = syli_stack_frame_push_scope(&stack, &root_frame);
     assert(result == 1);
@@ -157,11 +157,11 @@ int main()
     printf("✓ Pushed frame with object roots\n");
 
     // Verify we can access the objects through the roots
-    Object* retrieved_obj1 = *root_frame.roots[0];
-    Object* retrieved_obj2 = *root_frame.roots[1];
+    Object* retrieved_obj1 = syli_object_of_obj_ptr(*root_frame.roots[0]);
+    Object* retrieved_obj2 = syli_object_of_obj_ptr(*root_frame.roots[1]);
 
-    assert(retrieved_obj1 == test_obj1);
-    assert(retrieved_obj2 == test_obj2);
+    assert(retrieved_obj1 == o1);
+    assert(retrieved_obj2 == o2);
     printf("✓ Retrieved objects from roots match originals\n");
 
     // Verify the object data is still correct
@@ -181,8 +181,8 @@ int main()
     assert(stack.top == 0);
     printf("✓ Popped frame with object roots\n\n");
 
-    free(test_obj1);
-    free(test_obj2);
+    syli_free_ptr(test_obj1);
+    syli_free_ptr(test_obj2);
 
     // Test 11: Destroy
     printf("Test 11: Destroy stack\n");

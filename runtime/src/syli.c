@@ -42,8 +42,9 @@ void syli_rt_object_incr(Object* obj)
     }
 }
 
-void syli_rt_object_decr(Object* obj)
+void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr)
 {
+    assert(obj != NULL);
     ObjectZone zone = syli_object_get_zone(obj);
 
     if (zone == Zone_Static)
@@ -53,6 +54,15 @@ void syli_rt_object_decr(Object* obj)
         GCObject* local_obj = as_gc_object(obj);
         local_obj->meta_ref_count--;
         return;
+    }
+
+    if (syli_object_refcount(obj) == 0) {
+        if (syli_object_is_mono_imm(obj)) {
+            syli_state.total_objects_memory_freed++;
+            free(obj);
+            return;
+        }
+        gc_vector_push_back(&syli_state.releasing_waitlist, obj_ptr);
     }
 }
 
@@ -70,51 +80,14 @@ void syli_rt_object_decr_n(Object* obj, int n)
     }
 }
 
-void syli_rt_object_check_release(Object* obj)
-{
-    assert(obj != NULL);
-
-    ObjectZone zone = syli_object_get_zone(obj);
-
-    if (zone == Zone_Static) {
-        return;
-    }
-
-    if (syli_object_refcount(obj) == 0) {
-        if (syli_object_is_mono_imm(obj)) {
-            syli_state.total_objects_memory_freed++;
-            free(obj);
-            return;
-        }
-        gc_vector_push_back(&syli_state.releasing_waitlist, obj);
-    }
-}
-
-void syli_rt_object_decr_drop(Object* obj)
-{
-    assert(obj != NULL);
-
-    ObjectZone zone = syli_object_get_zone(obj);
-
-    if (zone == Zone_Static) {
-        return;
-    }
-
-    if (zone == Zone_GcLocal) {
-        // Add to dropping worklist
-        gc_vector_push_back(&syli_state.dropping_waitlist, obj);
-        return;
-    }
-}
-
-void syli_rt_object_check_lost_cyclic_release(Object* obj)
+void syli_rt_object_check_lost_cyclic_release(Object* obj, obj_ptr ptr)
 {
     assert(obj != NULL);
 
     ObjectZone zone = syli_object_get_zone(obj);
 
     if (zone == Zone_GcLocal && syli_object_refcount(obj) > 0) {
-        gc_add_suspect(obj);
+        gc_add_suspect(ptr);
     }
 }
 
@@ -211,7 +184,8 @@ void syli_rt_object_raw_copy(Object* src, Object* dst)
     }
 }
 
-void syli_rt_object_notify_mutation(Object* obj, Object* target)
+void syli_rt_object_notify_mutation(
+    Object* obj, Object* target, obj_ptr target_ptr)
 {
     assert(obj != NULL && target != NULL);
 
@@ -231,7 +205,7 @@ void syli_rt_object_notify_mutation(Object* obj, Object* target)
     gc_mark_tag_object(
         target); // mark the target as marked to avoid multiple notifications
                  // for the same object in the same tracing cycle
-    gc_vector_push_back(&syli_state.tracing_mutations_worklist, target);
+    gc_vector_push_back(&syli_state.tracing_mutations_worklist, target_ptr);
 }
 
 void syli_rt_gc_cycle() { syli_state_gc_cycle(); }
@@ -240,31 +214,14 @@ void syli_rt_gc_cycle() { syli_state_gc_cycle(); }
  * Ownership Tag Primitives
  ************************************************/
 
-#define OWN_REF_TAG 1ULL
-
-static inline void* syli_ownership_untag(void* ptr)
-{
-    return (void*)((uintptr_t)ptr & ~OWN_REF_TAG);
-}
-
-static inline bool syli_ownership_is_own_ref(void* ptr)
-{
-    return ((uintptr_t)ptr & OWN_REF_TAG) != 0;
-}
-
-static inline void* syli_ownership_set_own(void* ptr)
-{
-    return (void*)((uintptr_t)ptr | OWN_REF_TAG);
-}
-
-void* syli_rt_ownership_alloc_object(
+obj_ptr syli_rt_ownership_alloc_object(
     object_header_t header, size_t refcount, size_t words)
 {
     GCObject* obj = syli_rt_rc_alloc_object(header, refcount, words);
     return syli_ownership_set_own(obj);
 }
 
-void* syli_rt_ownership_share(void* ptr)
+obj_ptr syli_rt_ownership_share(obj_ptr ptr)
 {
     assert(syli_ownership_untag(ptr) != NULL);
     Object* obj = (Object*)syli_ownership_untag(ptr);
@@ -273,23 +230,38 @@ void* syli_rt_ownership_share(void* ptr)
     return syli_ownership_set_own(ptr);
 }
 
-void syli_rt_ownership_decr(void* ptr)
+void syli_rt_ownership_decr(obj_ptr ptr)
 {
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
-    syli_rt_object_decr(obj);
-    syli_rt_object_check_release(obj);
+    syli_rt_object_decr(obj, ptr);
 }
 
-void* syli_rt_ownership_untag(void* ptr) { return syli_ownership_untag(ptr); }
+obj_ptr syli_rt_ownership_untag(obj_ptr ptr)
+{
+    return syli_ownership_untag(ptr);
+}
 
-void syli_rt_ownership_incr(void* ptr)
+void syli_rt_ownership_incr(obj_ptr ptr)
 {
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
     syli_rt_object_incr(obj);
+}
+
+void syli_rt_ownership_check_lost_cyclic_release(obj_ptr ptr)
+{
+    Object* obj = syli_object_of_obj_ptr(ptr);
+    syli_rt_object_check_lost_cyclic_release(obj, ptr);
+}
+
+void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr)
+{
+    Object* obj = syli_object_of_obj_ptr(ptr);
+    Object* target = syli_object_of_obj_ptr(target_ptr);
+    syli_rt_object_notify_mutation(obj, target, target_ptr);
 }
 
 void syli_rt_ownership_release(void* ptr)
@@ -298,12 +270,11 @@ void syli_rt_ownership_release(void* ptr)
         assert(syli_ownership_is_own_ref(ptr));
         Object* obj = (Object*)syli_ownership_untag(ptr);
         assert(obj != NULL);
-        syli_rt_object_decr(obj);
-        syli_rt_object_check_release(obj);
+        syli_rt_object_decr(obj, ptr);
     }
 }
 
-void* syli_rt_ownership_own(void* ptr)
+obj_ptr syli_rt_ownership_own(obj_ptr ptr)
 {
     if (syli_ownership_is_own_ref(ptr)) {
         return ptr;
@@ -315,4 +286,7 @@ void* syli_rt_ownership_own(void* ptr)
     return syli_ownership_set_own(obj);
 }
 
-void* syli_rt_ownership_borrow(void* ptr) { return syli_ownership_untag(ptr); }
+obj_ptr syli_rt_ownership_borrow(obj_ptr ptr)
+{
+    return syli_ownership_untag(ptr);
+}

@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include "syli/immediate.h"
+#include "syli/syli_primitives.h"
 
 void syli_print_i64(int64_t value) {
     printf("%" PRId64, value);
