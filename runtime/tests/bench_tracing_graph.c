@@ -37,8 +37,7 @@ static bool tracing_done(void)
         && vector_size_GCObject(&syli_state.tracing_worklist) == 0
         && vector_size_GCObject(&syli_state.tracing_mutations_worklist) == 0
         && syli_state.tracing_state == Tracing_Idle
-        && syli_state.releasing_state == Releasing_Idle
-        && syli_state.dropping_state == Dropping_Idle;
+        && syli_state.releasing_state == Releasing_Idle;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -65,7 +64,6 @@ static void run_tracing_bench(
         syli_state.tracing_state                 = Tracing_Idle;
         syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
         syli_state.THRESHOLD_RELEASING_BUCKET    = 1;
-        syli_state.THRESHOLD_DROPPING_BUCKET     = 1;
 
         Object** frame_roots[] = { root_slot };
         Frame frame            = { .root_count = 1, .roots = frame_roots };

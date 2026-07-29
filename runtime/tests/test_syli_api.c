@@ -238,52 +238,6 @@ static void test_rt_object_check_release(void)
 }
 
 /* ============================================================
- * Test: syli_rt_object_decr_drop
- * ============================================================ */
-
-static void test_rt_object_decr_drop(void)
-{
-    printf("Test 5: syli_rt_object_decr_drop()\n");
-
-    syli_state_init();
-
-    Object* obj
-        = make_object(Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0);
-    assert(obj != NULL);
-
-    /* Simulate the language pattern: release the local reference first, then
-     * call drop to signal the object is no longer reachable. */
-    syli_rt_object_decr(obj);
-    assert(syli_object_refcount(obj) == 0);
-
-    assert(vector_size_GCObject(&syli_state.dropping_waitlist) == 0);
-    syli_rt_object_decr_drop(obj);
-    assert(vector_size_GCObject(&syli_state.dropping_waitlist) == 1);
-
-    /* Verify the object was added to the dropping_waitlist, then pop back */
-    {
-        Object** back
-            = (Object**)vector_back_GCObject(&syli_state.dropping_waitlist);
-        assert(*back == obj);
-        vector_pop_back_GCObject(&syli_state.dropping_waitlist);
-    }
-
-    /* Drop on static object should be a no-op */
-    {
-        Object static_obj;
-        static_obj.header_word = syli_object_make_header(
-            Zone_Static, Acyclic, Type_MonoImm, Flag_None, 0);
-        syli_rt_object_decr_drop(&static_obj);
-        assert(vector_size_GCObject(&syli_state.dropping_waitlist) == 0);
-    }
-
-    free(obj);
-    syli_state_destroy();
-    printf("✓ syli_rt_object_decr_drop enqueues unreachable objects to "
-           "dropping_waitlist\n\n");
-}
-
-/* ============================================================
  * Test: syli_rt_object_check_lost_cyclic_release
  * ============================================================ */
 
@@ -506,7 +460,6 @@ static void test_rt_gc_cycle(void)
     /* Set budget counters to non-zero to verify they get reset */
     syli_state.tracing_budget   = -1;
     syli_state.releasing_budget = -1;
-    syli_state.dropping_budget  = -1;
     syli_state.checking_budget  = -1;
 
     /* Call gc_cycle which resets budgets */
@@ -515,88 +468,10 @@ static void test_rt_gc_cycle(void)
     /* Budgets should be reset */
     assert(syli_state.tracing_budget == (int)syli_state.BUDGET_GC_TRACING);
     assert(syli_state.releasing_budget == (int)syli_state.BUDGET_GC_RELEASING);
-    assert(syli_state.dropping_budget == (int)syli_state.BUDGET_GC_DROPPING);
     assert(syli_state.checking_budget == (int)syli_state.BUDGET_GC_CHECKING);
 
     syli_state_destroy();
     printf("✓ syli_rt_gc_cycle() resets budgets\n\n");
-}
-
-/* ============================================================
- * Test: Two cyclic objects pointing to each other
- *
- *   A <──> B  (each points to the other)
- *
- * Pattern:
- *   1. Allocate A and B with refcount 1 each
- *   2. Set A[0] = B, B[0] = A (pointer assignments)
- *   3. Acquire each to track the cross-reference
- *   4. Release the local handles (refcount drops to 1 each, from cycle)
- *   5. Drop both (enqueue to dropping_waitlist)
- *   6. Run gc_cycle — dropping GC processes the cycle:
- *      - A: decr B → B's refcount goes 1→0, A has refcount 1 > 0 →
- * Waiting_Remove
- *      - B: decr A → A's refcount goes 1→0, B has refcount 0 → freed
- *      - A (re-processed): Waiting_Remove + refcount 0 → freed
- *   7. Verify dropping_waitlist and dropping_worklist are empty
- * ============================================================ */
-
-static void test_rt_cyclic_object_decr_drop_and_gc(void)
-{
-    printf("Test 11: Two cyclic objects A<->B dropped and collected by "
-           "gc_cycle\n");
-
-    syli_state_init();
-
-    /* Lower threshold so dropping kicks in with just 2 objects */
-    syli_state.THRESHOLD_DROPPING_BUCKET = 1;
-    /* Ensure enough budget for dropping */
-    syli_state.BUDGET_GC_DROPPING = 100;
-
-    /* Allocate two cyclic mono-ref objects, each with 1 pointer field */
-    Object* A
-        = make_object(Zone_GcLocal, Cyclic, Type_MonoRef, Flag_HasPointers, 1);
-    Object* B
-        = make_object(Zone_GcLocal, Cyclic, Type_MonoRef, Flag_HasPointers, 1);
-    assert(A != NULL);
-    assert(B != NULL);
-
-    /* Cross-reference: A[0] = B, B[0] = A */
-    syli_object_data(A)[0] = (uint64_t)B;
-    syli_object_data(B)[0] = (uint64_t)A;
-
-    /* Acquire each to track the cross-reference (simulating the cycle) */
-    syli_rt_object_incr(B); /* A refers to B */
-    syli_rt_object_incr(A); /* B refers to A */
-    assert(syli_object_refcount(A) == 2);
-    assert(syli_object_refcount(B) == 2);
-
-    /* Release the local handles (refcount drops to 1 each, held by cycle) */
-    syli_rt_object_decr(A);
-    syli_rt_object_decr(B);
-    assert(syli_object_refcount(A) == 1);
-    assert(syli_object_refcount(B) == 1);
-
-    /* Drop both — objects are no longer reachable from the language */
-    syli_rt_object_decr_drop(A);
-    syli_rt_object_decr_drop(B);
-    assert(vector_size_GCObject(&syli_state.dropping_waitlist) == 2);
-
-    /* Run gc_cycle — should process the dropping waitlist */
-    syli_rt_gc_cycle();
-
-    /* After gc_cycle, both waitlist and worklist should be empty */
-    assert(vector_size_GCObject(&syli_state.dropping_waitlist) == 0);
-    assert(vector_size_GCObject(&syli_state.dropping_worklist) == 0);
-
-    /* The dropping GC freed both objects.
-     * One is freed via free_dropping_object (counter incremented),
-     * the other is freed directly when sent back with Waiting_Remove + refcount
-     * 0 (counter NOT incremented for that path). */
-    assert(syli_state.total_objects_memory_freed == 1);
-
-    syli_state_destroy();
-    printf("✓ Two cyclic objects A<->B dropped and collected by gc_cycle\n\n");
 }
 
 /* ============================================================
@@ -778,13 +653,11 @@ int main(void)
     test_rt_object_incr_decr();
     test_rt_object_decr_n();
     test_rt_object_check_release();
-    test_rt_object_decr_drop();
     test_rt_object_check_lost_cyclic_release();
     test_rt_get_object_tag();
     test_rt_get_object_length();
     test_rt_object_raw_copy();
     test_rt_gc_cycle();
-    test_rt_cyclic_object_decr_drop_and_gc();
     test_rt_object_notify_mutation();
 
     printf("\033[1;32m=== All syli.h API Tests Passed! ===\033[0m\n\n");

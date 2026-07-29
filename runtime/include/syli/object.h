@@ -47,26 +47,20 @@ typedef struct StackObject {
     uint64_t value[];
 } StackObject;
 
-// - Dropping & Releasing are mutually exclusive
-// - Tracing object inside tracing worklist:
-//     - Could be inside dropping at the same time
-//     - Could be inside releasing at the same time
 typedef enum ObjectMetaFlags {
     Meta_Flags_None = 0,
     Meta_Flags_Suspect_Lost_Cycle = 1ULL << 56,
     Meta_Flags_Releasing = 1ULL << (56 + 1),
-    Meta_Flags_Dropping = 1ULL << (56 + 2),
-    Meta_Flags_Tracing = 1ULL << (56 + 3),
-    Meta_Flags_Waiting_Remove = 1ULL << (56 + 4)
+    Meta_Flags_Tracing = 1ULL << (56 + 2),
+    Meta_Flags_Waiting_Remove = 1ULL << (56 + 3)
 } ObjectMetaFlags;
 
 static inline uint64_t make_meta_refcount(
     uint64_t current_state_bit_mark, ObjectMetaFlags flags)
 {
     assert(flags == Meta_Flags_None || flags == Meta_Flags_Suspect_Lost_Cycle
-        || flags == Meta_Flags_Releasing || flags == Meta_Flags_Dropping
-        || flags == Meta_Flags_Tracing
-        || flags == Meta_Flags_Waiting_Remove); // 5-bit flags
+        || flags == Meta_Flags_Releasing || flags == Meta_Flags_Tracing
+        || flags == Meta_Flags_Waiting_Remove); // 4-bit flags
     return (current_state_bit_mark) | ((uint64_t)flags) | INITIAL_REFCOUNT;
 }
 

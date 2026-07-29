@@ -90,23 +90,6 @@ void syli_rt_object_check_release(Object* obj)
     }
 }
 
-void syli_rt_object_decr_drop(Object* obj)
-{
-    assert(obj != NULL);
-
-    ObjectZone zone = syli_object_get_zone(obj);
-
-    if (zone == Zone_Static) {
-        return;
-    }
-
-    if (zone == Zone_GcLocal) {
-        // Add to dropping worklist
-        gc_vector_push_back(&syli_state.dropping_waitlist, obj);
-        return;
-    }
-}
-
 void syli_rt_object_check_lost_cyclic_release(Object* obj)
 {
     assert(obj != NULL);

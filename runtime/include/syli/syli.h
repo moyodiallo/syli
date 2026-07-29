@@ -58,10 +58,6 @@ void syli_rt_object_decr_n(Object* obj, int n);
 // immediately
 void syli_rt_object_check_release(Object* obj);
 
-// Add to dropping waitlist regardless of refcount. Does not decrement refcount.
-// Caller must guarantee the object is no longer reachable.
-void syli_rt_object_decr_drop(Object* obj);
-
 // If refcount is still above zero, mark as suspect lost cycle
 void syli_rt_object_check_lost_cyclic_release(Object* obj);
 

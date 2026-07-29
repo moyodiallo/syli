@@ -35,13 +35,10 @@ static bool gc_is_done(void)
 {
     return vector_size_GCObject(&syli_state.releasing_waitlist) == 0
         && vector_size_GCObject(&syli_state.releasing_worklist) == 0
-        && vector_size_GCObject(&syli_state.dropping_waitlist) == 0
-        && vector_size_GCObject(&syli_state.dropping_worklist) == 0
         && vector_size_GCObject(&syli_state.tracing_worklist) == 0
         && vector_size_GCObject(&syli_state.tracing_mutations_worklist) == 0
         && syli_state.tracing_state == Tracing_Idle
-        && syli_state.releasing_state == Releasing_Idle
-        && syli_state.dropping_state == Dropping_Idle;
+        && syli_state.releasing_state == Releasing_Idle;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -68,7 +65,6 @@ static void run_profile(
     for (int round = 0; round < N_ROUNDS; round++) {
         syli_state_init();
         syli_state.THRESHOLD_RELEASING_BUCKET    = 1;
-        syli_state.THRESHOLD_DROPPING_BUCKET     = 1;
         syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
 
         /* Allocation phase */

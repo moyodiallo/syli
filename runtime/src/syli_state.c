@@ -19,28 +19,23 @@ void syli_state_init()
     // Initialize thresholds
     syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 1000;
     syli_state.THRESHOLD_RELEASING_BUCKET = 1000;
-    syli_state.THRESHOLD_DROPPING_BUCKET = 1000;
 
     syli_state.FULL_BUCKET_SUSPECT_LOST_CYCLE = 10000;
 
     // Initialize budgets
     syli_state.BUDGET_GC_TRACING = 2 * BUDGET_BATCH_SIZE;
     syli_state.BUDGET_GC_RELEASING = 5 * BUDGET_BATCH_SIZE;
-    syli_state.BUDGET_GC_DROPPING = 5 * BUDGET_BATCH_SIZE;
     syli_state.BUDGET_GC_CHECKING = 3 * BUDGET_BATCH_SIZE;
 
     syli_state.tracing_budget = 0;
     syli_state.releasing_budget = 0;
-    syli_state.dropping_budget = 0;
     syli_state.checking_budget = 0;
 
     // Initialize GC worklists (vectors of GCObject*)
     vector_init_GCObject(&syli_state.tracing_worklist);
     vector_init_GCObject(&syli_state.tracing_mutations_worklist);
     vector_init_GCObject(&syli_state.releasing_worklist);
-    vector_init_GCObject(&syli_state.dropping_worklist);
     vector_init_GCObject(&syli_state.releasing_waitlist);
-    vector_init_GCObject(&syli_state.dropping_waitlist);
 
     // Initialize suspect lost cycle vector
     vector_init_Suspected(&syli_state.suspect_lost_cycle);
@@ -48,11 +43,9 @@ void syli_state_init()
     // Initialize stats
     syli_state.releasing_steps = 0;
     syli_state.tracing_steps = 0;
-    syli_state.dropping_steps = 0;
     syli_state.mutation_steps = 0;
     syli_state.checking_steps = 0;
 
-    syli_state.total_objects_dropped = 0;
     syli_state.total_objects_traced = 0;
     syli_state.total_objects_released = 0;
     syli_state.total_objects_memory_freed = 0;
@@ -73,7 +66,6 @@ void syli_state_init()
     // Initialize state machines
     syli_state.tracing_state = Tracing_Idle;
     syli_state.releasing_state = Releasing_Idle;
-    syli_state.dropping_state = Dropping_Idle;
 
     syli_state.suspect_objects_notifications = 0;
 
@@ -87,9 +79,7 @@ void syli_state_destroy()
     vector_destroy_GCObject(&syli_state.tracing_worklist);
     vector_destroy_GCObject(&syli_state.tracing_mutations_worklist);
     vector_destroy_GCObject(&syli_state.releasing_worklist);
-    vector_destroy_GCObject(&syli_state.dropping_worklist);
     vector_destroy_GCObject(&syli_state.releasing_waitlist);
-    vector_destroy_GCObject(&syli_state.dropping_waitlist);
 
     // Clean up suspect lost cycle vector
     vector_destroy_Suspected(&syli_state.suspect_lost_cycle);

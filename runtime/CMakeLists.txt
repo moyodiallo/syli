@@ -55,7 +55,6 @@ add_library(syliruntime STATIC
     src/syli_state.c
     src/syli_state_gc_releasing.c
     src/syli_state_gc_tracing.c
-    src/syli_state_gc_dropping.c
     src/stack_frame.c
     src/main.c
     src/immediate.c
