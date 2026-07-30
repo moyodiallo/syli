@@ -7,7 +7,7 @@ A high-performance runtime for the Syli programming language, implemented in C.
 
 ## Runtime
 
-### GC — reference counting + tracing with cycle detection
+### GC — reference counting + tracing for detecting the lost cyclic objects
 
 Two independent incremental state machines, each with its own worklist and budget:
 
@@ -47,22 +47,6 @@ cmake --build cmake-allocators/jemalloc -j
 # Compare all allocators
 ./build_all_allocators.sh
 ./compare_allocators.sh
-```
-
-## File Layout
-
-```
-runtime/
-├── src/                  # Source files
-├── include/syli/         # Public headers
-├── tests/                # Unit tests and benchmarks
-├── compat/               # Compatibility helpers
-├── CMakeLists.txt
-├── build_all_allocators.sh
-├── compare_allocators.sh
-├── run_bench.sh
-├── perf.sh
-└── run_test.sh
 ```
 
 ## Building
