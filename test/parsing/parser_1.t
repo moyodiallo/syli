@@ -235,12 +235,12 @@
   print_int(x)
   $ dune exec sylic parse parse0.src
   
-  Parse error in parse0.src at line 1, column 4
+  Parse error in parse0.src at line 2, column 0
   
-    1 | let mut x = 0
-             ^^^
+    2 | while x < 10
+         ^^^^^
   
-  Unexpected token: 'MUT'
+  Unexpected token: 'WHILE'
   
   [1]
 

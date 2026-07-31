@@ -4,15 +4,9 @@
   $ cat parse0.src
   let mut x = 10
   $ dune exec sylic alpha parse0.src
-  
-  Parse error in parse0.src at line 1, column 4
-  
-    1 | let mut x = 10
-             ^^^
-  
-  Unexpected token: 'MUT'
-  
-  [1]
+  let mut#2 = lambda(x#1) {
+    10
+  }
 
 
   $ cat >parse0.src <<EOF
@@ -215,12 +209,12 @@
   print_int(x)
   $ dune exec sylic alpha parse0.src
   
-  Parse error in parse0.src at line 1, column 4
+  Parse error in parse0.src at line 2, column 0
   
-    1 | let mut x = 0
-             ^^^
+    2 | while x < 10
+         ^^^^^
   
-  Unexpected token: 'MUT'
+  Unexpected token: 'WHILE'
   
   [1]
 

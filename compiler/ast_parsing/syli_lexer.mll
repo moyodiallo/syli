@@ -51,7 +51,7 @@ rule token = parse
   | "else"      { ELSE }
   | "while"     { WHILE }
   | "let"       { LET }
-  | "mut"       { MUT }
+  | "mutable"   { MUTABLE }
   | "local"     { LOCAL }
   | "end"       { END }
   | "continue"  { CONTINUE }

@@ -17,7 +17,7 @@ let string_of_token = function
   | IF -> "IF"
   | ELSE -> "ELSE"
   | WHILE -> "WHILE"
-  | MUT -> "MUT"
+  | MUTABLE -> "MUTABLE"
   | END -> "END"
   | LOCAL -> "LOCAL"
   | BOOL_VAL b -> Printf.sprintf "BOOL_VAL(%s)" b
