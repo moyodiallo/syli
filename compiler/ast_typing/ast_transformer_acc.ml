@@ -22,6 +22,9 @@ let rec transform_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   | TTy_Array inner ->
       let acc', inner' = t.ty t acc inner in
       (acc', { ty_desc = TTy_Array inner' })
+  | TTy_Ref inner ->
+      let acc', inner' = t.ty t acc inner in
+      (acc', { ty_desc = TTy_Ref inner' })
   | TTy_Tuple tys ->
       let acc', tys' = List.fold_left_map (fun a ty' -> t.ty t a ty') acc tys in
       (acc', { ty_desc = TTy_Tuple tys' })
@@ -247,6 +250,12 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
       let acc', l' = t.expr t acc l in
       let acc'', r' = t.expr t acc' r in
       (acc'', { e with expr_desc = TExp_BinOp (op, l', r') })
+  | TExp_Ref e1 ->
+      let acc', e1' = t.expr t acc e1 in
+      (acc', { e with expr_desc = TExp_Ref e1' })
+  | TExp_Deref e1 ->
+      let acc', e1' = t.expr t acc e1 in
+      (acc', { e with expr_desc = TExp_Deref e1' })
   | TExp_Lambda lam ->
       let acc', lam' = transform_lambda t acc lam in
       (acc', { e with expr_desc = TExp_Lambda lam' })
@@ -269,6 +278,14 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
       ( acc'',
         { e with expr_desc = TExp_Assign { target = target'; value = value' } }
       )
+  | TExp_AssignRef { target; value } ->
+      let acc', target' = t.expr t acc target in
+      let acc'', value' = t.expr t acc' value in
+      ( acc'',
+        {
+          e with
+          expr_desc = TExp_AssignRef { target = target'; value = value' };
+        } )
   | TExp_If { cond; then_branch; else_branch } ->
       let acc', cond' = t.expr t acc cond in
       let acc'', then_branch' = t.expr t acc' then_branch in

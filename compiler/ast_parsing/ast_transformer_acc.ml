@@ -22,6 +22,9 @@ let rec transform_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   | Ty_Array inner ->
       let acc', inner' = t.ty t acc inner in
       (acc', { ty with ty_desc = Ty_Array inner' })
+  | Ty_Ref inner ->
+      let acc', inner' = t.ty t acc inner in
+      (acc', { ty with ty_desc = Ty_Ref inner' })
   | Ty_Tuple tys ->
       let acc', tys' = List.fold_left_map (fun a ty' -> t.ty t a ty') acc tys in
       (acc', { ty with ty_desc = Ty_Tuple tys' })
@@ -245,6 +248,12 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
       let acc', l' = t.expr t acc l in
       let acc'', r' = t.expr t acc' r in
       (acc'', { e with expr_desc = Exp_BinOp (op, l', r') })
+  | Exp_Ref e1 ->
+      let acc', e1' = t.expr t acc e1 in
+      (acc', { e with expr_desc = Exp_Ref e1' })
+  | Exp_Deref e1 ->
+      let acc', e1' = t.expr t acc e1 in
+      (acc', { e with expr_desc = Exp_Deref e1' })
   | Exp_Lambda lam ->
       let acc', lam' = transform_lambda t acc lam in
       (acc', { e with expr_desc = Exp_Lambda lam' })
@@ -267,6 +276,14 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
       ( acc'',
         { e with expr_desc = Exp_Assign { target = target'; value = value' } }
       )
+  | Exp_AssignRef { target; value } ->
+      let acc', target' = t.expr t acc target in
+      let acc'', value' = t.expr t acc' value in
+      ( acc'',
+        {
+          e with
+          expr_desc = Exp_AssignRef { target = target'; value = value' };
+        } )
   | Exp_If { cond; then_branch; else_branch } ->
       let acc', cond' = t.expr t acc cond in
       let acc'', then_branch' = t.expr t acc' then_branch in

@@ -22,6 +22,9 @@ let rec transform_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   | CTy_Array inner ->
       let acc', inner' = t.ty t acc inner in
       (acc', { ty_desc = CTy_Array inner' })
+  | CTy_Ref inner ->
+      let acc', inner' = t.ty t acc inner in
+      (acc', { ty_desc = CTy_Ref inner' })
   | CTy_Defined ({ args; _ } as named) ->
       let acc', args' = List.fold_left_map (fun a p -> t.ty t a p) acc args in
       (acc', { ty_desc = CTy_Defined { named with args = args' } })

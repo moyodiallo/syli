@@ -70,6 +70,7 @@ rule token = parse
   | "extern"    { EXTERN }
   | "signature" { SIGNATURE }
   | "rec"       { REC }
+  | "ref"       { REF }
   
   (* --- Types --- *)
   | "str"       { TY_STR }
@@ -114,6 +115,7 @@ rule token = parse
   | ","         { COMMA }
   | ";"         { SEMI }
   | ":"         { COLON }
+  | ":="        { COLON_EQ }
   | "="         { EQ }
   | "=="        { EQEQ }
   | "!="        { NEQ }

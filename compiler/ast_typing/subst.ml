@@ -14,6 +14,7 @@ let rec apply (s : t) (t : ty) : ty =
       { ty_desc = TTy_Arrow (List.map (apply s) args, apply s ret) }
   | TTy_Tuple elems -> { ty_desc = TTy_Tuple (List.map (apply s) elems) }
   | TTy_Array elem -> { ty_desc = TTy_Array (apply s elem) }
+  | TTy_Ref elem -> { ty_desc = TTy_Ref (apply s elem) }
   | TTy_Defined d ->
       { ty_desc = TTy_Defined { d with args = List.map (apply s) d.args } }
   | TTy_Constant _ | TTy_Any -> t

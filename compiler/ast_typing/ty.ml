@@ -31,6 +31,7 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Tuple elems ->
       Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty elems))
   | TTy_Array elem -> Printf.sprintf "array<%s>" (string_of_ty elem)
+  | TTy_Ref elem -> Printf.sprintf "ref<%s>" (string_of_ty elem)
   | TTy_Defined { name; args } ->
       let base = name.name in
       if args = [] then base
@@ -69,7 +70,7 @@ let normalized_builtin_ty_name (ty : ty) : string option =
   | TTy_Constant TTy_StringLit -> Some "str"
   | TTy_Constant TTy_CharLit -> Some "char"
   | TTy_Defined { name; args = [] } -> Some name.name
-  | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _ | TTy_Array _
+  | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _ | TTy_Array _ | TTy_Ref _
   | TTy_Defined _ ->
       None
 
@@ -110,6 +111,7 @@ let rec equal_ty (left : ty) (right : ty) : bool =
       List.length a_elems = List.length b_elems
       && List.for_all2 equal_ty a_elems b_elems
   | TTy_Array a_elem, TTy_Array b_elem -> equal_ty a_elem b_elem
+  | TTy_Ref a_elem, TTy_Ref b_elem -> equal_ty a_elem b_elem
   | TTy_Defined a_def, TTy_Defined b_def ->
       String.equal a_def.name.name b_def.name.name
       && List.length a_def.args = List.length b_def.args
@@ -127,6 +129,7 @@ let rec occurs (v : int) (t : ty) : bool =
   | TTy_Arrow (args, ret) -> List.exists (occurs v) args || occurs v ret
   | TTy_Tuple elems -> List.exists (occurs v) elems
   | TTy_Array elem -> occurs v elem
+  | TTy_Ref elem -> occurs v elem
   | TTy_Defined d -> List.exists (occurs v) d.args
   | TTy_Constant _ | TTy_Any -> false
 
@@ -179,6 +182,7 @@ let rec unify (s : Subst.t) (a : ty) (b : ty) : Subst.t =
                 (string_of_ty b)))
       else List.fold_left2 (fun s x y -> unify s x y) s a1 a2
   | TTy_Array x, TTy_Array y -> unify s x y
+  | TTy_Ref x, TTy_Ref y -> unify s x y
   | TTy_Defined da, TTy_Defined db
     when da.name.name = db.name.name
          && List.length da.args = List.length db.args ->
@@ -208,6 +212,7 @@ let rec ty_vars (t : ty) : int list =
   | TTy_Arrow (args, ret) -> List.concat_map ty_vars args @ ty_vars ret
   | TTy_Tuple elems -> List.concat_map ty_vars elems
   | TTy_Array elem -> ty_vars elem
+  | TTy_Ref elem -> ty_vars elem
   | TTy_Defined d -> List.concat_map ty_vars d.args
   | TTy_Constant _ | TTy_Any -> []
 

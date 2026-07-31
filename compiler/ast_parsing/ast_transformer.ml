@@ -16,6 +16,7 @@ let rec transform_ty (t : transformer) (ty : ty) : ty =
     match ty.ty_desc with
     | Ty_Constant _ | Ty_Var _ | Ty_Any -> ty.ty_desc
     | Ty_Array inner -> Ty_Array (t.ty t inner)
+    | Ty_Ref inner -> Ty_Ref (t.ty t inner)
     | Ty_Tuple tys -> Ty_Tuple (List.map (t.ty t) tys)
     | Ty_Arrow (params, ret) -> Ty_Arrow (List.map (t.ty t) params, t.ty t ret)
     | Ty_Defined ({ args; _ } as defined) ->
@@ -112,6 +113,8 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
           { arr = t.expr t arr; idx = t.expr t idx; value = t.expr t value }
     | Exp_UnOp (op, e1) -> Exp_UnOp (op, t.expr t e1)
     | Exp_BinOp (op, l, r) -> Exp_BinOp (op, t.expr t l, t.expr t r)
+    | Exp_Ref e1 -> Exp_Ref (t.expr t e1)
+    | Exp_Deref e1 -> Exp_Deref (t.expr t e1)
     | Exp_Lambda lam -> Exp_Lambda (transform_lambda t lam)
     | Exp_Apply { closure_fun; args } ->
         Exp_Apply
@@ -122,6 +125,8 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
     | Exp_Let ld -> Exp_Let (transform_letdef t ld)
     | Exp_Assign { target; value } ->
         Exp_Assign { target = t.expr t target; value = t.expr t value }
+    | Exp_AssignRef { target; value } ->
+        Exp_AssignRef { target = t.expr t target; value = t.expr t value }
     | Exp_If { cond; then_branch; else_branch } ->
         Exp_If
           {

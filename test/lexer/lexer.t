@@ -7,7 +7,7 @@
   LET
   IDENT(x)
   EQ
-  IDENT(ref)
+  REF
   INT(10)
   NEWLINE
   EOF

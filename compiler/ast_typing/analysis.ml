@@ -135,7 +135,7 @@ let collect_field_indices (prog : program) : field_ctx =
           match ty.ty_desc with
           | TTy_Defined _ -> default_ty t env ty
           | TTy_Constant _ | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _
-          | TTy_Array _ ->
+          | TTy_Array _ | TTy_Ref _ ->
               default_ty t env ty);
       structure_item =
         (fun v env si ->

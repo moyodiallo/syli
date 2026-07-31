@@ -17,6 +17,7 @@ let rec string_of_ty (ty : Syli_parsing.Ast.ty) : string =
   | Ty_Any -> "_"
   | Ty_Var v -> "'" ^ v
   | Ty_Array t -> "array[" ^ string_of_ty t ^ "]"
+  | Ty_Ref t -> "ref<" ^ string_of_ty t ^ ">"
   | Ty_Tuple ts -> "(" ^ String.concat ", " (List.map string_of_ty ts) ^ ")"
   | Ty_Arrow (params, ret) ->
       let parts = List.map string_of_ty (params @ [ ret ]) in

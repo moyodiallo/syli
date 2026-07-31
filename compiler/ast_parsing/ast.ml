@@ -50,6 +50,7 @@ and ty_desc =
   | Ty_Arrow of ty list * ty (* (T1, T2, ...) -> T *)
   | Ty_Tuple of ty list (* (T1 * T2 * ... * Tn) *)
   | Ty_Array of ty (* array<T> *)
+  | Ty_Ref of ty (* ref<T> *)
   | Ty_Defined of { name : ident; (* ref, option, list, etc. *) args : ty list }
 
 (* ========================= *)
@@ -223,6 +224,8 @@ and expr_desc =
   | Exp_ArraySet of { arr : expr; idx : expr; value : expr }
   | Exp_UnOp of unop * expr
   | Exp_BinOp of binop * expr * expr
+  | Exp_Ref of expr
+  | Exp_Deref of expr
   | Exp_Lambda of lambda
   | Exp_Apply of { closure_fun : expr; args : expr list }
   | Exp_Let of letdef
@@ -231,6 +234,7 @@ and expr_desc =
           (* must be an l-value: variable, field access, ref, or index *)
       value : expr;
     }
+  | Exp_AssignRef of { target : expr; value : expr }
   | Exp_If of { cond : expr; then_branch : expr; else_branch : expr option }
   | Exp_While of { cond : expr; body : expr }
   | Exp_ForIn of { iter_var : pattern; iterable : expr; body : expr }

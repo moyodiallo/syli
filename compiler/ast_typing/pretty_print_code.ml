@@ -19,6 +19,7 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Constant TTy_StringLit -> "str"
   | TTy_Constant TTy_CharLit -> "char"
   | TTy_Array ty -> "array[" ^ string_of_ty ty ^ "]"
+  | TTy_Ref ty -> "ref<" ^ string_of_ty ty ^ ">"
   | TTy_Tuple tys -> "(" ^ String.concat ", " (List.map string_of_ty tys) ^ ")"
   | TTy_Arrow (params, ret) ->
       "("
@@ -144,6 +145,8 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       "array.set(" ^ string_of_expr ~ind arr ^ ", " ^ string_of_expr ~ind idx
       ^ ", " ^ string_of_expr ~ind value ^ ")"
   | TExp_UnOp (op, e) -> string_of_unop op ^ string_of_expr ~ind e
+  | TExp_Ref e -> "ref " ^ string_of_expr ~ind e
+  | TExp_Deref e -> "*" ^ string_of_expr ~ind e
   | TExp_BinOp (op, e1, e2) ->
       "(" ^ string_of_expr ~ind e1 ^ " " ^ string_of_binop op ^ " "
       ^ string_of_expr ~ind e2 ^ ")"
@@ -170,6 +173,8 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       "let " ^ lhs ^ " = " ^ string_of_expr ~ind l.value
   | TExp_Assign { target; value } ->
       string_of_expr ~ind target ^ " = " ^ string_of_expr ~ind value
+  | TExp_AssignRef { target; value } ->
+      string_of_expr ~ind target ^ " := " ^ string_of_expr ~ind value
   | TExp_If { cond; then_branch; else_branch = None } ->
       "if " ^ string_of_expr ~ind cond ^ " then "
       ^ string_of_expr ~ind then_branch

@@ -16,6 +16,7 @@ let rec transform_ty (t : transformer) (ty : ty) : ty =
     match ty.ty_desc with
     | TTy_Var _ | TTy_Any | TTy_Constant _ -> ty.ty_desc
     | TTy_Array inner -> TTy_Array (t.ty t inner)
+    | TTy_Ref inner -> TTy_Ref (t.ty t inner)
     | TTy_Tuple tys -> TTy_Tuple (List.map (t.ty t) tys)
     | TTy_Arrow (params, ret) -> TTy_Arrow (List.map (t.ty t) params, t.ty t ret)
     | TTy_Defined ({ args; _ } as defined) ->
@@ -113,6 +114,8 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
           { arr = t.expr t arr; idx = t.expr t idx; value = t.expr t value }
     | TExp_UnOp (op, e1) -> TExp_UnOp (op, t.expr t e1)
     | TExp_BinOp (op, l, r) -> TExp_BinOp (op, t.expr t l, t.expr t r)
+    | TExp_Ref e1 -> TExp_Ref (t.expr t e1)
+    | TExp_Deref e1 -> TExp_Deref (t.expr t e1)
     | TExp_Lambda lam -> TExp_Lambda (transform_lambda t lam)
     | TExp_Apply { closure_fun; args } ->
         TExp_Apply
@@ -123,6 +126,8 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
     | TExp_Let ld -> TExp_Let (transform_letdef t ld)
     | TExp_Assign { target; value } ->
         TExp_Assign { target = t.expr t target; value = t.expr t value }
+    | TExp_AssignRef { target; value } ->
+        TExp_AssignRef { target = t.expr t target; value = t.expr t value }
     | TExp_If { cond; then_branch; else_branch } ->
         TExp_If
           {

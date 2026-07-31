@@ -21,6 +21,7 @@ let rec string_of_ty (ty : ty) : string =
   | Ty_Any -> "_"
   | Ty_Var s -> "'" ^ s
   | Ty_Array ty' -> "Array[" ^ string_of_ty ty' ^ "]"
+  | Ty_Ref ty' -> "Ref<" ^ string_of_ty ty' ^ ">"
   | Ty_Tuple tys -> "(" ^ String.concat ", " (List.map string_of_ty tys) ^ ")"
   | Ty_Arrow (params, ret) ->
       "("
@@ -164,6 +165,8 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       "array.set(" ^ string_of_expr ~ind arr ^ ", " ^ string_of_expr ~ind idx
       ^ ", " ^ string_of_expr ~ind value ^ ")"
   | Exp_UnOp (op, e) -> string_of_unop op ^ string_of_expr ~ind e
+  | Exp_Ref e -> "ref " ^ string_of_expr ~ind e
+  | Exp_Deref e -> "*" ^ string_of_expr ~ind e
   | Exp_BinOp (op, e1, e2) ->
       "(" ^ string_of_expr ~ind e1 ^ " " ^ string_of_binop op ^ " "
       ^ string_of_expr ~ind e2 ^ ")"
@@ -180,6 +183,8 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ string_of_expr ~ind ld.value
   | Exp_Assign { target; value; _ } ->
       string_of_expr ~ind target ^ " = " ^ string_of_expr ~ind value
+  | Exp_AssignRef { target; value; _ } ->
+      string_of_expr ~ind target ^ " := " ^ string_of_expr ~ind value
   | Exp_If { cond; then_branch; else_branch = None } ->
       "if " ^ string_of_expr ~ind cond ^ " {\n"
       ^ indent (ind + 1)

@@ -23,6 +23,7 @@ let rec string_of_ty (t : ty) : string =
       let args_str = String.concat ", " (List.map string_of_ty args) in
       Printf.sprintf "(%s) -> %s" args_str (string_of_ty ret)
   | TTy_Array t' -> Printf.sprintf "array[%s]" (string_of_ty t')
+  | TTy_Ref t' -> Printf.sprintf "ref<%s>" (string_of_ty t')
   | TTy_Tuple ts ->
       let ts_str = String.concat ", " (List.map string_of_ty ts) in
       Printf.sprintf "(%s)" ts_str
