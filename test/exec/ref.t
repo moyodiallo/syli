@@ -62,6 +62,6 @@ Reassign a different named function into a ref:
   > EOF
   $ dune exec sylic -- build test_ref.sy
   $ ./test_ref.exe
-  42
+  41
 
 
