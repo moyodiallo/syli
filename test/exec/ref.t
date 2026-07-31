@@ -58,7 +58,7 @@ Reassign a different named function into a ref:
   >   let f = ref twice
   >   f := add_one
   >   let g = *f
-  >   syli_print_i64(g 41)
+  >   syli_print_i64(g 40)
   > EOF
   $ dune exec sylic -- build test_ref.sy
   $ ./test_ref.exe
