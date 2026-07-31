@@ -301,10 +301,10 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
     else
       let suffix =
         String.concat "__"
-          (List.map Gen_closure_function.type_key_of_ty param_tys)
+          (List.map Gen_closure_helpers.type_key_of_ty param_tys)
       in
       fn_name ^ "__" ^ suffix ^ "_ret_"
-      ^ Gen_closure_function.type_key_of_ty ret_ty
+      ^ Gen_closure_helpers.type_key_of_ty ret_ty
   in
   (* Generate the wrappers (for the accum dispatch to call) *)
   let gen_functions =
@@ -315,7 +315,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
         let callee_name = resolve_callee_name fn_name param_tys spe_ret_ty in
         if needs_cast spe_ret_ty then
           let wrapper_name =
-            Gen_closure_function.apply_wrapper_name_cast ~fn_name ~param_tys
+            Gen_closure_helpers.apply_wrapper_name_cast ~fn_name ~param_tys
               ~cast_from:spe_ret_ty
           in
           StringMap.update wrapper_name
@@ -323,13 +323,13 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
               match wrapper_name_opt with
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_apply_wrapper_cast ~fn_name
+                  @@ Gen_closure_helpers.build_apply_wrapper_cast ~fn_name
                        ~param_tys ~cast_from:spe_ret_ty ~callee_name
               | Some _ as existing -> existing)
             acc
         else
           let wrapper_name =
-            Gen_closure_function.apply_wrapper_name ~fn_name ~param_tys
+            Gen_closure_helpers.apply_wrapper_name ~fn_name ~param_tys
               ~ret_ty:spe_ret_ty
           in
           StringMap.update wrapper_name
@@ -337,8 +337,8 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
               match wrapper_name_opt with
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_apply_wrapper ~fn_name
-                       ~param_tys ~ret_ty:spe_ret_ty ~callee_name
+                  @@ Gen_closure_helpers.build_apply_wrapper ~fn_name ~param_tys
+                       ~ret_ty:spe_ret_ty ~callee_name
               | Some _ as existing -> existing)
             acc)
       gen_functions specializations
@@ -348,7 +348,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
     match specializations with
     | (dispatch_cumul, fn_name, tys, _) :: [] ->
         let closure_accum_name =
-          Gen_closure_function.make_closure_accum_name ~fn_name
+          Gen_closure_helpers.make_closure_accum_name ~fn_name
             make_closure_node.id ~ret_ty
         in
         ( closure_accum_name,
@@ -357,7 +357,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
               | Some _ as existing -> existing
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_make_closure_accum ~fn_name
+                  @@ Gen_closure_helpers.build_make_closure_accum ~fn_name
                        ~stored_args_size
                        ~args_size:
                          (List.length make_closure_node.remaining_arg_tys)
@@ -365,7 +365,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
             gen_functions )
     | (dispatch_cumul, fn_name, tys, _) :: _ ->
         let closure_accum_name =
-          Gen_closure_function.make_closure_accum_dispatch_name
+          Gen_closure_helpers.make_closure_accum_dispatch_name
             make_closure_node.id ~ret_ty
         in
         ( closure_accum_name,
@@ -374,7 +374,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
               | Some _ as existing -> existing
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_make_closure_accum_dispatch
+                  @@ Gen_closure_helpers.build_make_closure_accum_dispatch
                        ~stored_args_size
                        ~args_size:
                          (List.length make_closure_node.remaining_arg_tys)
@@ -386,7 +386,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
 
 (** Lower a Cir.CR_Make_closure statement into OIR statements.
 
-    Layout (matching gen_closure_function.ml): [0]=accum_fn,
+    Layout (matching gen_closure_helpers.ml): [0]=accum_fn,
     [1+]=stored_args(free_vars + captured_args) *)
 let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
     (captured_args : Cir.operand list) (fn_name : string) :
@@ -506,7 +506,7 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
   let is_dispatch, gen_fn_name, gen_functions =
     if List.exists (fun x -> x > 0) dispatch_id_possibilities then
       let closure_accum_name =
-        Gen_closure_function.partial_closure_accum_dispatch_name
+        Gen_closure_helpers.partial_closure_accum_dispatch_name
           ~stored_args_size ~args_size ~ret_ty
       in
       ( true,
@@ -516,12 +516,12 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
             | Some _ as existing -> existing
             | None ->
                 Option.some
-                @@ Gen_closure_function.build_partial_closure_accum_dispatch
+                @@ Gen_closure_helpers.build_partial_closure_accum_dispatch
                      ~stored_args_size ~args_size ret_ty)
           gen_functions )
     else
       let closure_accum_name =
-        Gen_closure_function.partial_closure_accum_name ~stored_args_size
+        Gen_closure_helpers.partial_closure_accum_name ~stored_args_size
           ~args_size ~ret_ty
       in
       ( false,
@@ -531,7 +531,7 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
             | Some _ as existing -> existing
             | None ->
                 Option.some
-                @@ Gen_closure_function.build_partial_closure_accum
+                @@ Gen_closure_helpers.build_partial_closure_accum
                      ~stored_args_size ~args_size ret_ty)
           gen_functions )
   in
@@ -539,7 +539,7 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
 
 (** Lower a Cir.CR_Partial_apply statement into OIR statements.
 
-    Layouts (matching gen_closure_function.ml):
+    Layouts (matching gen_closure_helpers.ml):
 
     Non-dispatch: [0]=accum_fn, [1]=parent, [2+]=new_args
 
