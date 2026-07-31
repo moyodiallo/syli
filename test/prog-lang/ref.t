@@ -109,7 +109,7 @@ Store a named function in a ref and use it:
   
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_ref.twice__i64_ret_i64 (%Sy_s0:i64)
+      %Sy_rst:i64 = #call_direct syliTest_ref.twice (%Sy_s0:i64)
       return %Sy_rst:i64
   end
   

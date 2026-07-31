@@ -1,3 +1,5 @@
+val type_key_of_ty : Syli_ir.Oir.ty -> string
+
 val partial_closure_accum_dispatch_name :
   stored_args_size:int -> args_size:int -> ret_ty:Syli_ir.Oir.ty -> string
 
@@ -26,6 +28,7 @@ val build_apply_wrapper :
   fn_name:string ->
   param_tys:Syli_ir.Oir.ty list ->
   ret_ty:Syli_ir.Oir.ty ->
+  callee_name:string ->
   Syli_ir.Oir.function_oir
 
 val apply_wrapper_name_cast :
@@ -38,6 +41,7 @@ val build_apply_wrapper_cast :
   fn_name:string ->
   param_tys:Syli_ir.Oir.ty list ->
   cast_from:Syli_ir.Oir.ty ->
+  callee_name:string ->
   Syli_ir.Oir.function_oir
 
 val make_closure_accum_dispatch_name : int -> ret_ty:Syli_ir.Oir.ty -> string

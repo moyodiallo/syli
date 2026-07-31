@@ -445,7 +445,7 @@ let apply_wrapper_name ~(fn_name : string) ~param_tys ~ret_ty : qualified_name =
    Generated once per unique (fn_name, param_tys, ret_ty).
 *)
 let build_apply_wrapper ~(fn_name : string) ~(param_tys : ty list)
-    ~(ret_ty : ty) : function_oir =
+    ~(ret_ty : ty) ~(callee_name : string) : function_oir =
   let wrapper_name = apply_wrapper_name ~fn_name ~param_tys ~ret_ty in
   let arg_params =
     List.mapi (fun i _ -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty) param_tys
@@ -457,11 +457,6 @@ let build_apply_wrapper ~(fn_name : string) ~(param_tys : ty list)
       cast_vars
   in
   let dst_var = fresh_var "Sy_rst" ret_ty in
-  let callee_name =
-    let suffix = String.concat "__" (List.map type_key_of_ty param_tys) in
-    if suffix = "" then fn_name
-    else fn_name ^ "__" ^ suffix ^ "_ret_" ^ type_key_of_ty ret_ty
-  in
   let call_stmt =
     make_statement
       (OR_Call
@@ -488,7 +483,7 @@ let apply_wrapper_name_cast ~(fn_name : string) ~(param_tys : ty list)
     (type_key_of_ty cast_from) (type_key_of_ty i64_ty)
 
 let build_apply_wrapper_cast ~(fn_name : string) ~(param_tys : ty list)
-    ~(cast_from : ty) : function_oir =
+    ~(cast_from : ty) ~(callee_name : string) : function_oir =
   let wrapper_name = apply_wrapper_name_cast ~fn_name ~param_tys ~cast_from in
   let arg_params =
     List.mapi (fun i _ -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty) param_tys
@@ -500,11 +495,6 @@ let build_apply_wrapper_cast ~(fn_name : string) ~(param_tys : ty list)
       cast_vars
   in
   let dst_var = fresh_var "Sy_rst" cast_from in
-  let callee_name =
-    let suffix = String.concat "__" (List.map type_key_of_ty param_tys) in
-    if suffix = "" then fn_name
-    else fn_name ^ "__" ^ suffix ^ "_ret_" ^ type_key_of_ty cast_from
-  in
   let call_stmt =
     make_statement
       (OR_Call

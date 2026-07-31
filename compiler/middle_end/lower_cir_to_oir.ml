@@ -19,6 +19,7 @@ type ctx = {
   trampolines : function_oir StringMap.t;
   var_ids : Oir.var IntMap.t (* Cir var id → Oir var with fresh Oir id *);
   block_ids : int IntMap.t (* Cir block id → Oir block id *);
+  available_fns : StringSet.t (* monomorphized function names *);
 }
 
 (* Counters for generating unique temporary variable names *)
@@ -259,8 +260,10 @@ let sir_operand_ty (op : Cir.operand) : Cir.ty =
 let is_arrow_ty (t : Cir.ty) : bool =
   match t.ir_type with Cir.CR_Arrow _ -> true | _ -> false
 
-let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
-    ~free_vars_len ~fn_name =
+let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
+    ~fn_name =
+  let closure_graph = ctx.closure_graph in
+  let gen_functions = ctx.trampolines in
   let make_closure_node = IntMap.find node_id closure_graph.graph.nodes in
   let specializations =
     match
@@ -293,12 +296,23 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
   let needs_cast spe_ret =
     is_generic && spe_ret.Oir.ir_type <> ret_ty.Oir.ir_type
   in
+  let resolve_callee_name fn_name param_tys ret_ty =
+    if StringSet.mem fn_name ctx.available_fns then fn_name
+    else
+      let suffix =
+        String.concat "__"
+          (List.map Gen_closure_function.type_key_of_ty param_tys)
+      in
+      fn_name ^ "__" ^ suffix ^ "_ret_"
+      ^ Gen_closure_function.type_key_of_ty ret_ty
+  in
   (* Generate the wrappers (for the accum dispatch to call) *)
   let gen_functions =
     List.fold_left
       (fun acc
            ((_, fn_name, param_tys, spe_ret_ty) :
              int * string * Oir.ty list * Oir.ty) ->
+        let callee_name = resolve_callee_name fn_name param_tys spe_ret_ty in
         if needs_cast spe_ret_ty then
           let wrapper_name =
             Gen_closure_function.apply_wrapper_name_cast ~fn_name ~param_tys
@@ -310,7 +324,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
               | None ->
                   Option.some
                   @@ Gen_closure_function.build_apply_wrapper_cast ~fn_name
-                       ~param_tys ~cast_from:spe_ret_ty
+                       ~param_tys ~cast_from:spe_ret_ty ~callee_name
               | Some _ as existing -> existing)
             acc
         else
@@ -324,7 +338,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
               | None ->
                   Option.some
                   @@ Gen_closure_function.build_apply_wrapper ~fn_name
-                       ~param_tys ~ret_ty:spe_ret_ty
+                       ~param_tys ~ret_ty:spe_ret_ty ~callee_name
               | Some _ as existing -> existing)
             acc)
       gen_functions specializations
@@ -382,8 +396,8 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   let captured_count = List.length captured_args in
   let stored_args_size = free_var_count + captured_count in
   let trampolines, accum_fn_name =
-    make_closure_apply_gen_functions ctx.trampolines ctx.closure_graph
-      ~node_id:dst.id ~free_vars_len:(List.length free_vars) ~fn_name
+    make_closure_apply_gen_functions ctx ~node_id:dst.id
+      ~free_vars_len:(List.length free_vars) ~fn_name
   in
   let ctx = { ctx with trampolines } in
   let total_fields = 1 + stored_args_size in
@@ -1164,6 +1178,9 @@ let lower (ctx : Pipeline_types.cir_mono_ctx) : Pipeline_types.oir_ctx =
       trampolines = StringMap.empty;
       var_ids = IntMap.empty;
       block_ids = IntMap.empty;
+      available_fns =
+        StringSet.of_list
+          (List.map (fun (f : Cir.function_cir) -> f.name) prog.functions);
     }
   in
   (* Lower original functions, threading ctx to collect generated trampolines *)
