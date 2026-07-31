@@ -43,6 +43,7 @@ and ty_desc =
   | CTy_Arrow of ty list * ty
   | CTy_Tuple of ty list
   | CTy_Array of ty
+  | CTy_Ref of ty
   | CTy_Defined of { name : ident; args : ty list }
 
 and constructor_decl = { id : int; variant_tag : int; arg : ty option }

@@ -12,9 +12,9 @@
 %token TY_INT TY_FLOAT TY_DOUBLE TY_CHAR TY_BOOL TY_UNIT TY_STR TY_ARRAY TY_LIST TY_TUPLE
 %token REC FN LET RETURN IF ELSE ELSEIF THEN
 %token VAL EXTERN SIGNATURE
-%token WHILE LOOP DO END LOCAL CONTINUE BREAK LAMBDA MATCH WITH TYPE OF MUT
+%token WHILE LOOP DO END LOCAL CONTINUE BREAK LAMBDA MATCH WITH TYPE OF MUTABLE REF
 %token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE LBRACKET_BAR RBRACKET_BAR
-%token COMMA SEMI COLON NEWLINE DOT ARROW
+%token COMMA SEMI COLON COLON_EQ NEWLINE DOT ARROW
 %token EQ PLUS_EQ MINUS_EQ PLUS MINUS TIMES DIV MOD
 %token LT GT EQEQ NEQ LEQ GEQ AND
 %token OR NOT BITAND BITOR BITXOR LSHIFT RSHIFT BITNOT BANG UNDERSCORE
@@ -250,6 +250,8 @@ ty:
                args = [ $3 ];
              })
       }
+  | REF ty
+      { mk_ty $startpos $endpos (Ty_Ref $2) }
   | LPAREN ty_arrow RPAREN ARROW ty
       { mk_ty $startpos $endpos (Ty_Arrow ($2, $5)) }
   | LPAREN ty RPAREN
@@ -260,7 +262,7 @@ ty:
 record_field_ty:
   | field_name = ident COLON ty
     { mk_record_field_decl $startpos $endpos field_name $3 Immutable }
-  | MUT field_name = ident COLON ty
+  | MUTABLE field_name = ident COLON ty
     { mk_record_field_decl $startpos $endpos field_name $4 Mutable }
 
 
@@ -303,12 +305,8 @@ type_def:
 param:
   | pattern
       { mk_param $startpos $endpos $1 Immutable None }
-  | MUT pattern
-      { mk_param $startpos $endpos $2 Mutable None }
   | LPAREN pattern COLON ty RPAREN
       { mk_param $startpos $endpos $2 Immutable (Some $4) }
-  | LPAREN MUT pattern COLON ty RPAREN
-      { mk_param $startpos $endpos $3 Mutable (Some $5) }
 
 params:
   | param           { [$1] }
@@ -446,6 +444,10 @@ unary_expr:
       { mk_expr $startpos $endpos (Exp_UnOp (Unop_Logical Not, $2)) }
   | BITNOT unary_expr
       { mk_expr $startpos $endpos (Exp_UnOp (Unop_Bitwise BitNot, $2)) }
+  | TIMES unary_expr
+      { mk_expr $startpos $endpos (Exp_Deref $2) }
+  | REF unary_expr
+      { mk_expr $startpos $endpos (Exp_Ref $2) }
 
 mul_expr:
   | unary_expr { $1 }
@@ -524,6 +526,8 @@ assign_expr:
         let value = mk_expr $startpos $endpos (Exp_BinOp (Binop_Arithmetic Sub, $1, $3)) in
         mk_expr $startpos $endpos (Exp_Assign { target = $1; value; })
       }
+  | postfix_expr COLON_EQ assign_expr
+      { mk_expr $startpos $endpos (Exp_AssignRef { target = $1; value = $3 }) }
 
 expr:
   | let_def

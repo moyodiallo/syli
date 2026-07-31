@@ -15,6 +15,7 @@ let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   match ty.ty_desc with
   | Ty_Constant _ | Ty_Var _ | Ty_Any -> acc
   | Ty_Array inner -> v.ty v acc inner
+  | Ty_Ref inner -> v.ty v acc inner
   | Ty_Tuple tys -> List.fold_left (v.ty v) acc tys
   | Ty_Arrow (params, ret) ->
       let acc = List.fold_left (v.ty v) acc params in
@@ -97,12 +98,13 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | Exp_BinOp (_, l, r) ->
       let acc = v.expr v acc l in
       v.expr v acc r
+  | Exp_Ref e1 | Exp_Deref e1 -> v.expr v acc e1
   | Exp_Lambda lam -> visit_lambda v acc lam
   | Exp_Apply { closure_fun; args } ->
       let acc = v.expr v acc closure_fun in
       List.fold_left (v.expr v) acc args
   | Exp_Let ld -> visit_letdef v acc ld
-  | Exp_Assign { target; value } ->
+  | Exp_Assign { target; value } | Exp_AssignRef { target; value } ->
       let acc = v.expr v acc target in
       v.expr v acc value
   | Exp_If { cond; then_branch; else_branch } ->

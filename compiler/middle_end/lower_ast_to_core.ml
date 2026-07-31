@@ -59,6 +59,7 @@ let rec desugar_ty (t : Typed_ast.ty) : ty =
         CTy_Arrow (List.map desugar_ty args, desugar_ty ret)
     | TTy_Tuple elems -> CTy_Tuple (List.map desugar_ty elems)
     | TTy_Array elem -> CTy_Array (desugar_ty elem)
+    | TTy_Ref elem -> CTy_Ref (desugar_ty elem)
     | TTy_Defined d ->
         CTy_Defined
           {
@@ -235,6 +236,15 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
           env )
     | TExp_UnOp (op, x) ->
         (CExp_UnOp (desugar_unop op, fst (desugar_expr env x)), env)
+    | TExp_Ref x ->
+        let x_e = fst (desugar_expr env x) in
+        let field =
+          { field_idx = 0; field_ty = desugar_ty x.ty; field_value = x_e }
+        in
+        (CExp_Record [ field ], env)
+    | TExp_Deref x ->
+        let x_e = fst (desugar_expr env x) in
+        (CExp_Field { record = x_e; field_idx = 0 }, env)
     | TExp_BinOp (op, x, y) ->
         ( CExp_BinOp
             ( desugar_binop op,
@@ -309,6 +319,11 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
         | CExp_Field { record; field_idx } ->
             (CExp_FieldSet { record; field_idx; value = value_e }, env)
         | _ -> error_at target.loc "assignment target is not a field in Core")
+    | TExp_AssignRef { target; value } ->
+        let target_e = fst (desugar_expr env target) in
+        let value_e = fst (desugar_expr env value) in
+        ( CExp_FieldSet { record = target_e; field_idx = 0; value = value_e },
+          env )
     | TExp_If { cond; then_branch; else_branch } ->
         ( CExp_If
             {

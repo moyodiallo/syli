@@ -111,6 +111,7 @@ and ty_desc =
   | Ty_Arrow of ty list * ty
   | Ty_Tuple of ty list
   | Ty_Array of ty
+  | Ty_Ref of ty
   | Ty_Defined of { name : ident; args : ty list }
 
 type variant_constructor_decl = {
@@ -258,10 +259,13 @@ and expr_desc =
   | Exp_ArraySet of { arr : expr; idx : expr; value : expr }
   | Exp_UnOp of unop * expr
   | Exp_BinOp of binop * expr * expr
+  | Exp_Ref of expr
+  | Exp_Deref of expr
   | Exp_Lambda of lambda
   | Exp_Apply of { closure_fun : expr; args : expr list }
   | Exp_Let of letdef
   | Exp_Assign of { target : expr; value : expr }
+  | Exp_AssignRef of { target : expr; value : expr }
   | Exp_If of { cond : expr; then_branch : expr; else_branch : expr option }
   | Exp_While of { cond : expr; body : expr }
   | Exp_ForIn of { iter_var : pattern; iterable : expr; body : expr }

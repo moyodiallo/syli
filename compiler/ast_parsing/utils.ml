@@ -17,7 +17,7 @@ let string_of_token = function
   | IF -> "IF"
   | ELSE -> "ELSE"
   | WHILE -> "WHILE"
-  | MUT -> "MUT"
+  | MUTABLE -> "MUTABLE"
   | END -> "END"
   | LOCAL -> "LOCAL"
   | BOOL_VAL b -> Printf.sprintf "BOOL_VAL(%s)" b
@@ -33,6 +33,7 @@ let string_of_token = function
   | SEMI -> "SEMI"
   | NEWLINE -> "NEWLINE"
   | COLON -> "COLON"
+  | COLON_EQ -> "COLON_EQ"
   | EQ -> "EQ"
   | PLUS -> "PLUS"
   | MINUS -> "MINUS"
@@ -102,6 +103,7 @@ let string_of_token = function
   | EOF -> "EOF"
   | EXTERN -> "EXTERN"
   | REC -> "REC"
+  | REF -> "REF"
 
 let parse_file filename =
   let ic = open_in filename in

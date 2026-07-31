@@ -37,6 +37,7 @@ and ty_desc =
   | TTy_Arrow of ty list * ty
   | TTy_Tuple of ty list
   | TTy_Array of ty
+  | TTy_Ref of ty
   | TTy_Defined of { name : ident; args : ty list }
 
 and variant_constructor_decl = {
@@ -151,10 +152,13 @@ and expr_desc =
   | TExp_ArraySet of { arr : expr; idx : expr; value : expr }
   | TExp_UnOp of unop * expr
   | TExp_BinOp of binop * expr * expr
+  | TExp_Ref of expr
+  | TExp_Deref of expr
   | TExp_Lambda of lambda
   | TExp_Apply of { closure_fun : expr; args : expr list }
   | TExp_Let of letdef
   | TExp_Assign of { target : expr; value : expr }
+  | TExp_AssignRef of { target : expr; value : expr }
   | TExp_If of { cond : expr; then_branch : expr; else_branch : expr option }
   | TExp_While of { cond : expr; body : expr }
   | TExp_ForIn of { iter_var : pattern; iterable : expr; body : expr }

@@ -15,6 +15,7 @@ let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
       let acc' = List.fold_left (v.ty v) acc params in
       v.ty v acc' ret
   | CTy_Array inner -> v.ty v acc inner
+  | CTy_Ref inner -> v.ty v acc inner
   | CTy_Defined { args; _ } -> List.fold_left (v.ty v) acc args
   | CTy_Tuple elements -> List.fold_left (v.ty v) acc elements
 

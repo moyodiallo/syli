@@ -23,6 +23,7 @@ let rec pp_ty fmt (ty : ty) =
   | Ty_Any -> Format.fprintf fmt "_"
   | Ty_Var s -> Format.fprintf fmt "'%s" s
   | Ty_Array t -> Format.fprintf fmt "@[<2>array<%a>@]" pp_ty t
+  | Ty_Ref t -> Format.fprintf fmt "@[<2>ref<%a>@]" pp_ty t
   | Ty_Tuple ts ->
       Format.fprintf fmt "@[<1>(%a)@]"
         (Format.pp_print_list
@@ -189,6 +190,8 @@ let rec pp_expr fmt (e : expr) =
         value
   | Exp_UnOp (op, e1) ->
       Format.fprintf fmt "@[<2>%a@ %a@]" pp_unop op pp_expr e1
+  | Exp_Ref e1 -> Format.fprintf fmt "@[<2>ref@ %a@]" pp_expr e1
+  | Exp_Deref e1 -> Format.fprintf fmt "@[<2>*@ %a@]" pp_expr e1
   | Exp_BinOp (op, l, r) ->
       Format.fprintf fmt "@[<1>(%a@ %a@ %a)@]" pp_expr l pp_binop op pp_expr r
   | Exp_Lambda { params; body; ret_ty; _ } ->
@@ -217,6 +220,8 @@ let rec pp_expr fmt (e : expr) =
         ld.value
   | Exp_Assign { target; value; _ } ->
       Format.fprintf fmt "@[<2>%a =@ %a@]" pp_expr target pp_expr value
+  | Exp_AssignRef { target; value; _ } ->
+      Format.fprintf fmt "@[<2>%a :=@ %a@]" pp_expr target pp_expr value
   | Exp_If { cond; then_branch; else_branch } -> (
       match else_branch with
       | None ->

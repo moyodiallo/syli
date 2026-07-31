@@ -147,6 +147,7 @@ let mk_ir_ty (cty : C.ty) : I.ty =
             { I.id = fresh_id (); I.ir_type = go ret } )
     | CTy_Tuple _ -> I.CR_Obj { named = None; args = [] }
     | CTy_Array _ -> I.CR_Obj { named = None; args = [] }
+    | CTy_Ref _ -> I.CR_Obj { named = None; args = [] }
     | CTy_Defined _ -> I.CR_Obj { named = None; args = [] }
   in
   { I.id = fresh_id (); I.ir_type = go cty }

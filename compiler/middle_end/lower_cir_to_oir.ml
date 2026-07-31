@@ -19,6 +19,7 @@ type ctx = {
   trampolines : function_oir StringMap.t;
   var_ids : Oir.var IntMap.t (* Cir var id → Oir var with fresh Oir id *);
   block_ids : int IntMap.t (* Cir block id → Oir block id *);
+  available_fns : StringSet.t (* monomorphized function names *);
 }
 
 (* Counters for generating unique temporary variable names *)
@@ -259,8 +260,10 @@ let sir_operand_ty (op : Cir.operand) : Cir.ty =
 let is_arrow_ty (t : Cir.ty) : bool =
   match t.ir_type with Cir.CR_Arrow _ -> true | _ -> false
 
-let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
-    ~free_vars_len ~fn_name =
+let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
+    ~fn_name =
+  let closure_graph = ctx.closure_graph in
+  let gen_functions = ctx.trampolines in
   let make_closure_node = IntMap.find node_id closure_graph.graph.nodes in
   let specializations =
     match
@@ -293,15 +296,26 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
   let needs_cast spe_ret =
     is_generic && spe_ret.Oir.ir_type <> ret_ty.Oir.ir_type
   in
+  let resolve_callee_name fn_name param_tys ret_ty =
+    if StringSet.mem fn_name ctx.available_fns then fn_name
+    else
+      let suffix =
+        String.concat "__"
+          (List.map Gen_closure_helpers.type_key_of_ty param_tys)
+      in
+      fn_name ^ "__" ^ suffix ^ "_ret_"
+      ^ Gen_closure_helpers.type_key_of_ty ret_ty
+  in
   (* Generate the wrappers (for the accum dispatch to call) *)
   let gen_functions =
     List.fold_left
       (fun acc
            ((_, fn_name, param_tys, spe_ret_ty) :
              int * string * Oir.ty list * Oir.ty) ->
+        let callee_name = resolve_callee_name fn_name param_tys spe_ret_ty in
         if needs_cast spe_ret_ty then
           let wrapper_name =
-            Gen_closure_function.apply_wrapper_name_cast ~fn_name ~param_tys
+            Gen_closure_helpers.apply_wrapper_name_cast ~fn_name ~param_tys
               ~cast_from:spe_ret_ty
           in
           StringMap.update wrapper_name
@@ -309,13 +323,13 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
               match wrapper_name_opt with
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_apply_wrapper_cast ~fn_name
-                       ~param_tys ~cast_from:spe_ret_ty
+                  @@ Gen_closure_helpers.build_apply_wrapper_cast ~fn_name
+                       ~param_tys ~cast_from:spe_ret_ty ~callee_name
               | Some _ as existing -> existing)
             acc
         else
           let wrapper_name =
-            Gen_closure_function.apply_wrapper_name ~fn_name ~param_tys
+            Gen_closure_helpers.apply_wrapper_name ~fn_name ~param_tys
               ~ret_ty:spe_ret_ty
           in
           StringMap.update wrapper_name
@@ -323,8 +337,8 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
               match wrapper_name_opt with
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_apply_wrapper ~fn_name
-                       ~param_tys ~ret_ty:spe_ret_ty
+                  @@ Gen_closure_helpers.build_apply_wrapper ~fn_name ~param_tys
+                       ~ret_ty:spe_ret_ty ~callee_name
               | Some _ as existing -> existing)
             acc)
       gen_functions specializations
@@ -334,7 +348,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
     match specializations with
     | (dispatch_cumul, fn_name, tys, _) :: [] ->
         let closure_accum_name =
-          Gen_closure_function.make_closure_accum_name ~fn_name
+          Gen_closure_helpers.make_closure_accum_name ~fn_name
             make_closure_node.id ~ret_ty
         in
         ( closure_accum_name,
@@ -343,7 +357,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
               | Some _ as existing -> existing
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_make_closure_accum ~fn_name
+                  @@ Gen_closure_helpers.build_make_closure_accum ~fn_name
                        ~stored_args_size
                        ~args_size:
                          (List.length make_closure_node.remaining_arg_tys)
@@ -351,7 +365,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
             gen_functions )
     | (dispatch_cumul, fn_name, tys, _) :: _ ->
         let closure_accum_name =
-          Gen_closure_function.make_closure_accum_dispatch_name
+          Gen_closure_helpers.make_closure_accum_dispatch_name
             make_closure_node.id ~ret_ty
         in
         ( closure_accum_name,
@@ -360,7 +374,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
               | Some _ as existing -> existing
               | None ->
                   Option.some
-                  @@ Gen_closure_function.build_make_closure_accum_dispatch
+                  @@ Gen_closure_helpers.build_make_closure_accum_dispatch
                        ~stored_args_size
                        ~args_size:
                          (List.length make_closure_node.remaining_arg_tys)
@@ -372,7 +386,7 @@ let make_closure_apply_gen_functions gen_functions closure_graph ~node_id
 
 (** Lower a Cir.CR_Make_closure statement into OIR statements.
 
-    Layout (matching gen_closure_function.ml): [0]=accum_fn,
+    Layout (matching gen_closure_helpers.ml): [0]=accum_fn,
     [1+]=stored_args(free_vars + captured_args) *)
 let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
     (captured_args : Cir.operand list) (fn_name : string) :
@@ -382,8 +396,8 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   let captured_count = List.length captured_args in
   let stored_args_size = free_var_count + captured_count in
   let trampolines, accum_fn_name =
-    make_closure_apply_gen_functions ctx.trampolines ctx.closure_graph
-      ~node_id:dst.id ~free_vars_len:(List.length free_vars) ~fn_name
+    make_closure_apply_gen_functions ctx ~node_id:dst.id
+      ~free_vars_len:(List.length free_vars) ~fn_name
   in
   let ctx = { ctx with trampolines } in
   let total_fields = 1 + stored_args_size in
@@ -492,7 +506,7 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
   let is_dispatch, gen_fn_name, gen_functions =
     if List.exists (fun x -> x > 0) dispatch_id_possibilities then
       let closure_accum_name =
-        Gen_closure_function.partial_closure_accum_dispatch_name
+        Gen_closure_helpers.partial_closure_accum_dispatch_name
           ~stored_args_size ~args_size ~ret_ty
       in
       ( true,
@@ -502,12 +516,12 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
             | Some _ as existing -> existing
             | None ->
                 Option.some
-                @@ Gen_closure_function.build_partial_closure_accum_dispatch
+                @@ Gen_closure_helpers.build_partial_closure_accum_dispatch
                      ~stored_args_size ~args_size ret_ty)
           gen_functions )
     else
       let closure_accum_name =
-        Gen_closure_function.partial_closure_accum_name ~stored_args_size
+        Gen_closure_helpers.partial_closure_accum_name ~stored_args_size
           ~args_size ~ret_ty
       in
       ( false,
@@ -517,7 +531,7 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
             | Some _ as existing -> existing
             | None ->
                 Option.some
-                @@ Gen_closure_function.build_partial_closure_accum
+                @@ Gen_closure_helpers.build_partial_closure_accum
                      ~stored_args_size ~args_size ret_ty)
           gen_functions )
   in
@@ -525,7 +539,7 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
 
 (** Lower a Cir.CR_Partial_apply statement into OIR statements.
 
-    Layouts (matching gen_closure_function.ml):
+    Layouts (matching gen_closure_helpers.ml):
 
     Non-dispatch: [0]=accum_fn, [1]=parent, [2+]=new_args
 
@@ -1164,6 +1178,9 @@ let lower (ctx : Pipeline_types.cir_mono_ctx) : Pipeline_types.oir_ctx =
       trampolines = StringMap.empty;
       var_ids = IntMap.empty;
       block_ids = IntMap.empty;
+      available_fns =
+        StringSet.of_list
+          (List.map (fun (f : Cir.function_cir) -> f.name) prog.functions);
     }
   in
   (* Lower original functions, threading ctx to collect generated trampolines *)

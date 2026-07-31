@@ -7,7 +7,7 @@
   LET
   IDENT(x)
   EQ
-  IDENT(ref)
+  REF
   INT(10)
   NEWLINE
   EOF
@@ -277,7 +277,7 @@
   print_int x
   $ dune exec sylic lex parse0.src
   LET
-  MUT
+  IDENT(mut)
   IDENT(x)
   EQ
   INT(0)

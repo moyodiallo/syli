@@ -364,6 +364,22 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         | Parsing_ast.Unop_Arithmetic _ | Parsing_ast.Unop_Bitwise _ -> inner.ty
       in
       (ctx, { id = e.id; expr_desc = TExp_UnOp (top, inner); loc; ty })
+  | Parsing_ast.Exp_Ref inner ->
+      let ctx, inner = infer_expr ctx inner in
+      let ty = mk_ty (TTy_Ref inner.ty) in
+      (ctx, { id = e.id; expr_desc = TExp_Ref inner; loc; ty })
+  | Parsing_ast.Exp_Deref inner ->
+      let ctx, inner = infer_expr ctx inner in
+      let ctx, elem_ty = fresh_ty ctx in
+      let ref_ty = mk_ty (TTy_Ref elem_ty) in
+      let ctx = unify_into ctx inner.ty ref_ty in
+      ( ctx,
+        {
+          id = e.id;
+          expr_desc = TExp_Deref inner;
+          loc;
+          ty = apply_ty ctx elem_ty;
+        } )
   | Parsing_ast.Exp_BinOp (op, lhs, rhs) ->
       let ctx, lhs = infer_expr ctx lhs in
       let ctx, rhs = infer_expr ctx rhs in
@@ -542,6 +558,13 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       let ctx = unify_into ctx target.ty value.ty in
       let ty = mk_ty (TTy_Constant TTy_Unit) in
       (ctx, { id = e.id; expr_desc = TExp_Assign { target; value }; loc; ty })
+  | Parsing_ast.Exp_AssignRef { target; value } ->
+      let ctx, target = infer_expr ctx target in
+      let ctx, value = infer_expr ctx value in
+      let ref_ty = mk_ty (TTy_Ref value.ty) in
+      let ctx = unify_into ctx target.ty ref_ty in
+      let ty = mk_ty (TTy_Constant TTy_Unit) in
+      (ctx, { id = e.id; expr_desc = TExp_AssignRef { target; value }; loc; ty })
   | Parsing_ast.Exp_If { cond; then_branch; else_branch } ->
       let ctx, cond = infer_expr ctx cond in
       let ctx = unify_into ctx cond.ty (mk_ty (TTy_Constant TTy_Bool)) in

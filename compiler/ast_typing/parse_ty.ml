@@ -44,6 +44,9 @@ let rec ty_of_parsing (ctx : Env.infer_ctx) (t : Syli_parsing.Ast.ty) :
   | Ty_Array elem ->
       let ctx, elem = ty_of_parsing ctx elem in
       (ctx, mk_ty @@ TTy_Array elem)
+  | Ty_Ref elem ->
+      let ctx, elem = ty_of_parsing ctx elem in
+      (ctx, mk_ty @@ TTy_Ref elem)
   | Ty_Defined d ->
       let ctx, args = List.fold_left_map ty_of_parsing ctx d.args in
       (ctx, { ty_desc = TTy_Defined { name = ident_of_parsing d.name; args } })

@@ -27,6 +27,7 @@ let instantiate_scheme (ctx : infer_ctx) (s : scheme) : infer_ctx * ty =
         { ty_desc = TTy_Arrow (List.map (subst m) args, subst m ret) }
     | TTy_Tuple elems -> { ty_desc = TTy_Tuple (List.map (subst m) elems) }
     | TTy_Array elem -> { ty_desc = TTy_Array (subst m elem) }
+    | TTy_Ref elem -> { ty_desc = TTy_Ref (subst m elem) }
     | TTy_Defined d ->
         { ty_desc = TTy_Defined { d with args = List.map (subst m) d.args } }
     | TTy_Constant _ | TTy_Any -> t

@@ -30,6 +30,7 @@ let rec string_of_ty ty =
   | CTy_Tuple ts ->
       Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty ts))
   | CTy_Array t -> Printf.sprintf "array<%s>" (string_of_ty t)
+  | CTy_Ref t -> Printf.sprintf "ref<%s>" (string_of_ty t)
   | CTy_Defined { name; args = [] } -> name.fullname
   | CTy_Defined { name; args } ->
       Printf.sprintf "%s<%s>" name.fullname
