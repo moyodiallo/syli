@@ -5,11 +5,7 @@ let fresh_id = Syli_ir.Oir.fresh_id
 let i64_ty : ty = { id = fresh_id (); ir_type = OR_I64 }
 let void_ty : ty = { id = fresh_id (); ir_type = OR_Void }
 let fn_ptr_ty : ty = { id = fresh_id (); ir_type = OR_FnPtr }
-
-let obj_ptr_ty (inner : ty) : ty =
-  { id = fresh_id (); ir_type = OR_Obj_Ptr inner }
-
-let void_ptr_ty () : ty = obj_ptr_ty { id = fresh_id (); ir_type = OR_Void }
+let obj_ptr_ty () : ty = { id = fresh_id (); ir_type = OR_Obj_Ptr }
 let fresh_var name ty : var = { id = fresh_id (); name; ty }
 
 let int_operand (value : int) : operand =
@@ -39,12 +35,18 @@ let rec type_key_of_ty (t : ty) : string =
   | OR_Char -> "char"
   | OR_Str -> "str"
   | OR_Void -> "void"
-  | OR_Obj_Ptr inner -> "obj_" ^ type_key_of_ty inner
-  | OR_Obj { named; args } ->
-      let name = match named with Some n -> n | None -> "obj" in
-      if args = [] then "obj_" ^ name
-      else
-        "obj_" ^ name ^ "_" ^ String.concat "_" (List.map type_key_of_ty args)
+  | OR_Obj_Ptr -> "obj_ptr"
+  | OR_Obj { named; obj_kind; _ } -> (
+      let name = match named with Some n -> n | None -> "" in
+      match obj_kind with
+      | OR_Record_kind { fields; _ } ->
+          let field_keys =
+            String.concat "_"
+              (List.map (fun f -> type_key_of_ty f.field_ty) fields)
+          in
+          "obj_" ^ name ^ "_" ^ field_keys
+      | OR_Array_kind { element_ty } ->
+          "obj_" ^ name ^ "_" ^ type_key_of_ty element_ty)
 
 (* Partial closure accum dispatch name: shared per (closure_size, args_count) *)
 let partial_closure_accum_dispatch_name ~(stored_args_size : int)
@@ -66,8 +68,8 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
     partial_closure_accum_dispatch_name ~stored_args_size ~args_size
       ~ret_ty:result_ty
   in
-  let clos_ty = obj_ptr_ty void_ty in
-  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty void_ty) in
+  let clos_ty = obj_ptr_ty () in
+  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty ()) in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
   let arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
@@ -260,9 +262,9 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
   let fn_name =
     partial_closure_accum_name ~stored_args_size ~args_size ~ret_ty:result_ty
   in
-  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty void_ty) in
+  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty ()) in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
-  let closure_obj_ptr_ty = obj_ptr_ty void_ty in
+  let closure_obj_ptr_ty = obj_ptr_ty () in
   let arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
   in
@@ -551,7 +553,7 @@ let build_make_closure_accum_dispatch ~stored_args_size ~args_size
   let apply_arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
   in
-  let clos_ty = obj_ptr_ty void_ty in
+  let clos_ty = obj_ptr_ty () in
   let clos_var = fresh_var "Sy_clos" clos_ty in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
   (* Load stored args from clos[1+] *)
@@ -659,7 +661,7 @@ let build_make_closure_accum ~(fn_name : string) ~stored_args_size ~args_size
     ~(specializations : ty list) ~ret_ty id : function_oir =
   let accum_fn_name = make_closure_accum_name ~fn_name id ~ret_ty in
   let dispatch_param = fresh_var "Sy_dp_id" i64_ty in
-  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty void_ty) in
+  let clos_var = fresh_var "Sy_clos" (obj_ptr_ty ()) in
   let arg_params =
     List.init args_size (fun i -> fresh_var ("Sy_x" ^ string_of_int i) i64_ty)
   in

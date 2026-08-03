@@ -82,13 +82,7 @@ let test_make_closure_node () =
   let stmt =
     make_stmt 100
       (CR_Make_closure
-         {
-           dst;
-           fn = "Test.add";
-           free_vars = [];
-           captured_args = [];
-           initializer_fn = None;
-         })
+         { dst; fn = "Test.add"; free_vars = []; captured_args = [] })
   in
   let prog = make_prog [ make_fn "test" [ make_block [ stmt ] ] ] in
   print_prog "test_make_closure_node" prog;
@@ -106,7 +100,6 @@ let test_make_closure_with_captured () =
            fn = "Test.add";
            free_vars = [];
            captured_args = [ CR_OConstant (CR_IntLit "1", i64_ty) ];
-           initializer_fn = None;
          })
   in
   let prog = make_prog [ make_fn "test" [ make_block [ stmt ] ] ] in
@@ -126,7 +119,6 @@ let test_chain_make_closure_apply () =
            fn = "Test.add";
            free_vars = [];
            captured_args = [ CR_OConstant (CR_IntLit "1", i64_ty) ];
-           initializer_fn = None;
          })
   in
   let result = make_var 20 "r" i64_ty in
@@ -156,7 +148,6 @@ let test_partial_apply_closure () =
            fn = "Test.add";
            free_vars = [];
            captured_args = [ CR_OConstant (CR_IntLit "1", i64_ty) ];
-           initializer_fn = None;
          })
   in
   let partial = make_var 15 "p" (arrow_ty [ i64_ty; i64_ty ] i64_ty) in
@@ -198,7 +189,6 @@ let test_dispatch_edge_weight () =
            fn = "Test.add";
            free_vars = [];
            captured_args = [ CR_OConstant (CR_IntLit "1", i64_ty) ];
-           initializer_fn = None;
          })
   in
   let partial = make_var 15 "p" (arrow_ty [ i64_ty; i64_ty ] i64_ty) in
@@ -240,7 +230,6 @@ let test_node_dispatch_possibilities () =
            fn = "Test.add";
            free_vars = [];
            captured_args = [ CR_OConstant (CR_IntLit "1", i64_ty) ];
-           initializer_fn = None;
          })
   in
   let partial = make_var 15 "p" (arrow_ty [ i64_ty; i64_ty ] i64_ty) in
@@ -277,13 +266,7 @@ let test_non_generic () =
   let make =
     make_stmt 100
       (CR_Make_closure
-         {
-           dst = clos;
-           fn = "Test.add";
-           free_vars = [];
-           captured_args = [];
-           initializer_fn = None;
-         })
+         { dst = clos; fn = "Test.add"; free_vars = []; captured_args = [] })
   in
   let result = make_var 20 "r" i64_ty in
   let apply =
@@ -307,13 +290,7 @@ let test_generic_via_varying_ret_ty () =
   let make =
     make_stmt 100
       (CR_Make_closure
-         {
-           dst = clos;
-           fn = "Test.add";
-           free_vars = [];
-           captured_args = [];
-           initializer_fn = None;
-         })
+         { dst = clos; fn = "Test.add"; free_vars = []; captured_args = [] })
   in
   let r1 = make_var 20 "r1" i64_ty in
   let apply1 =
@@ -406,13 +383,7 @@ let test_cast_dispatch_possibilities () =
   let make =
     make_stmt 100
       (CR_Make_closure
-         {
-           dst = clos;
-           fn = "Test.add";
-           free_vars = [];
-           captured_args = [];
-           initializer_fn = None;
-         })
+         { dst = clos; fn = "Test.add"; free_vars = []; captured_args = [] })
   in
   let cast1_ty = arrow_ty [ double_ty; i64_ty ] i64_ty in
   let cast1 = make_var 15 "c1" cast1_ty in

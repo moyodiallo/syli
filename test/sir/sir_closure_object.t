@@ -27,24 +27,24 @@ Simple closure with one captured variable:
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=1:i32 record{fields=1 tag=0 [fn_ptr]}}
+      %Sy_var0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_simple.double_x.57_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_simple.double_x.56_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
-      %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:*void, 10:i64)
+      %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 10:i64)
       return %Sy_var1:i64
   end
   
-  public fn syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64(%f:*void, %x:i64) -> i64:
+  public fn syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64(%f:obj_ptr, %x:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, @borrow %f:*void, 0:i64)
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, @borrow %f:obj_ptr, 0:i64)
       
-      %Sy_accum_ptr_2:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (%Sy_var0:i64, @transfer %f:*void, 0:i64)
+      %Sy_accum_ptr_2:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (%Sy_var0:i64, @transfer %f:obj_ptr, 0:i64)
       
       return %Sy_var1:i64
   end
@@ -57,11 +57,11 @@ Simple closure with one captured variable:
       return %Sy_var0:i64
   end
   
-  private fn __make_closure_accum.syliTest_simple.double_x.57_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_simple.double_x.56_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      release(%Sy_clos:*void)
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_simple.double_x.i64_ret_i64 (%Sy_x0:i64)
       return %Sy_rst:i64
   end
@@ -105,21 +105,21 @@ Closure with multiple captured variables:
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=1:i32 record{fields=1 tag=0 [fn_ptr]}}
+      %Sy_var0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.62_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.61_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:*void, 3:i64, 4:i64)
+      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 3:i64, 4:i64)
       return %Sy_var1:i64
   end
   
-  public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:*void, %x:i64, %y:i64) -> i64:
+  public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:obj_ptr, %x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%f:*void, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %y:i64, @transfer %f:*void, 0:i64)
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, %y:i64, @transfer %f:obj_ptr, 0:i64)
       
       return %Sy_var0:i64
   end
@@ -132,11 +132,11 @@ Closure with multiple captured variables:
       return %Sy_var0:i64
   end
   
-  private fn __make_closure_accum.syliTest_multi.add.62_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_multi.add.61_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      release(%Sy_clos:*void)
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_ret_i64 (%Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
@@ -178,24 +178,24 @@ Closure with multipble chains of captured variables:
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.41_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.40_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_var1:*void = object_create{size=3:i32 record{fields=3 tag=0 [fn_ptr; *void; i64]}}
+      %Sy_var1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
-      obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
-      release(%Sy_release_tmp_1:*void)
-      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
-      obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
+      obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
+      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_var1:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_release_tmp_1:obj_ptr)
+      obj_set(%Sy_var1:obj_ptr, 1:i32, @own %Sy_var0:obj_ptr):obj_ptr
+      obj_set(%Sy_var1:obj_ptr, 2:i32, 2:i64):i64
       
-      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, @transfer %Sy_var1:*void, 0:i64)
+      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:obj_ptr, 0:i32):fn_ptr
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, @transfer %Sy_var1:obj_ptr, 0:i64)
       
       return %Sy_var2:i64
   end
@@ -209,25 +209,25 @@ Closure with multipble chains of captured variables:
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_multi.add.41_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_multi.add.40_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
-      release(%Sy_clos:*void)
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
   
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      release(%Sy_clos:*void)
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
+      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
+      release(%Sy_clos:obj_ptr)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   
@@ -264,28 +264,28 @@ Closure with multipble chains of captured variables:
       return
   end
   
-  public fn syliTest_multi.apply() -> *void:
+  public fn syliTest_multi.apply() -> obj_ptr:
     entry: bb0
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.43_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.42_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_var1:*void = object_create{size=3:i32 record{fields=3 tag=0 [fn_ptr; *void; i64]}}
+      %Sy_var1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
-      obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
-      release(%Sy_release_tmp_1:*void)
-      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
-      obj_set(%Sy_var1:*void, 2:i32, 2:i64):i64
+      obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
+      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_var1:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_release_tmp_1:obj_ptr)
+      obj_set(%Sy_var1:obj_ptr, 1:i32, @own %Sy_var0:obj_ptr):obj_ptr
+      obj_set(%Sy_var1:obj_ptr, 2:i32, 2:i64):i64
       
-      return @own %Sy_var1:*void
+      return @own %Sy_var1:obj_ptr
   end
   
   public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
@@ -297,25 +297,25 @@ Closure with multipble chains of captured variables:
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_multi.add.43_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_multi.add.42_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
-      release(%Sy_clos:*void)
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
   
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      release(%Sy_clos:*void)
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
+      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
+      release(%Sy_clos:obj_ptr)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   
@@ -377,24 +377,24 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_chain.add.66_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_chain.add.65_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_var1:*void = object_create{size=3:i32 record{fields=3 tag=0 [fn_ptr; *void; i64]}}
+      %Sy_var1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
-      obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:*void = @transfer obj_get(%Sy_var1:*void, 1:i32):*void
-      release(%Sy_release_tmp_1:*void)
-      obj_set(%Sy_var1:*void, 1:i32, @own %Sy_var0:*void):*void
-      obj_set(%Sy_var1:*void, 2:i32, 10:i64):i64
+      obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
+      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_var1:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_release_tmp_1:obj_ptr)
+      obj_set(%Sy_var1:obj_ptr, 1:i32, @own %Sy_var0:obj_ptr):obj_ptr
+      obj_set(%Sy_var1:obj_ptr, 2:i32, 10:i64):i64
       
-      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (100:i64, @transfer %Sy_var1:*void, 0:i64)
+      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:obj_ptr, 0:i32):fn_ptr
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (100:i64, @transfer %Sy_var1:obj_ptr, 0:i64)
       
       return %Sy_var2:i64
   end
@@ -408,25 +408,25 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_chain.add.66_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_chain.add.65_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
-      release(%Sy_clos:*void)
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_chain.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64, %Sy_x1:i64)
       return %Sy_rst:i64
   end
   
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:*void = @share obj_get(%Sy_clos:*void, 1:i64):*void
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:*void, 0:i64):fn_ptr
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 2:i64):i64
-      release(%Sy_clos:*void)
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:*void, %Sy_dp_id:i64)
+      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
+      release(%Sy_clos:obj_ptr)
+      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
       return %Sy_rst:i64
   end
   

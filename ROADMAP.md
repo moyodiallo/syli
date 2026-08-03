@@ -19,7 +19,7 @@ These are objectifs to reach but they are not fixed and could change or being im
     - record with immutable fields
     - array with immediates and record
     - array type will be [ty:N] ex. [i64:N]
-    - multi-dimension array will ex. [[i64:N]:N] (represented internally in one dimension)
+    - multi-dimension array will ex. [[i64:N]:N]
 
 - [ ] Mutable
     - introduce weak type or restrict polymorphic with memory.

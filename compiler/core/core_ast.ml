@@ -174,7 +174,7 @@ and signature_item = { id : int; signature_item_desc : signature_item_desc }
 and structure_item_desc =
   | CStr_Let of { rec_flag : rec_flag; name : ident; value : expr }
       (** All values and functions *)
-  | CStr_TypeDef of ty_decl  (** type definition: type Foo = ... *)
+  | CStr_TypeDef of ty_decl  (** type definition: type foo = ... *)
 
 and structure_item = { id : int; structure_item_desc : structure_item_desc }
 

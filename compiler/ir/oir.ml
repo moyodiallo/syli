@@ -12,6 +12,12 @@ let fresh_id () =
 
 type mut_flag = Mutable | Immutable
 
+type cyclic_prop =
+  | Cyclic_n_Trackable
+  | Acyclic_n_Trackable
+  | Acyclic
+  | Unknown_cyclic_prop
+
 type binop =
   | OR_Add
   | OR_Sub
@@ -35,7 +41,13 @@ type binop =
 type unop = OR_Neg | OR_Not | OR_BitNot
 type visibility = OR_Public | OR_Private
 
-type ir_type =
+type record_field_ty = { field_idx : int; field_ty : ty; field_mut : mut_flag }
+
+and obj_kind =
+  | OR_Record_kind of { fields : record_field_ty list; cardinal : int }
+  | OR_Array_kind of { element_ty : ty }
+
+and ir_type =
   | OR_Bool
   | OR_I64
   | OR_I32
@@ -48,8 +60,13 @@ type ir_type =
   | OR_Float
   | OR_Double
   | OR_FnPtr
-  | OR_Obj of { named : string option; args : ty list }
-  | OR_Obj_Ptr of ty
+  | OR_Obj of {
+      named : string option;
+      obj_kind : obj_kind;
+      tag_variant : int option;
+      cyclic_prop : cyclic_prop;
+    }
+  | OR_Obj_Ptr
   | OR_Char
   | OR_Str
   | OR_Void
@@ -63,10 +80,6 @@ type constant =
   | OR_StringLit of string
   | OR_CharLit of string
   | OR_Null
-
-type object_layout =
-  | OR_Record of { field_count : int; field_types : ty list; tag_variant : int }
-  | OR_Array of { element_ty : ty; tag_variant : int }
 
 and var = { id : id; name : string; ty : ty }
 and operand = OR_OConstant of constant * ty | OR_OVar of var
@@ -123,12 +136,7 @@ and statement_node =
       value_ty : ty;
       ownership_set : ownership_op;
     }
-  | OR_Object_create of {
-      dst : var;
-      size : operand;
-      layout : object_layout;
-      initializer_fn : qualified_name option;
-    }
+  | OR_Object_create of { dst : var; size : operand }
   | OR_Call of { dst : var; target : call_target; args : arg list }
   | OR_Store_global of {
       global : qualified_name;

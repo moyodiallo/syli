@@ -175,12 +175,12 @@ Partial apply from a lambda with captured local value:
     entry: bb0
   
     bb0:
-      %__lambda_14:(i64, i64 -> i64) = #make_closure {__lambda_14} () ()
-      %Sy_var0:(i64 -> i64) = #partial_apply {%__lambda_14:(i64, i64 -> i64)} (5:i64)
+      %__lambda_13:(i64, i64 -> i64) = #make_closure {__lambda_13} () ()
+      %Sy_var0:(i64 -> i64) = #partial_apply {%__lambda_13:(i64, i64 -> i64)} (5:i64)
       return %Sy_var0:(i64 -> i64)
   end
   
-  public fn __lambda_14(%x:i64, %y:i64) -> i64:
+  public fn __lambda_13(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

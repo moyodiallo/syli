@@ -60,23 +60,37 @@ module Monomorphize = struct
     | CR_Arrow (args, ret) ->
         List.exists (fun t -> has_generic_ir_type t.ir_type) args
         || has_generic_ir_type ret.ir_type
-    | CR_Obj_Ptr t -> has_generic_ir_type t.ir_type
-    | CR_Obj { args; _ } ->
-        List.exists (fun t -> has_generic_ir_type t.ir_type) args
+    | CR_Obj_Ptr -> false
+    | CR_Obj { obj_kind; _ } -> has_generic_obj_kind obj_kind
     | _ -> false
+
+  and has_generic_obj_kind = function
+    | CR_Record_kind { fields; _ } ->
+        List.exists (fun f -> has_generic_ir_type f.field_ty.ir_type) fields
+    | CR_Array_kind { element_ty } -> has_generic_ir_type element_ty.ir_type
 
   let has_generic_ty (t : ty) = has_generic_ir_type t.ir_type
 
   let rec collect_subst subst (x_ty : ty) (y_ty : ty) =
     match (x_ty.ir_type, y_ty.ir_type) with
     | CR_GenericTyp { type_var }, _ -> Hashtbl.replace subst type_var y_ty
-    | CR_Obj { args = x_args; _ }, CR_Obj { args = y_args; _ } ->
-        List.iter2 (collect_subst subst) x_args y_args
-    | CR_Obj_Ptr x_inner, CR_Obj_Ptr y_inner ->
-        collect_subst subst x_inner y_inner
+    | CR_Obj { obj_kind = x_kind; _ }, CR_Obj { obj_kind = y_kind; _ } ->
+        collect_subst_obj_kind subst x_kind y_kind
+    | CR_Obj_Ptr, CR_Obj_Ptr -> ()
     | CR_Arrow (x_args, x_ret), CR_Arrow (y_args, y_ret) ->
         List.iter2 (collect_subst subst) x_args y_args;
         collect_subst subst x_ret y_ret
+    | _ -> ()
+
+  and collect_subst_obj_kind subst (x_kind : obj_kind) (y_kind : obj_kind) =
+    match (x_kind, y_kind) with
+    | ( CR_Record_kind { fields = x_fields; _ },
+        CR_Record_kind { fields = y_fields; _ } ) ->
+        List.iter2
+          (fun xf yf -> collect_subst subst xf.field_ty yf.field_ty)
+          x_fields y_fields
+    | CR_Array_kind { element_ty = xe }, CR_Array_kind { element_ty = ye } ->
+        collect_subst subst xe ye
     | _ -> ()
 
   let create_subst x_tys y_tys : Subst.subst =
@@ -182,9 +196,7 @@ module Monomorphize = struct
                    else ctx)
                  ctx
           in
-          ( ctx,
-            CR_Make_closure
-              { dst; free_vars; captured_args; fn; initializer_fn = None } )
+          (ctx, CR_Make_closure { dst; free_vars; captured_args; fn })
       | other -> (ctx, other)
     in
     (ctx, { stmt with node })

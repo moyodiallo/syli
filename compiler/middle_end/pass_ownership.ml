@@ -10,7 +10,7 @@ open Liveness
 let void_ty () = { id = fresh_id (); ir_type = OR_Void }
 
 let is_ref_ty (t : ty) : bool =
-  match t.ir_type with OR_Obj _ | OR_Obj_Ptr _ -> true | _ -> false
+  match t.ir_type with OR_Obj _ | OR_Obj_Ptr -> true | _ -> false
 
 let mk_release (v : var) : statement =
   { id = fresh_id (); node = OR_Release { obj = v }; ty = void_ty () }

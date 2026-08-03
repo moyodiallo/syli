@@ -21,9 +21,9 @@ Closure with multipble chains of captured variables:
   define i64 @syliTest_multi.apply() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693954, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.41_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.40_ret_i64 to ptr
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
@@ -32,7 +32,7 @@ Closure with multipble chains of captured variables:
     store i64 1, ptr %Sy_tmp3
     ; nop
     call void @syli_rt_gc_cycle()
-    %Sy_var1 = call ptr @syli_rt_ownership_alloc_object(i64 4179340454199820355, i32 1, i32 3)
+    %Sy_var1 = call ptr @syli_rt_ownership_alloc_object(i64 4251398048237748291, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.clos1_arg1_ret_i64 to ptr
     %Sy_tmp4 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var1)
@@ -65,7 +65,7 @@ Closure with multipble chains of captured variables:
     ret i64 %Sy_var1
   }
   
-  define i64 @__make_closure_accum.syliTest_multi.add.41_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_multi.add.40_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
@@ -166,9 +166,9 @@ Closure as an argument:
   define i64 @__init_global.syliTest_multi.result() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693953, i32 1, i32 1)
+    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.62_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.61_ret_i64 to ptr
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
@@ -193,7 +193,7 @@ Closure as an argument:
     ret i64 %Sy_var0
   }
   
-  define i64 @__make_closure_accum.syliTest_multi.add.62_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_multi.add.61_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
     call void @syli_inlinable_ownership_release(ptr %Sy_clos)
     %Sy_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)

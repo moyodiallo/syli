@@ -45,7 +45,7 @@ let is_reference_ty = function
   | RR_Bool | RR_I64 | RR_I32 | RR_I16 | RR_I8 | RR_U64 | RR_U32 | RR_U16
   | RR_U8 | RR_Float | RR_Double | RR_Void | RR_Arrow _ ->
       false
-  | RR_Obj_Ptr _ -> true
+  | RR_Obj_Ptr -> true
   | RR_FnPtr -> false
   | RR_Char -> false
   | RR_Str -> false
@@ -61,7 +61,7 @@ let is_reference_ty = function
 (*                          10=mixed_order, 11=mixed_bitmap      *)
 (*   Bit  58:    HasFinalizer                                    *)
 (*   Bit  57:    HasPointers                                     *)
-(*   Bit  56:    Tracing (0)                                     *)
+(*   Bit  56:    Traceable                                       *)
 (*   Bits 55-48: Variant tag (8 bits)                            *)
 (*   Bits 31-0:  Payload (32 bits)                               *)
 (* ------------------------------------------------------------- *)
@@ -106,18 +106,21 @@ let ptr_and_imm_counts (field_types : ty list) : int * int =
     (0, 0) field_types
 
 (** Assemble the full 64-bit header word using bitwise OR. *)
-let make_header (zone : int64) (cyclic : int64) (obj_type : int64)
-    (has_pointers : bool) (variant_tag : int64) (payload : int64) : int64 =
+let make_header ~(zone : int64) ~(cyclic : int64) ~(obj_type : int64)
+    ~(has_pointers : bool) ~(traceable : int64) ~(variant_tag : int64)
+    (payload : int64) : int64 =
   let zone_bits = Int64.shift_left zone zone_shift in
   let cyclic_bits = Int64.shift_left cyclic cyclic_shift in
   let type_bits = Int64.shift_left obj_type type_shift in
   let has_pointers_bit =
     if has_pointers then Int64.shift_left 1L has_pointers_shift else 0L
   in
+  let traceable_bit = Int64.shift_left traceable tracing_shift in
   let payload_bits = Int64.logand payload 0xFFFFFFFFL in
   let header = Int64.logor zone_bits cyclic_bits in
   let header = Int64.logor header type_bits in
   let header = Int64.logor header has_pointers_bit in
+  let header = Int64.logor header traceable_bit in
   let header = Int64.logor header variant_tag in
   Int64.logor header payload_bits
 
@@ -173,31 +176,17 @@ let fields_are_ordered (field_types : ty list) : bool =
 let has_pointer_fields (field_types : ty list) : bool =
   List.exists (fun (f : Rir.ty) -> is_reference_ty f.ty) field_types
 
-(** Compute an object header operand from an OIR object_layout and its lowered
-    field types. *)
-let header_operand_of_layout (layout : Oir.object_layout)
-    (field_types : ty list) : operand =
-  let zone = 0L in
-  let cyclic = 1L in
-  let variant_tag =
-    match layout with
-    | Oir.OR_Record { tag_variant; _ } | Oir.OR_Array { tag_variant; _ } ->
-        variant_tag_raw tag_variant
-  in
-  let has_pointers = has_pointer_fields field_types in
-  let obj_type, payload =
-    match classify_mono_fields field_types with
-    | Some (ty, p) -> (ty, p)
-    | None ->
-        if fields_are_ordered field_types then
-          classify_ordered_fields field_types
-        else classify_bitmap_fields field_types
-  in
-  let payload_val = encode_payload payload in
-  let header =
-    make_header zone cyclic obj_type has_pointers variant_tag payload_val
-  in
-  int64_operand header
+let cyclic_bit_of_prop (p : Oir.cyclic_prop) : int64 =
+  match p with
+  | Oir.Acyclic | Oir.Acyclic_n_Trackable -> 0L
+  | Oir.Cyclic_n_Trackable | Oir.Unknown_cyclic_prop -> 1L
+
+let traceable_bit_of_prop (p : Oir.cyclic_prop) : int64 =
+  match p with
+  | Oir.Cyclic_n_Trackable | Oir.Unknown_cyclic_prop | Oir.Acyclic_n_Trackable
+    ->
+      1L
+  | Oir.Acyclic -> 0L
 
 let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   match t with
@@ -213,14 +202,44 @@ let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   | OR_Float -> RR_Float
   | OR_Double -> RR_Double
   | OR_FnPtr -> RR_FnPtr
-  | OR_Obj _ -> object_ptr_ty
-  | OR_Obj_Ptr inner -> RR_Obj_Ptr (lower_ir_type inner.ir_type)
+  | OR_Obj _ | OR_Obj_Ptr -> object_ptr_ty
   | OR_Char -> RR_Char
   | OR_Str -> RR_Str
   | OR_Void -> RR_Void
 
 let lower_ty (t : Oir.ty) : Rir.ty =
   { id = fresh_global_id (); ty = lower_ir_type t.ir_type }
+
+let header_operand_of_obj (obj_ty : Oir.ty) : operand =
+  match obj_ty.ir_type with
+  | Oir.OR_Obj { obj_kind; tag_variant; cyclic_prop; _ } ->
+      let zone = 0L in
+      let cyclic = cyclic_bit_of_prop cyclic_prop in
+      let traceable = traceable_bit_of_prop cyclic_prop in
+      let variant_tag = variant_tag_raw (Option.value tag_variant ~default:0) in
+      let field_types =
+        match obj_kind with
+        | Oir.OR_Record_kind { fields; _ } ->
+            fields
+            |> List.map (fun (f : Oir.record_field_ty) -> lower_ty f.field_ty)
+        | Oir.OR_Array_kind { element_ty } -> [ lower_ty element_ty ]
+      in
+      let has_pointers = has_pointer_fields field_types in
+      let obj_type, payload =
+        match classify_mono_fields field_types with
+        | Some (ty, p) -> (ty, p)
+        | None ->
+            if fields_are_ordered field_types then
+              classify_ordered_fields field_types
+            else classify_bitmap_fields field_types
+      in
+      let payload_val = encode_payload payload in
+      let header =
+        make_header ~zone ~cyclic ~obj_type ~has_pointers ~traceable
+          ~variant_tag payload_val
+      in
+      int64_operand header
+  | _ -> failwith "OR_Object_create dst must have an OR_Obj structural type"
 
 let lower_var (ctx : ctx) (v : Oir.var) : ctx * Rir.var =
   match IntMap.find_opt v.id ctx.oir_var_ids with
@@ -332,21 +351,13 @@ let lower_terminator (ctx : ctx) (term : Oir.terminator) : ctx * Rir.terminator
   in
   (ctx, { id = fresh_global_id (); node })
 
-let lower_field_types (field_types : Oir.ty list) : Rir.ty list =
-  List.map lower_ty field_types
-
-let runtime_call_of_object_create (dst : Rir.var) (size : Rir.operand)
-    (layout : Oir.object_layout) : Rir.runtime_call =
-  let field_types =
-    match layout with
-    | Oir.OR_Record { field_types; _ } -> lower_field_types field_types
-    | Oir.OR_Array { element_ty; _ } -> [ lower_ty element_ty ]
-  in
-  let header = header_operand_of_layout layout field_types in
+let runtime_call_of_object_create (dst : Oir.var) (size : Rir.operand) :
+    Rir.runtime_call =
+  let header = header_operand_of_obj dst.ty in
   {
     fn_name = RR_RT_object_alloc;
     args = [ header; int_operand 1; size ];
-    ret_ty = Some dst.ty;
+    ret_ty = Some (lower_ty dst.ty);
   }
 
 let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
@@ -394,12 +405,10 @@ let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
   (ctx, { id = fresh_global_id (); node; ty = rir_ty })
 
 let is_var_ref (var : Oir.var) =
-  match var.ty.ir_type with
-  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr _ -> true
-  | _ -> false
+  match var.ty.ir_type with Oir.OR_Obj _ | Oir.OR_Obj_Ptr -> true | _ -> false
 
 let is_ty_ref (ty : Oir.ty) =
-  match ty.ir_type with Oir.OR_Obj _ | Oir.OR_Obj_Ptr _ -> true | _ -> false
+  match ty.ir_type with Oir.OR_Obj _ | Oir.OR_Obj_Ptr -> true | _ -> false
 
 let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
     ctx * Rir.statement list =
@@ -545,7 +554,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Object_create { dst; size; layout } ->
+  | OR_Object_create { dst; size } ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, size' = lower_operand ctx size in
       ( ctx,
@@ -554,10 +563,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             id = fresh_global_id ();
             node =
               RR_Runtime_call
-                {
-                  dst = dst';
-                  call = runtime_call_of_object_create dst' size' layout;
-                };
+                { dst = dst'; call = runtime_call_of_object_create dst size' };
             ty = lower_ty stmt.ty;
           };
         ] )

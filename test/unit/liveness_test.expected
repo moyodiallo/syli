@@ -5,10 +5,10 @@ public fn test_single() -> i64:
   entry: bb10
 
   bb10:
-    %x:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    %y:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    %_:i64 = #call_direct f (@borrow %x:Obj)
-    %_:i64 = #call_direct f (@borrow %y:Obj)
+    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %y:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %_:i64 = #call_direct f (@borrow %x:obj_ptr)
+    %_:i64 = #call_direct f (@borrow %y:obj_ptr)
     return
 end
 
@@ -27,11 +27,11 @@ public fn test_two_blocks() -> i64:
   entry: bb20
 
   bb20:
-    %x:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
+    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
     cond_br %cond:i64, bb100, bb101
 
   bb100:
-    %_:i64 = #call_direct f (@borrow %x:Obj)
+    %_:i64 = #call_direct f (@borrow %x:obj_ptr)
     return
 
   bb101:
@@ -54,11 +54,11 @@ public fn test_store_global_and_call() -> i64:
   entry: bb10
 
   bb10:
-    %x:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    store_global g_x = @share %x:Obj
-    %y:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
-    %y:Obj = #call_direct fn (@borrow %y:Obj)
-    %_:i64 = #call_direct f (@borrow %x:Obj)
+    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    store_global g_x = @share %x:obj_ptr
+    %y:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %y:obj_ptr = #call_direct fn (@borrow %y:obj_ptr)
+    %_:i64 = #call_direct f (@borrow %x:obj_ptr)
     return
 end
 
@@ -78,11 +78,11 @@ public fn test_dead_at_entry() -> i64:
   entry: bb20
 
   bb20:
-    %x:Obj = object_create{size=8:i64 record{fields=1 tag=0 [i64]}}
+    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
     cond_br %cond:i64, bb100, bb101
 
   bb100:
-    %_:i64 = #call_direct f (@borrow %x:Obj)
+    %_:i64 = #call_direct f (@borrow %x:obj_ptr)
     return
 
   bb101:
@@ -101,7 +101,7 @@ end
 --- test_empty_entry_block: input
 module Test :
 functions:
-public fn test_empty_entry(%p:Obj) -> i64:
+public fn test_empty_entry(%p:obj_ptr) -> i64:
   entry: bb10
 
   bb10:

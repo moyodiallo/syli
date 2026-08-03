@@ -56,35 +56,35 @@
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.add.50_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.add.49_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_var1:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      %Sy_var1:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.sub.60_ret_i64)
-      obj_set(%Sy_var1:*void, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var1:*void, 1:i32, 1:i64):i64
+      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.sub.59_ret_i64)
+      obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
+      obj_set(%Sy_var1:obj_ptr, 1:i32, 1:i64):i64
       
       %Sy_var2:bool = cast(true:bool as bool)
       cond_br %Sy_var2:bool, bb1, bb2
   
     bb2:
-      release(%Sy_var0:*void)
-      %Sy_var3:*void = move(%Sy_var1:*void)
+      release(%Sy_var0:obj_ptr)
+      %Sy_var3:obj_ptr = move(%Sy_var1:obj_ptr)
       goto bb3
   
     bb1:
-      release(%Sy_var1:*void)
-      %Sy_var3:*void = move(%Sy_var0:*void)
+      release(%Sy_var1:obj_ptr)
+      %Sy_var3:obj_ptr = move(%Sy_var0:obj_ptr)
       goto bb3
   
     bb3:
-      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var3:*void, 0:i32):fn_ptr
-      %Sy_var4:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (2:i64, @transfer %Sy_var3:*void, 0:i64)
+      %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var3:obj_ptr, 0:i32):fn_ptr
+      %Sy_var4:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (2:i64, @transfer %Sy_var3:obj_ptr, 0:i64)
       
       %Sy_var5:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var4:i64)
       return
@@ -106,22 +106,22 @@
       return %Sy_var0:i64
   end
   
-  private fn __make_closure_accum.syliTest_file.add.50_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_file.add.49_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
-      release(%Sy_clos:*void)
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
       return %Sy_rst:i64
   end
   
-  private fn __make_closure_accum.syliTest_file.sub.60_ret_i64(%Sy_x0:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_file.sub.59_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
-      release(%Sy_clos:*void)
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      release(%Sy_clos:obj_ptr)
       %Sy_rst:i64 = #call_direct __wrapper.syliTest_file.sub.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
       return %Sy_rst:i64
   end
@@ -235,9 +235,9 @@
   bb0:
     %Sy_var3 = alloca ptr
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693954, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.50_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.49_ret_i64 to ptr
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
@@ -246,9 +246,9 @@
     store i64 1, ptr %Sy_tmp3
     ; nop
     call void @syli_rt_gc_cycle()
-    %Sy_var1 = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693954, i32 1, i32 2)
+    %Sy_var1 = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.60_ret_i64 to ptr
+    %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.59_ret_i64 to ptr
     %Sy_tmp4 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var1)
     %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp4, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_1, ptr %Sy_tmp5
@@ -289,7 +289,7 @@
     ret i64 %Sy_var0
   }
   
-  define i64 @__make_closure_accum.syliTest_file.add.50_ret_i64(i64 %Sy_x0, ptr %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_file.add.49_ret_i64(i64 %Sy_x0, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1
@@ -299,7 +299,7 @@
     ret i64 %Sy_rst
   }
   
-  define i64 @__make_closure_accum.syliTest_file.sub.60_ret_i64(i64 %Sy_x0, ptr %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_file.sub.59_ret_i64(i64 %Sy_x0, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1

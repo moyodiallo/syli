@@ -1,5 +1,15 @@
 open Oir
 
+let string_of_cyclic_prop = function
+  | Cyclic_n_Trackable -> "cyclic"
+  | Acyclic_n_Trackable -> "acyc_n_track"
+  | Acyclic -> "acyclic"
+  | Unknown_cyclic_prop -> "unknow_cyclic"
+
+let string_of_tag_variant = function
+  | Some t -> Printf.sprintf "tag=%d" t
+  | None -> "tag=-"
+
 let rec string_of_ir_type = function
   | OR_I64 -> "i64"
   | OR_I32 -> "i32"
@@ -13,20 +23,36 @@ let rec string_of_ir_type = function
   | OR_Float -> "f32"
   | OR_Double -> "f64"
   | OR_FnPtr -> "fn_ptr"
-  | OR_Obj { named; args } ->
+  | OR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
       let name = match named with Some n -> n | None -> "obj" in
-      if args = [] then name
-      else
-        name ^ "<"
-        ^ String.concat ", "
-            (List.map (fun t -> string_of_ir_type t.ir_type) args)
-        ^ ">"
-  | OR_Obj_Ptr inner -> Printf.sprintf "*%s" (string_of_ir_type inner.ir_type)
+      Printf.sprintf "%s{%s %s %s}" name
+        (string_of_obj_kind obj_kind)
+        (string_of_tag_variant tag_variant)
+        (string_of_cyclic_prop cyclic_prop)
+  | OR_Obj_Ptr -> "obj_ptr"
   | OR_Char -> "char"
   | OR_Str -> "str"
   | OR_Void -> "void"
 
+and string_of_obj_kind = function
+  | OR_Record_kind { fields; cardinal } ->
+      let fields_str =
+        fields
+        |> List.map (fun (f : record_field_ty) ->
+            Printf.sprintf "%d:%s" f.field_idx
+              (string_of_ir_type f.field_ty.ir_type))
+        |> String.concat "; "
+      in
+      Printf.sprintf "{card=%d [%s]}" cardinal fields_str
+  | OR_Array_kind { element_ty } ->
+      Printf.sprintf "[array_elt=%s]" (string_of_ir_type element_ty.ir_type)
+
 let string_of_ty (t : ty) : string = string_of_ir_type t.ir_type
+
+let string_of_short_ir_type (t : ir_type) : string =
+  match t with OR_Obj _ | OR_Obj_Ptr -> "obj_ptr" | _ -> string_of_ir_type t
+
+let string_of_short_ty (t : ty) : string = string_of_short_ir_type t.ir_type
 
 let string_of_visibility = function
   | OR_Public -> "public"
@@ -36,6 +62,9 @@ let var_id (v : var) = v.id
 let var_ty (v : var) = v.ty
 
 let var_to_string (v : var) : string =
+  Printf.sprintf "%%%s:%s" v.name (string_of_short_ty (var_ty v))
+
+let var_to_string_full (v : var) : string =
   Printf.sprintf "%%%s:%s" v.name (string_of_ty (var_ty v))
 
 let string_of_operand = function
@@ -49,7 +78,7 @@ let string_of_operand = function
         | OR_CharLit c -> "'" ^ c ^ "'"
         | OR_Null -> "null"
       in
-      Printf.sprintf "%s:%s" c_str (string_of_ty ty)
+      Printf.sprintf "%s:%s" c_str (string_of_short_ty ty)
   | OR_OVar v -> var_to_string v
 
 let closure_name_of_operand = function OR_OVar _ -> None | _ -> None
@@ -80,7 +109,7 @@ let string_of_binop = function
   | OR_Or -> "||"
 
 let string_of_unop = function OR_Neg -> "-" | OR_Not -> "!" | OR_BitNot -> "~"
-let is_ref_ir_type = function OR_Obj _ | OR_Obj_Ptr _ -> true | _ -> false
+let is_ref_ir_type = function OR_Obj _ | OR_Obj_Ptr -> true | _ -> false
 
 let string_of_ownership_op = function
   | OR_Ownership_borrow -> "borrow"
@@ -107,26 +136,15 @@ let string_of_rvalue (rv : rvalue) : string =
         (own_str ownership_get value_ty.ir_type)
         (string_of_operand obj)
         (string_of_operand field_idx)
-        (string_of_ty value_ty)
+        (string_of_short_ty value_ty)
   | OR_Object_length { obj } -> Printf.sprintf "len(%s)" (string_of_operand obj)
   | OR_Object_get_tag { obj } ->
       Printf.sprintf "get_tag(%s)" (string_of_operand obj)
   | OR_Cast { src; to_ty } ->
       Printf.sprintf "cast(%s as %s)" (string_of_operand src)
-        (string_of_ty to_ty)
+        (string_of_short_ty to_ty)
   | OR_Move { src } -> Printf.sprintf "move(%s)" (string_of_operand src)
   | OR_Addr_fn { fn } -> Printf.sprintf "addr_fn(%s)" fn
-
-let string_of_object_layout = function
-  | OR_Record { field_count; field_types; tag_variant } ->
-      let fields_str =
-        field_types |> List.map string_of_ty |> String.concat "; "
-      in
-      Printf.sprintf "record{fields=%d tag=%d [%s]}" field_count tag_variant
-        fields_str
-  | OR_Array { element_ty; tag_variant } ->
-      Printf.sprintf "array{elem=%s tag=%d}" (string_of_ty element_ty)
-        tag_variant
 
 let string_of_statement (stmt : statement) : string =
   match stmt.node with
@@ -136,11 +154,11 @@ let string_of_statement (stmt : statement) : string =
       Printf.sprintf "obj_set(%s, %s, %s%s):%s" (var_to_string obj)
         (string_of_operand field_idx)
         (own_str ownership_set value_ty.ir_type)
-        (string_of_operand value) (string_of_ty value_ty)
-  | OR_Object_create { dst; size; layout; _ } ->
-      Printf.sprintf "%s = object_create{size=%s %s}" (var_to_string dst)
+        (string_of_operand value)
+        (string_of_short_ty value_ty)
+  | OR_Object_create { dst; size } ->
+      Printf.sprintf "%s = object_create{size=%s}" (var_to_string_full dst)
         (string_of_operand size)
-        (string_of_object_layout layout)
   | OR_Call { dst; target; args; _ } ->
       let dst_str = var_to_string dst ^ " = " in
       let string_of_arg a =
@@ -208,14 +226,17 @@ let string_of_type_def ((name, ty) : string * ty) : string =
   Printf.sprintf "type %s = %s" name (string_of_ty ty)
 
 let string_of_ffi_external_function (fn : ffi_external_function) : string =
-  let params_str = fn.params |> List.map string_of_ty |> String.concat ", " in
+  let params_str =
+    fn.params |> List.map string_of_short_ty |> String.concat ", "
+  in
   let cc_str =
     match fn.calling_convention with
     | Some cc -> Printf.sprintf " cc=%s" cc
     | None -> ""
   in
   Printf.sprintf "extern fn %s(%s) -> %s%s" fn.name params_str
-    (string_of_ty fn.ret_ty) cc_str
+    (string_of_short_ty fn.ret_ty)
+    cc_str
 
 let string_of_global_value (g : global_value) : string =
   let init_str = Printf.sprintf " init=%s" g.init_fn.name in
@@ -230,7 +251,7 @@ let string_of_global_value (g : global_value) : string =
   in
   Printf.sprintf "global %s %s : %s = %s%s"
     (string_of_visibility g.visibility)
-    g.name (string_of_ty g.ty) value_str init_str
+    g.name (string_of_short_ty g.ty) value_str init_str
 
 let string_of_function (fn : function_oir) : string =
   let params_str = String.concat ", " (List.map var_to_string fn.params) in
@@ -245,7 +266,7 @@ let string_of_function (fn : function_oir) : string =
   Printf.sprintf "%s fn %s(%s) -> %s:\n  entry: bb%d\n\n%s\nend"
     (string_of_visibility fn.visibility)
     fn.name params_str
-    (string_of_ty fn.return_ty)
+    (string_of_short_ty fn.return_ty)
     (lookup fn.entry_block.id) blocks_str
 
 let string_of_program (prog : module_oir) : string =

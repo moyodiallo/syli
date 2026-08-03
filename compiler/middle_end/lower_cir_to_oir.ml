@@ -94,17 +94,51 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
   | Cir.CR_Float -> Oir.OR_Float
   | Cir.CR_Double -> Oir.OR_Double
   | Cir.CR_FnPtr -> Oir.OR_FnPtr
-  | Cir.CR_Obj { named; args } ->
-      Oir.OR_Obj { named; args = List.map lower_ty args }
-  | Cir.CR_Obj_Ptr inner -> Oir.OR_Obj_Ptr (lower_ty inner)
+  | Cir.CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
+      Oir.OR_Obj
+        {
+          named;
+          obj_kind = lower_obj_kind obj_kind;
+          tag_variant;
+          cyclic_prop = lower_cyclic_prop cyclic_prop;
+        }
+  | Cir.CR_Obj_Ptr -> Oir.OR_Obj_Ptr
   | Cir.CR_Char -> Oir.OR_Char
   | Cir.CR_Str -> Oir.OR_Str
   | Cir.CR_Void -> Oir.OR_Void
   | Cir.CR_GenericTyp _ ->
       failwith
         "Cir.CR_GenericTyp should be monomorphized before lowering to OIR"
-  | Cir.CR_Arrow _ ->
-      Oir.OR_Obj_Ptr { id = fresh_global_id (); ir_type = Oir.OR_Void }
+  | Cir.CR_Arrow _ -> Oir.OR_Obj_Ptr
+
+and lower_cyclic_prop (c : Cir.cyclic_prop) : Oir.cyclic_prop =
+  match c with
+  | Cir.Cyclic_n_Trackable -> Oir.Cyclic_n_Trackable
+  | Cir.Acyclic_n_Trackable -> Oir.Acyclic_n_Trackable
+  | Cir.Acyclic -> Oir.Acyclic
+  | Cir.Unknown_cyclic_prop -> Oir.Unknown_cyclic_prop
+
+and lower_obj_kind (k : Cir.obj_kind) : Oir.obj_kind =
+  match k with
+  | Cir.CR_Record_kind { fields; cardinal } ->
+      Oir.OR_Record_kind
+        {
+          fields =
+            List.map
+              (fun (f : Cir.record_field_ty) ->
+                {
+                  Oir.field_idx = f.field_idx;
+                  field_ty = lower_ty f.field_ty;
+                  field_mut =
+                    (match f.field_mut with
+                    | Cir.Mutable -> Oir.Mutable
+                    | Cir.Immutable -> Oir.Immutable);
+                })
+              fields;
+          cardinal;
+        }
+  | Cir.CR_Array_kind { element_ty } ->
+      Oir.OR_Array_kind { element_ty = lower_ty element_ty }
 
 and lower_ty (t : Cir.ty) : Oir.ty =
   { id = fresh_global_id (); ir_type = lower_ir_type t.ir_type }
@@ -194,18 +228,6 @@ let lower_terminator (ctx : ctx) (term : Cir.terminator) : ctx * Oir.terminator
   in
   (ctx, { id = fresh_global_id (); node })
 
-let lower_object_layout (layout : Cir.object_layout) : Oir.object_layout =
-  match layout with
-  | Cir.CR_Record { field_count; field_types; tag_variant } ->
-      Oir.OR_Record
-        {
-          field_count;
-          field_types = List.map lower_ty field_types;
-          tag_variant;
-        }
-  | Cir.CR_Array { element_ty; tag_variant } ->
-      Oir.OR_Array { element_ty = lower_ty element_ty; tag_variant }
-
 let rvalue_of_cir (ctx : ctx) (rv : Cir.rvalue) : ctx * Oir.rvalue =
   let oir_ty = lower_ty rv.ty in
   let ctx, node =
@@ -248,11 +270,8 @@ let rvalue_of_cir (ctx : ctx) (rv : Cir.rvalue) : ctx * Oir.rvalue =
 let sir_fn_ptr_ty : Cir.ty = { id = fresh_global_id (); ir_type = Cir.CR_FnPtr }
 let sir_i64_ty : Cir.ty = { id = fresh_global_id (); ir_type = Cir.CR_I64 }
 
-let sir_void_ptr_ty : Cir.ty =
-  {
-    id = fresh_global_id ();
-    ir_type = Cir.CR_Obj_Ptr { id = fresh_global_id (); ir_type = Cir.CR_Void };
-  }
+let sir_obj_ptr_ty : Cir.ty =
+  { id = fresh_global_id (); ir_type = Cir.CR_Obj_Ptr }
 
 let sir_operand_ty (op : Cir.operand) : Cir.ty =
   match op with Cir.CR_OConstant (_, ty) -> ty | Cir.CR_OVar v -> v.ty
@@ -384,6 +403,37 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
   in
   (gen_functions, gen_fn_name)
 
+let closure_obj_ty (sir_field_types : Cir.ty list) : Oir.ty =
+  let fields =
+    List.mapi
+      (fun idx field_ty ->
+        {
+          Oir.field_idx = idx;
+          field_ty = lower_ty field_ty;
+          field_mut = Oir.Immutable;
+        })
+      sir_field_types
+  in
+  {
+    id = fresh_global_id ();
+    ir_type =
+      Oir.OR_Obj
+        {
+          named = None;
+          obj_kind =
+            Oir.OR_Record_kind
+              { fields; cardinal = List.length sir_field_types };
+          tag_variant = Some 0;
+          cyclic_prop = Oir.Unknown_cyclic_prop;
+        };
+  }
+
+let with_closure_dst_ty (ctx : ctx) (dst : Cir.var) (oir_dst : Oir.var)
+    (sir_field_types : Cir.ty list) : ctx * Oir.var =
+  let oir_dst = { oir_dst with ty = closure_obj_ty sir_field_types } in
+  let ctx = { ctx with var_ids = IntMap.add dst.id oir_dst ctx.var_ids } in
+  (ctx, oir_dst)
+
 (** Lower a Cir.CR_Make_closure statement into OIR statements.
 
     Layout (matching gen_closure_helpers.ml): [0]=accum_fn,
@@ -404,18 +454,10 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   let field_types : Cir.ty list =
     sir_fn_ptr_ty :: List.init stored_args_size (fun _ -> sir_i64_ty)
   in
-  let layout =
-    Cir.CR_Record { field_count = total_fields; field_types; tag_variant = 0 }
-  in
+  let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst field_types in
   let size_op = int_operand total_fields in
   let create_stmt_node =
-    Oir.OR_Object_create
-      {
-        dst = oir_dst;
-        size = size_op;
-        layout = lower_object_layout layout;
-        initializer_fn = None;
-      }
+    Oir.OR_Object_create { dst = oir_dst; size = size_op }
   in
   (* Set clos[0] = accum_fn *)
   let accum_var = fresh_var "Sy_accum_fn" (fn_ptr_ty ()) in
@@ -560,26 +602,13 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
   let sir_field_types : Cir.ty list =
     [ sir_fn_ptr_ty ]
     @ (if is_dispatch then [ sir_i64_ty ] else [])
-    @ [ sir_void_ptr_ty ]
+    @ [ sir_obj_ptr_ty ]
     @ List.init new_args_count (fun _ -> sir_i64_ty)
   in
-  let layout =
-    Cir.CR_Record
-      {
-        field_count = total_fields;
-        field_types = sir_field_types;
-        tag_variant = 0;
-      }
-  in
+  let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst sir_field_types in
   let size_op = int_operand total_fields in
   let create_stmt_node =
-    Oir.OR_Object_create
-      {
-        dst = oir_dst;
-        size = size_op;
-        layout = lower_object_layout layout;
-        initializer_fn = None;
-      }
+    Oir.OR_Object_create { dst = oir_dst; size = size_op }
   in
   (* Set clos[0] = accum_fn *)
   let accum_var = fresh_var "Sy_accum_fn" (fn_ptr_ty ()) in
@@ -653,7 +682,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
             obj = oir_dst;
             field_idx = int_operand parent_idx;
             value = closure_operand;
-            value_ty = lower_ty sir_void_ptr_ty;
+            value_ty = lower_ty sir_obj_ptr_ty;
             ownership_set = Oir.OR_Ownership_unknown;
           };
       ty = fn_ptr_ty ();
@@ -707,25 +736,12 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
   let sir_field_types : Cir.ty list =
     [ sir_fn_ptr_ty ]
     @ (if is_dispatch then [ sir_i64_ty ] else [])
-    @ [ sir_void_ptr_ty ]
+    @ [ sir_obj_ptr_ty ]
   in
-  let layout =
-    Cir.CR_Record
-      {
-        field_count = total_fields;
-        field_types = sir_field_types;
-        tag_variant = 0;
-      }
-  in
+  let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst sir_field_types in
   let size_op = int_operand total_fields in
   let create_stmt_node =
-    Oir.OR_Object_create
-      {
-        dst = oir_dst;
-        size = size_op;
-        layout = lower_object_layout layout;
-        initializer_fn = None;
-      }
+    Oir.OR_Object_create { dst = oir_dst; size = size_op }
   in
   (* Set clos[0] = accum_fn *)
   let accum_var = fresh_var "Sy_accum_fn" (fn_ptr_ty ()) in
@@ -799,7 +815,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
             obj = oir_dst;
             field_idx = int_operand parent_idx;
             value = src_operand;
-            value_ty = lower_ty sir_void_ptr_ty;
+            value_ty = lower_ty sir_obj_ptr_ty;
             ownership_set = Oir.OR_Ownership_unknown;
           };
       ty = fn_ptr_ty ();
@@ -816,8 +832,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
 let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
     ctx * Oir.statement list =
   match stmt.node with
-  | Cir.CR_Make_closure
-      { dst; free_vars; captured_args; fn; initializer_fn = _ } ->
+  | Cir.CR_Make_closure { dst; free_vars; captured_args; fn } ->
       lower_make_closure ctx dst free_vars captured_args fn
   | Cir.CR_Partial_apply { dst; closure; new_args } ->
       lower_partial_apply ctx dst closure new_args
@@ -869,21 +884,14 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | Cir.CR_Object_create { dst; size; layout } ->
+  | Cir.CR_Object_create { dst; size } ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, size' = lower_operand ctx size in
       ( ctx,
         [
           {
             id = fresh_global_id ();
-            node =
-              Oir.OR_Object_create
-                {
-                  dst = dst';
-                  size = size';
-                  layout = lower_object_layout layout;
-                  initializer_fn = None;
-                };
+            node = Oir.OR_Object_create { dst = dst'; size = size' };
             ty = lower_ty stmt.ty;
           };
         ] )

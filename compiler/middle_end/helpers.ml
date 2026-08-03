@@ -18,12 +18,20 @@ let rec type_key_of_ty (t : ty) : string =
   | CR_Str -> "str"
   | CR_Void -> "void"
   | CR_GenericTyp { type_var } -> "gen" ^ string_of_int type_var
-  | CR_Obj_Ptr inner -> "obj_" ^ type_key_of_ty inner
-  | CR_Obj { named; args } ->
+  | CR_Obj_Ptr -> "obj_ptr"
+  | CR_Obj { named; obj_kind; _ } -> (
       let name = match named with Some n -> n | None -> "obj" in
-      if args = [] then "obj_" ^ name
-      else
-        "obj_" ^ name ^ "_" ^ String.concat "_" (List.map type_key_of_ty args)
+      match obj_kind with
+      | CR_Record_kind { fields; _ } ->
+          let field_keys =
+            String.concat "_"
+              (List.map (fun f -> type_key_of_ty f.field_ty) fields)
+          in
+          if named = None && field_keys <> "" then
+            "obj_" ^ name ^ "_" ^ field_keys
+          else "obj_" ^ name
+      | CR_Array_kind { element_ty } ->
+          "obj_" ^ name ^ "_" ^ type_key_of_ty element_ty)
   | CR_Arrow (args, ret) ->
       "fn_"
       ^ String.concat "_" (List.map type_key_of_ty args)
@@ -35,12 +43,28 @@ let rec ir_type_equal (a : ir_type) (b : ir_type) : bool =
       List.length args1 = List.length args2
       && List.for_all2 (fun a b -> ty_equal a b) args1 args2
       && ty_equal ret1 ret2
-  | CR_Obj_Ptr a, CR_Obj_Ptr b -> ty_equal a b
+  | CR_Obj_Ptr, CR_Obj_Ptr -> true
   | CR_Obj a, CR_Obj b ->
       a.named = b.named
-      && List.length a.args = List.length b.args
-      && List.for_all2 (fun a b -> ty_equal a b) a.args b.args
+      && a.tag_variant = b.tag_variant
+      && a.cyclic_prop = b.cyclic_prop
+      && obj_kind_equal a.obj_kind b.obj_kind
   | _ -> a = b
+
+and obj_kind_equal (a : obj_kind) (b : obj_kind) : bool =
+  match (a, b) with
+  | ( CR_Record_kind { fields = fa; cardinal = ca },
+      CR_Record_kind { fields = fb; cardinal = cb } ) ->
+      ca = cb
+      && List.for_all2
+           (fun fa fb ->
+             fa.field_idx = fb.field_idx
+             && fa.field_mut = fb.field_mut
+             && ty_equal fa.field_ty fb.field_ty)
+           fa fb
+  | CR_Array_kind { element_ty = ea }, CR_Array_kind { element_ty = eb } ->
+      ty_equal ea eb
+  | _, _ -> false
 
 and ty_equal (a : ty) (b : ty) : bool = ir_type_equal a.ir_type b.ir_type
 
