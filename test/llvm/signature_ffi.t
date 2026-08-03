@@ -1,12 +1,12 @@
 Signature with external declaration emits an external declaration in LLVM IR:
   $ cat >test_int.sy <<EOF
   > signature:
-  >   extern print_int : int -> unit = "print_int"
+  >   extern print_int : int64 -> unit = "print_int"
   > end
   > let x = 42
   > EOF
   $ dune exec sylic -- llvm test_int.sy
-  declare void @print_int(ptr)
+  declare void @print_int(i64)
   declare void @syli_rt_ownership_decr(ptr)
   declare void @syli_rt_ownership_incr(ptr)
   

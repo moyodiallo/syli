@@ -62,9 +62,9 @@ Closure with free variables:
   define i64 @syliTest_multi.apply() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %syliTest_multi.apply__add = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693954, i32 1, i32 2)
+    %syliTest_multi.apply__add = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.apply__add.27_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.apply__add.26_ret_i64 to ptr
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %syliTest_multi.apply__add)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
@@ -86,7 +86,7 @@ Closure with free variables:
     ret i64 %Sy_var0
   }
   
-  define i64 @__make_closure_accum.syliTest_multi.apply__add.27_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_multi.apply__add.26_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb0:
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1

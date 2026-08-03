@@ -39,9 +39,9 @@ Closure as an argument with multiple captured variables:
   bb0:
     %Sy_var2 = alloca i64
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693954, i32 1, i32 2)
+    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.66_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.65_ret_i64 to ptr
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr %Sy_tmp1
@@ -52,7 +52,7 @@ Closure as an argument with multiple captured variables:
     br i1 true, label %bb1, label %bb2
   bb2:
     call void @syli_rt_gc_cycle()
-    %Sy_var5 = call ptr @syli_rt_ownership_alloc_object(i64 4179340454199820419, i32 1, i32 3)
+    %Sy_var5 = call ptr @syli_rt_ownership_alloc_object(i64 4251398048237748355, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.dispatch.clos0_arg2_ret_i64 to ptr
     %Sy_tmp4 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var5)
@@ -75,7 +75,7 @@ Closure as an argument with multiple captured variables:
     br label %bb3
   bb1:
     call void @syli_rt_gc_cycle()
-    %Sy_var3 = call ptr @syli_rt_ownership_alloc_object(i64 4179340454199820354, i32 1, i32 2)
+    %Sy_var3 = call ptr @syli_rt_ownership_alloc_object(i64 4251398048237748290, i32 1, i32 2)
     ; nop
     %Sy_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
     %Sy_tmp12 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var3)
@@ -130,7 +130,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %x
   }
   
-  define i64 @__make_closure_accum.dispatch.66_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.dispatch.65_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr %Sy_clos, i64 %Sy_dp_id) {
   bb-1:
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 1

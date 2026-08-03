@@ -16,6 +16,13 @@ val fresh_id : unit -> int
 (** Mutability flag for CIR variables. *)
 type mut_flag = Mutable | Immutable
 
+(** Cyclicity / trackability property of an object type. *)
+type cyclic_prop =
+  | Cyclic_n_Trackable
+  | Acyclic_n_Trackable
+  | Acyclic
+  | Unknown_cyclic_prop
+
 (** CIR binary operators. *)
 type binop =
   | CR_Add
@@ -43,8 +50,14 @@ type unop = CR_Neg | CR_Not | CR_BitNot
 (** Visibility of a CIR function or global. *)
 type visibility = CR_Public | CR_Private
 
+type record_field_ty = { field_idx : int; field_ty : ty; field_mut : mut_flag }
+
+and obj_kind =
+  | CR_Record_kind of { fields : record_field_ty list; cardinal : int }
+  | CR_Array_kind of { element_ty : ty }
+
 (** CIR type kinds. *)
-type ir_type =
+and ir_type =
   | CR_Bool
   | CR_I64
   | CR_I32
@@ -57,8 +70,13 @@ type ir_type =
   | CR_Float
   | CR_Double
   | CR_FnPtr
-  | CR_Obj of { named : string option; args : ty list }
-  | CR_Obj_Ptr of ty
+  | CR_Obj of {
+      named : string option;
+      obj_kind : obj_kind;
+      tag_variant : int option;
+      cyclic_prop : cyclic_prop;
+    }
+  | CR_Obj_Ptr
   | CR_Char
   | CR_Str
   | CR_Void
@@ -76,11 +94,6 @@ type constant =
   | CR_StringLit of string
   | CR_CharLit of string
   | CR_Null
-
-(** Layout of a heap-allocated object. *)
-type object_layout =
-  | CR_Record of { field_count : int; field_types : ty list; tag_variant : int }
-  | CR_Array of { element_ty : ty; tag_variant : int }
 
 and var = { id : id; name : string; ty : ty }
 (** A CIR variable with name, type, and ID. *)
@@ -137,19 +150,13 @@ and statement_node =
       value : operand;
       value_ty : ty;
     }
-  | CR_Object_create of {
-      dst : var;
-      size : operand;
-      layout : object_layout;
-      initializer_fn : qualified_name option;
-    }
+  | CR_Object_create of { dst : var; size : operand }
   | CR_Call of { dst : var; target : call_target; args : operand list }
   | CR_Make_closure of {
       dst : var;
       free_vars : var list;
       captured_args : operand list;
       fn : qualified_name;
-      initializer_fn : qualified_name option;
     }
   | CR_Partial_apply of { dst : var; closure : var; new_args : operand list }
   | CR_Store_global of { global : qualified_name; value : operand }

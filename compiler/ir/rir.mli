@@ -41,7 +41,7 @@ type ir_type =
   | RR_U8
   | RR_Float
   | RR_Double
-  | RR_Obj_Ptr of ir_type
+  | RR_Obj_Ptr
   | RR_FnPtr
   | RR_Char
   | RR_Str

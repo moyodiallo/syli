@@ -24,3 +24,13 @@ Deref must operate on a ref type:
   $ dune exec sylic typing test_ref.sy
   Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs ref<'21>")
   [2]
+
+Reference must have coherantly typed:
+  $ cat >test_ref.sy <<EOF
+  > fn main () =
+  >   let x = ref 5
+  >   x := 3.0
+  > EOF
+  $ dune exec sylic typing test_ref.sy
+  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs double")
+  [2]

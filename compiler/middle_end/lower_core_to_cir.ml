@@ -21,6 +21,7 @@ type ctx = {
   env : env;
   toplevel_functions : int StringMap.t;
   analysis : CA.core_closure_analysis;
+  type_defs : C.ty_decl StringMap.t;
   tmp_counter : int ref;
   block_counter : int ref;
   pending_merge_id : int option;
@@ -38,6 +39,7 @@ let empty_ctx =
     env = StringMap.empty;
     toplevel_functions = StringMap.empty;
     analysis = empty_analysis;
+    type_defs = StringMap.empty;
     tmp_counter = ref 0;
     block_counter = ref 0;
     pending_merge_id = None;
@@ -121,7 +123,13 @@ let assign_cast_var new_v src_v to_ty =
 (*  Type / operator helpers                            *)
 (* =================================================== *)
 
-let mk_ir_ty (cty : C.ty) : I.ty =
+let default_cyclic_prop = I.Unknown_cyclic_prop
+
+let mut_flag_of_core = function
+  | CMutable -> I.Mutable
+  | CImmutable -> I.Immutable
+
+let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
   let rec go (t : C.ty) : I.ir_type =
     match t.ty_desc with
     | CTy_Constant c -> (
@@ -145,10 +153,78 @@ let mk_ir_ty (cty : C.ty) : I.ty =
         I.CR_Arrow
           ( List.map (fun t -> { I.id = fresh_id (); I.ir_type = go t }) args,
             { I.id = fresh_id (); I.ir_type = go ret } )
-    | CTy_Tuple _ -> I.CR_Obj { named = None; args = [] }
-    | CTy_Array _ -> I.CR_Obj { named = None; args = [] }
-    | CTy_Ref _ -> I.CR_Obj { named = None; args = [] }
-    | CTy_Defined _ -> I.CR_Obj { named = None; args = [] }
+    | CTy_Tuple tys ->
+        let fields =
+          List.mapi
+            (fun i t ->
+              {
+                I.field_idx = i;
+                field_ty = { I.id = fresh_id (); I.ir_type = go t };
+                field_mut = I.Mutable;
+              })
+            tys
+        in
+        I.CR_Obj
+          {
+            named = None;
+            obj_kind = I.CR_Record_kind { fields; cardinal = List.length tys };
+            tag_variant = None;
+            cyclic_prop = default_cyclic_prop;
+          }
+    | CTy_Array elem ->
+        I.CR_Obj
+          {
+            named = None;
+            obj_kind =
+              I.CR_Array_kind
+                { element_ty = { I.id = fresh_id (); I.ir_type = go elem } };
+            tag_variant = None;
+            cyclic_prop = default_cyclic_prop;
+          }
+    | CTy_Ref inner ->
+        let fields =
+          [
+            {
+              I.field_idx = 0;
+              field_ty = { I.id = fresh_id (); I.ir_type = go inner };
+              field_mut = I.Mutable;
+            };
+          ]
+        in
+        I.CR_Obj
+          {
+            named = Some "ref";
+            obj_kind = I.CR_Record_kind { fields; cardinal = 1 };
+            tag_variant = None;
+            cyclic_prop = default_cyclic_prop;
+          }
+    | CTy_Defined { name; _ } -> (
+        match StringMap.find_opt name.fullname type_defs with
+        | Some { def = CTydef_Record decl_fields; _ } ->
+            let fields =
+              List.map
+                (fun (f : C.record_field_ty) ->
+                  {
+                    I.field_idx = f.field_idx;
+                    field_ty = { I.id = fresh_id (); I.ir_type = go f.field_ty };
+                    field_mut = mut_flag_of_core f.field_mut;
+                  })
+                decl_fields
+            in
+            I.CR_Obj
+              {
+                named = Some name.fullname;
+                obj_kind =
+                  I.CR_Record_kind { fields; cardinal = List.length fields };
+                tag_variant = None;
+                cyclic_prop = default_cyclic_prop;
+              }
+        | Some { def = CTydef_Alias t; _ } -> failwith "Not supported yet"
+        | Some { def = CTydef_Variant _ | CTydef_Abstract; _ } ->
+            failwith "Not yet supported"
+        | None ->
+            let msg = Printf.sprintf "Type %s not found" name.fullname in
+            failwith msg)
   in
   { I.id = fresh_id (); I.ir_type = go cty }
 
@@ -169,12 +245,30 @@ let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
   | CR_Void, CR_Void -> true
   | CR_GenericTyp { type_var = tv1 }, CR_GenericTyp { type_var = tv2 } ->
       tv1 = tv2
-  | CR_Obj { named = n1; args = args1 }, CR_Obj { named = n2; args = args2 } ->
-      n1 = n2 && List.for_all2 ty_equal args1 args2
+  | CR_Obj a, CR_Obj b ->
+      a.named = b.named
+      && a.tag_variant = b.tag_variant
+      && a.cyclic_prop = b.cyclic_prop
+      && obj_kind_equal a.obj_kind b.obj_kind
   | CR_Str, CR_Str -> true
-  | CR_Obj_Ptr t1, CR_Obj_Ptr t2 -> ty_equal t1 t2
+  | CR_Obj_Ptr, CR_Obj_Ptr -> true
   | CR_Arrow (args1, ret1), CR_Arrow (args2, ret2) ->
       List.for_all2 ty_equal args1 args2 && ty_equal ret1 ret2
+  | _, _ -> false
+
+and obj_kind_equal (a : I.obj_kind) (b : I.obj_kind) : bool =
+  match (a, b) with
+  | ( I.CR_Record_kind { fields = fa; cardinal = ca },
+      I.CR_Record_kind { fields = fb; cardinal = cb } ) ->
+      ca = cb
+      && List.for_all2
+           (fun fa fb ->
+             fa.field_idx = fb.field_idx
+             && fa.field_mut = fb.field_mut
+             && ty_equal fa.field_ty fb.field_ty)
+           fa fb
+  | I.CR_Array_kind { element_ty = ea }, I.CR_Array_kind { element_ty = eb } ->
+      ty_equal ea eb
   | _, _ -> false
 
 and ty_equal (a : I.ty) (b : I.ty) : bool =
@@ -278,7 +372,7 @@ let collect_toplevel_functions (prog : C.program_core) : int StringMap.t =
 (* ================================================================== *)
 
 let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
-  let out_ty = mk_ir_ty e.ty in
+  let out_ty = mk_ir_ty ctx.type_defs e.ty in
   match e.node with
   | CExp_Constant c -> (ctx, I.CR_OConstant (ir_const_of_core c, out_ty))
   | CExp_Ident id -> (
@@ -293,7 +387,6 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                    fn = id.fullname;
                    free_vars = [];
                    captured_args = [];
-                   initializer_fn = None;
                  })
               out_ty
           in
@@ -342,7 +435,9 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       (* Cast each arg operand to the concrete type knowned at apply site.
          The concrete type will be knowned before the calling site,
          which helps the monomorphization.*)
-      let arg_tys = List.map (fun (a : C.expr) -> mk_ir_ty a.ty) args in
+      let arg_tys =
+        List.map (fun (a : C.expr) -> mk_ir_ty ctx.type_defs a.ty) args
+      in
       let ctx, concrete_arg_ops =
         List.fold_left2
           (fun (ctx, acc) op arg_ty ->
@@ -390,7 +485,6 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                          (* the toplevel functions does not capture free vars
                           only refer to globals *);
                        captured_args = concrete_arg_ops;
-                       initializer_fn = None;
                      })
                   out_ty
               in
@@ -440,13 +534,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           in
           let make_closure =
             I.CR_Make_closure
-              {
-                dst = fn_var;
-                fn = lambda_name;
-                free_vars;
-                captured_args = [];
-                initializer_fn = None;
-              }
+              { dst = fn_var; fn = lambda_name; free_vars; captured_args = [] }
           in
           let ctx, _ = emit ctx make_closure out_ty in
           let ctx =
@@ -486,7 +574,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
         match cond_op with
         | I.CR_OVar v -> (ctx, v)
         | _ ->
-            let ctx, v = fresh_var ctx (mk_ir_ty cond.ty) in
+            let ctx, v = fresh_var ctx (mk_ir_ty ctx.type_defs cond.ty) in
             let rv : I.rvalue =
               {
                 I.id = v.I.id;
@@ -580,42 +668,27 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       in
       let make_closure =
         I.CR_Make_closure
-          {
-            dst = fn_var;
-            fn = lambda_name;
-            free_vars;
-            captured_args = [];
-            initializer_fn = None;
-          }
+          { dst = fn_var; fn = lambda_name; free_vars; captured_args = [] }
       in
       let ctx, _ = emit ctx make_closure out_ty in
       (ctx, I.CR_OVar fn_var)
   | CExp_Record fields ->
       let field_count = List.length fields in
-      let field_types =
-        List.map (fun (f : C.record_field) -> mk_ir_ty f.field_ty) fields
-      in
-      let ptr_ty : I.ty =
-        { I.id = 0; I.ir_type = I.CR_Obj { named = None; args = [] } }
-      in
+      let ptr_ty = mk_ir_ty ctx.type_defs e.ty in
       let ctx, obj_var = fresh_var ctx ptr_ty in
       let size_op : I.operand =
         I.CR_OConstant
           ( I.CR_IntLit (string_of_int field_count),
             { I.id = 0; I.ir_type = I.CR_I64 } )
       in
-      let layout = I.CR_Record { field_count; field_types; tag_variant = 0 } in
       let ctx, _ =
-        emit ctx
-          (I.CR_Object_create
-             { dst = obj_var; size = size_op; layout; initializer_fn = None })
-          (mk_ir_ty e.ty)
+        emit ctx (I.CR_Object_create { dst = obj_var; size = size_op }) ptr_ty
       in
       let ctx =
         List.fold_left
           (fun ctx (f : C.record_field) ->
             let ctx, fval = lower_expr ctx f.field_value in
-            let field_ty = mk_ir_ty f.field_ty in
+            let field_ty = mk_ir_ty ctx.type_defs f.field_ty in
             let idx_op : I.operand =
               I.CR_OConstant
                 ( I.CR_IntLit (string_of_int f.field_idx),
@@ -663,7 +736,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
         | _ -> raise (Lowering_error "FieldSet target must be a variable")
       in
       let ctx, val_op = lower_expr ctx value in
-      let val_ty = mk_ir_ty value.ty in
+      let val_ty = mk_ir_ty ctx.type_defs value.ty in
       let idx_op : I.operand =
         I.CR_OConstant
           ( I.CR_IntLit (string_of_int field_idx),
@@ -706,6 +779,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
         env = ctx.env;
         toplevel_functions = ctx.toplevel_functions;
         analysis = ctx.analysis;
+        type_defs = ctx.type_defs;
         tmp_counter = ref 0 (* reset __var_ counter for function body *);
         block_counter = ref 0;
       }
@@ -716,7 +790,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
     let body_ctx, lambda_params =
       List.fold_left2
         (fun (ctx, vars) (p : C.ident) (pty : C.ty) ->
-          let ir_pty : I.ty = mk_ir_ty pty in
+          let ir_pty : I.ty = mk_ir_ty ctx.type_defs pty in
           let ctx, v = fresh_var_with_name ctx p.fullname ir_pty in
           let ctx = env_add_var ctx v in
           (ctx, v :: vars))
@@ -727,7 +801,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
   in
   let body_ctx, ret_op = lower_expr lambda_body_ctx lam.body in
   let ctx = { ctx with lifted_fns = body_ctx.lifted_fns @ ctx.lifted_fns } in
-  let declared_ret_ty = mk_ir_ty lam.ret_ty in
+  let declared_ret_ty = mk_ir_ty ctx.type_defs lam.ret_ty in
   let ret_term =
     if declared_ret_ty.I.ir_type = I.CR_Void then I.CR_Return None
     else I.CR_Return (Some ret_op)
@@ -750,7 +824,8 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
   in
   (ctx, fn_sir)
 
-let ffi_of_signature (s : C.signature_item) : I.ffi_external_function option =
+let ffi_of_signature (type_defs : C.ty_decl StringMap.t) (s : C.signature_item)
+    : I.ffi_external_function option =
   match s.signature_item_desc with
   | C.CSig_Fun { name; params; ret_ty; external_fn = Some ext } ->
       let params, ret_ty =
@@ -762,8 +837,8 @@ let ffi_of_signature (s : C.signature_item) : I.ffi_external_function option =
         {
           I.name = ext.c_name;
           syli_name = name.fullname;
-          ret_ty = mk_ir_ty ret_ty;
-          params = List.map mk_ir_ty params;
+          ret_ty = mk_ir_ty type_defs ret_ty;
+          params = List.map (mk_ir_ty type_defs) params;
           calling_convention = ext.calling_convention;
         }
   | _ -> None
@@ -868,6 +943,14 @@ let build_module_initializer (module_name : string)
 
 let lower_program (prog : C.program_core) : I.module_cir =
   let analysis = Syli_core.Closure_analysis.run prog in
+  let type_defs =
+    List.fold_left
+      (fun m (item : C.structure_item) ->
+        match item.structure_item_desc with
+        | CStr_TypeDef td -> StringMap.add td.name.fullname td m
+        | _ -> m)
+      StringMap.empty prog.C.structure_items
+  in
   (* Add FFI functions to toplevel_functions *)
   let ffi_known_fns =
     List.fold_left
@@ -898,7 +981,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 let ctx, fn =
                   lower_lambda_function ctx name.fullname lam param_tys value.id
                 in
-                let fn_ty = mk_ir_ty value.ty in
+                let fn_ty = mk_ir_ty type_defs value.ty in
                 let fn_var : I.var =
                   { I.id = fresh_id (); I.name = name.fullname; I.ty = fn_ty }
                 in
@@ -908,7 +991,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 (ctx, fn :: fns, globs)
             | CExp_Constant c ->
                 let const_value = ir_const_of_core c in
-                let const_ty = mk_ir_ty value.ty in
+                let const_ty = mk_ir_ty type_defs value.ty in
                 let init_fn_name = "__init_global." ^ name.fullname in
                 let init_fn =
                   build_const_init_fn init_fn_name const_value const_ty
@@ -942,13 +1025,14 @@ let lower_program (prog : C.program_core) : I.module_cir =
                    the value and returns it.
                    The module initializer function will call the init
                    function and store the result to the global. *)
-                let global_ty = mk_ir_ty value.ty in
+                let global_ty = mk_ir_ty type_defs value.ty in
                 let value_ctx =
                   {
                     empty_ctx with
                     env = ctx.env;
                     toplevel_functions;
                     analysis;
+                    type_defs;
                     tmp_counter = ref 0;
                     block_counter = ref 0;
                   }
@@ -996,11 +1080,11 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 in
                 (ctx, init_fn :: fns, gv :: globs))
         | CStr_TypeDef _ -> (ctx, fns, globs))
-      ({ empty_ctx with toplevel_functions; analysis }, [], [])
+      ({ empty_ctx with toplevel_functions; analysis; type_defs }, [], [])
       prog.C.structure_items
   in
   let ffi_external_functions =
-    prog.signature_items |> List.filter_map ffi_of_signature
+    prog.signature_items |> List.filter_map (ffi_of_signature type_defs)
   in
   let global_values = List.rev globals in
   let module_init_fn =

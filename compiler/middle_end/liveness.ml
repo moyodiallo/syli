@@ -17,7 +17,7 @@ type t = { stmts : live_info_stmt IntMap.t; blocks : live_info_block IntMap.t }
 (* ── Helpers ──────────────────────────────────────────────────── *)
 
 let is_ref_ir_type (t : ir_type) : bool =
-  match t with OR_Obj _ | OR_Obj_Ptr _ -> true | _ -> false
+  match t with OR_Obj _ | OR_Obj_Ptr -> true | _ -> false
 
 let is_ref_ty (t : ty) : bool = is_ref_ir_type t.ir_type
 

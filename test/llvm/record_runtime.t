@@ -26,10 +26,10 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:obj = object_create{size=2:i64 record{fields=2 tag=0 [i64; i64]}}
-      obj_set(%Sy_var0:obj, 0:i64, 10:i64):i64
-      obj_set(%Sy_var0:obj, 1:i64, 30:i64):i64
-      %Sy_var1:i64 = obj_get(%Sy_var0:obj, 1:i64):i64
+      %Sy_var0:person{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
+      obj_set(%Sy_var0:obj_ptr, 0:i64, 10:i64):i64
+      obj_set(%Sy_var0:obj_ptr, 1:i64, 30:i64):i64
+      %Sy_var1:i64 = obj_get(%Sy_var0:obj_ptr, 1:i64):i64
       %Sy_var2:void = #call_direct syliTest_e2e_print.syli_print_i64 (%Sy_var1:i64)
       return
   end
@@ -64,7 +64,7 @@
   define void @syliTest_e2e_print.main() {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2305843009213693954, i32 1, i64 2)
+    %Sy_var0 = call ptr @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i64 2)
     ; nop
     %Sy_tmp0 = call ptr @syli_inlinable_ownership_untag(ptr %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr %Sy_tmp0, i32 0, i32 2, i64 0

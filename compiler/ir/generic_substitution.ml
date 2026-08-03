@@ -13,24 +13,32 @@ and subst_ir_type subst = function
       | None -> CR_GenericTyp { type_var })
   | CR_Arrow (args, ret) ->
       CR_Arrow (List.map (apply_subst_ty subst) args, apply_subst_ty subst ret)
-  | CR_Obj_Ptr ty -> CR_Obj_Ptr (apply_subst_ty subst ty)
-  | CR_Obj { named; args } ->
-      CR_Obj { named; args = List.map (apply_subst_ty subst) args }
+  | CR_Obj_Ptr -> CR_Obj_Ptr
+  | CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
+      CR_Obj
+        {
+          named;
+          obj_kind = subst_obj_kind subst obj_kind;
+          tag_variant;
+          cyclic_prop;
+        }
   | other -> other
 
-let type_of_param (var : var) = var.ty
-
-let rec subst_object_layout subst = function
-  | CR_Record { field_count; field_types; tag_variant } ->
-      CR_Record
+and subst_obj_kind subst = function
+  | CR_Record_kind { fields; cardinal } ->
+      CR_Record_kind
         {
-          field_count;
-          field_types = List.map (apply_subst_ty subst) field_types;
-          tag_variant;
+          fields =
+            List.map
+              (fun (f : record_field_ty) ->
+                { f with field_ty = apply_subst_ty subst f.field_ty })
+              fields;
+          cardinal;
         }
-  | CR_Array { element_ty; tag_variant } ->
-      CR_Array { element_ty = apply_subst_ty subst element_ty; tag_variant }
+  | CR_Array_kind { element_ty } ->
+      CR_Array_kind { element_ty = apply_subst_ty subst element_ty }
 
+let type_of_param (var : var) = var.ty
 let subst_var subst (v : var) = { v with ty = apply_subst_ty subst v.ty }
 
 let subst_operand subst = function
@@ -78,14 +86,9 @@ let subst_statement subst stmt =
             value = subst_operand subst value;
             value_ty = apply_subst_ty subst value_ty;
           }
-    | CR_Object_create { dst; size; layout; initializer_fn } ->
+    | CR_Object_create { dst; size } ->
         CR_Object_create
-          {
-            dst = subst_var subst dst;
-            size = subst_operand subst size;
-            layout = subst_object_layout subst layout;
-            initializer_fn;
-          }
+          { dst = subst_var subst dst; size = subst_operand subst size }
     | CR_Call { dst; target; args } ->
         let subst_target = function
           | Direct _ as d -> d
@@ -105,14 +108,13 @@ let subst_statement subst stmt =
             closure = subst_var subst closure;
             new_args = List.map (subst_operand subst) new_args;
           }
-    | CR_Make_closure { dst; free_vars; captured_args; fn; initializer_fn } ->
+    | CR_Make_closure { dst; free_vars; captured_args; fn } ->
         CR_Make_closure
           {
             dst = subst_var subst dst;
             free_vars = List.map (subst_var subst) free_vars;
             captured_args = List.map (subst_operand subst) captured_args;
             fn;
-            initializer_fn;
           }
     | CR_Store_global { global; value } ->
         CR_Store_global { global; value = subst_operand subst value }

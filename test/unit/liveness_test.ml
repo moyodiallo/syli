@@ -11,7 +11,17 @@ let fresh () = fresh_id ()
 let i64_ty : ty = { id = fresh (); ir_type = OR_I64 }
 
 let obj_ty : ty =
-  { id = fresh (); ir_type = OR_Obj { named = Some "Obj"; args = [] } }
+  {
+    id = fresh ();
+    ir_type =
+      OR_Obj
+        {
+          named = Some "Obj";
+          obj_kind = OR_Record_kind { fields = []; cardinal = 0 };
+          tag_variant = None;
+          cyclic_prop = Acyclic;
+        };
+  }
 
 let make_var name ty = { id = fresh (); name; ty }
 let obj_var name = make_var name obj_ty
@@ -112,28 +122,12 @@ let test_single_block () =
   let y = obj_var "y" in
   let s1 =
     make_stmt 1
-      (OR_Object_create
-         {
-           dst = x;
-           size = OR_OConstant (OR_IntLit "8", i64_ty);
-           layout =
-             OR_Record
-               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
-           initializer_fn = None;
-         })
+      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s2 =
     make_stmt 2
-      (OR_Object_create
-         {
-           dst = y;
-           size = OR_OConstant (OR_IntLit "8", i64_ty);
-           layout =
-             OR_Record
-               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
-           initializer_fn = None;
-         })
+      (OR_Object_create { dst = y; size = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s3 =
@@ -176,15 +170,7 @@ let test_two_blocks () =
   (* bb1 (entry): create x, branch on cond *)
   let s1 =
     make_stmt 1
-      (OR_Object_create
-         {
-           dst = x;
-           size = OR_OConstant (OR_IntLit "8", i64_ty);
-           layout =
-             OR_Record
-               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
-           initializer_fn = None;
-         })
+      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let term1 =
@@ -230,15 +216,7 @@ let test_store_global_and_call () =
   (* create x, store x to global, create y, call fn(y) *)
   let s1 =
     make_stmt 1
-      (OR_Object_create
-         {
-           dst = x;
-           size = OR_OConstant (OR_IntLit "8", i64_ty);
-           layout =
-             OR_Record
-               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
-           initializer_fn = None;
-         })
+      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s2 =
@@ -253,15 +231,7 @@ let test_store_global_and_call () =
   in
   let s3 =
     make_stmt 3
-      (OR_Object_create
-         {
-           dst = y;
-           size = OR_OConstant (OR_IntLit "8", i64_ty);
-           layout =
-             OR_Record
-               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
-           initializer_fn = None;
-         })
+      (OR_Object_create { dst = y; size = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s4 =
@@ -303,15 +273,7 @@ let test_dead_at_entry () =
   let x = obj_var "x" in
   let s1 =
     make_stmt 1
-      (OR_Object_create
-         {
-           dst = x;
-           size = OR_OConstant (OR_IntLit "8", i64_ty);
-           layout =
-             OR_Record
-               { field_count = 1; field_types = [ i64_ty ]; tag_variant = 0 };
-           initializer_fn = None;
-         })
+      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let term1 =

@@ -62,18 +62,18 @@
   
     bb0:
       gc_cycle
-      %Sy_var0:*void = object_create{size=2:i32 record{fields=2 tag=0 [fn_ptr; i64]}}
+      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.33_ret_i64)
-      obj_set(%Sy_var0:*void, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:*void, 1:i32, 1:i64):i64
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.32_ret_i64)
+      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%Sy_var0:*void, 0:i32):fn_ptr
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%Sy_var0:obj_ptr, 0:i32):fn_ptr
       %Sy_apply_cast_2:i64 = cast(1.0f:f64 as i64)
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_apply_cast_2:i64, 2:i64, @borrow %Sy_var0:*void, 1:i64)
+      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_apply_cast_2:i64, 2:i64, @borrow %Sy_var0:obj_ptr, 1:i64)
       
-      %Sy_accum_ptr_3:fn_ptr = obj_get(%Sy_var0:*void, 0:i32):fn_ptr
-      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (1:i64, 2:i64, @transfer %Sy_var0:*void, 0:i64)
+      %Sy_accum_ptr_3:fn_ptr = obj_get(%Sy_var0:obj_ptr, 0:i32):fn_ptr
+      %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (1:i64, 2:i64, @transfer %Sy_var0:obj_ptr, 0:i64)
       
       return %Sy_var2:i64
   end
@@ -94,12 +94,12 @@
       return %z:i64
   end
   
-  private fn __make_closure_accum.dispatch.33_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:*void, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.32_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:
-      %Sy_val0:i64 = obj_get(%Sy_clos:*void, 1:i64):i64
-      release(%Sy_clos:*void)
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      release(%Sy_clos:obj_ptr)
       switch %Sy_dp_id:i64 [0: bb0, 1: bb1]
   
     bb0:
