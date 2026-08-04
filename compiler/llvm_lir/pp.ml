@@ -52,9 +52,10 @@ let instruction_to_string indent = function
           let idxs =
             String.concat ", " (List.map string_of_typed_operand indices)
           in
-          Printf.sprintf "%s%sgetelementptr %s, ptr %s, %s" p lhs
+          Printf.sprintf "%s%sgetelementptr %s, %s, %s" p lhs
             (string_of_lltype result_ty)
-            (string_of_operand base) idxs
+            (string_of_typed_operand base)
+            idxs
       | LV_InsertValue { agg; value; index; _ } ->
           Printf.sprintf "%s%sinsertvalue %s, %s, %d" p lhs
             (string_of_typed_operand agg)

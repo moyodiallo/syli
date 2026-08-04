@@ -9,7 +9,7 @@ let global (n : string) (ty : lltype) : operand = LV_Global (n, ty)
 let local name ty = LV_Local (name, ty)
 let assign dst rhs = LV_Assign (dst, rhs)
 let i64_ty = LV_I64
-let ptr_ty = LV_Ptr
+let ptr_ty = LV_Ptr_as 1
 
 (*
   define ptr @syli_inlinable_ownership_untag(ptr %p) {
@@ -217,8 +217,8 @@ let builtins () : func list =
 
 let builtin_decls () : (string * lltype) list =
   [
-    ("syli_rt_ownership_decr", LV_Func ([ LV_Ptr ], LV_Void));
-    ("syli_rt_ownership_incr", LV_Func ([ LV_Ptr ], LV_Void));
+    ("syli_rt_ownership_decr", LV_Func ([ LV_Ptr_as 1 ], LV_Void));
+    ("syli_rt_ownership_incr", LV_Func ([ LV_Ptr_as 1 ], LV_Void));
   ]
 
 let inlinable_runtime_functions =

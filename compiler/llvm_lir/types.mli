@@ -12,6 +12,7 @@ type lltype =
   | LV_Double
   | LV_Void
   | LV_Ptr
+  | LV_Ptr_as of int
   | LV_Array of int * lltype
   | LV_Struct of lltype list
   | LV_Named of string

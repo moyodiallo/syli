@@ -46,6 +46,7 @@ type qualified_name = Cir.qualified_name
 type binop = Cir.binop
 type unop = Cir.unop
 type visibility = Cir.visibility
+type cyclic_prop = Oir.cyclic_prop
 
 let expr_id_counter = ref 0
 
@@ -65,14 +66,12 @@ type ir_type =
   | RR_U8
   | RR_Float
   | RR_Double
-  | RR_Obj_Ptr
+  | RR_Obj_Ptr of cyclic_prop
   | RR_FnPtr
   | RR_Char
   | RR_Str
   | RR_Void
   | RR_Arrow of ir_type list * ir_type
-
-let object_ptr_ty = RR_Obj_Ptr
 
 type constant =
   | RR_IntLit of string
