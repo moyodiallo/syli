@@ -1,3 +1,5 @@
+(**TODO: this file need refactoring i.e the frontend refactoring *)
+
 let usage () =
   Printf.eprintf
     "Usage:\n\
@@ -40,6 +42,7 @@ let () =
         let base = Filename.chop_extension (Filename.basename filename) in
         let dir = Filename.dirname filename in
         let ll_file = Filename.concat dir (base ^ ".ll") in
+        let rewritten_file = Filename.concat dir (base ^ ".sp.ll") in
         let exe_file =
           if Array.length Sys.argv > 3 then Sys.argv.(3) else base ^ ".exe"
         in
@@ -48,13 +51,45 @@ let () =
           Sys.getenv_opt "SYLI_RUNTIME_LIB"
           |> Option.value ~default:"runtime/cmake-build/Debug/libsyliruntime.a"
         in
+        let find_tool name =
+          if Sys.command ("command -v " ^ name ^ " >/dev/null 2>&1") = 0 then
+            name
+          else
+            let candidates =
+              [ "/usr/lib/llvm-18/bin/" ^ name; "/usr/lib/llvm-19/bin/" ^ name ]
+            in
+            match List.find_opt Sys.file_exists candidates with
+            | Some p -> p
+            | None -> name
+        in
+        let opt = find_tool "opt" in
+        let stackmaps_ld =
+          Sys.getenv_opt "SYLI_STACKMAPS_LD"
+          |> Option.value
+               ~default:
+                 (match Sys.getenv_opt "SYLI_PROJECT_ROOT" with
+                 | Some root -> Filename.concat root "compiler/stackmaps.ld"
+                 | None -> "compiler/stackmaps.ld")
+        in
         let oc = open_out ll_file in
         output_string oc llvm_ir;
         close_out oc;
+        (* Optimize (including inlining), then rewrite calls in gc functions
+           into gc.statepoints, recomputing live roots on the final LLVM IR. *)
+        let opt_cmd =
+          Printf.sprintf
+            "%s -passes='default<O3>,rewrite-statepoints-for-gc' -S %s -o %s"
+            opt ll_file rewritten_file
+        in
+        if Sys.command opt_cmd <> 0 then (
+          Printf.eprintf "error: opt (rewrite-statepoints-for-gc) failed\n";
+          exit 1);
         let exe =
           Sys.command
-            (Printf.sprintf "%s -O3 -Wno-override-module -o %s %s %s -lm" cc
-               exe_file ll_file rt)
+            (Printf.sprintf
+               "%s -O3 -fno-pie -no-pie -Wno-override-module -Wl,-T,%s -o %s \
+                %s %s -lunwind-x86_64 -lunwind -lm"
+               cc stackmaps_ld exe_file rewritten_file rt)
         in
         if exe <> 0 then (
           Printf.eprintf "error: compilation failed (%s exit code %d)\n" cc exe;

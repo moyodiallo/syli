@@ -10,14 +10,14 @@ Integer literal emits an i64 function:
   
   @syliTest_int.x = global i64 42
   
-  define void @__init.Test_int() {
+  define void @__init.Test_int() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call i64 @__init_global.syliTest_int.x()
     store i64 %__init_tmp_0, ptr @syliTest_int.x
     ret void
   }
   
-  define i64 @__init_global.syliTest_int.x() {
+  define i64 @__init_global.syliTest_int.x() gc "statepoint-example" {
   bb0:
     ret i64 42
   }
@@ -58,9 +58,9 @@ Integer literal emits an i64 function:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p
@@ -79,7 +79,7 @@ Boolean literals emit i1 functions:
   @syliTest_bool.p = global i1 true
   @syliTest_bool.q = global i1 false
   
-  define void @__init.Test_bool() {
+  define void @__init.Test_bool() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call i1 @__init_global.syliTest_bool.p()
     store i1 %__init_tmp_0, ptr @syliTest_bool.p
@@ -88,12 +88,12 @@ Boolean literals emit i1 functions:
     ret void
   }
   
-  define i1 @__init_global.syliTest_bool.q() {
+  define i1 @__init_global.syliTest_bool.q() gc "statepoint-example" {
   bb0:
     ret i1 false
   }
   
-  define i1 @__init_global.syliTest_bool.p() {
+  define i1 @__init_global.syliTest_bool.p() gc "statepoint-example" {
   bb0:
     ret i1 true
   }
@@ -134,9 +134,9 @@ Boolean literals emit i1 functions:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p
@@ -154,14 +154,14 @@ String literal emits an i8* return:
   @syliTest_str.s = global { ptr, i64 } zeroinitializer
   @__str.1 = global [5 x i8] c"hello"
   
-  define void @__init.Test_str() {
+  define void @__init.Test_str() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call { ptr, i64 } @__init_global.syliTest_str.s()
     store { ptr, i64 } %__init_tmp_0, ptr @syliTest_str.s
     ret void
   }
   
-  define { ptr, i64 } @__init_global.syliTest_str.s() {
+  define { ptr, i64 } @__init_global.syliTest_str.s() gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = getelementptr i8, ptr @__str.1, i32 0
     %Sy_tmp1 = insertvalue { ptr, i64 } zeroinitializer, ptr %Sy_tmp0, 0
@@ -205,9 +205,9 @@ String literal emits an i8* return:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p
@@ -230,7 +230,7 @@ Arithmetic operations emit the corresponding LLVM instructions:
   @syliTest_arith.c = global i64 zeroinitializer
   @syliTest_arith.d = global i64 zeroinitializer
   
-  define void @__init.Test_arith() {
+  define void @__init.Test_arith() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call i64 @__init_global.syliTest_arith.a()
     store i64 %__init_tmp_0, ptr @syliTest_arith.a
@@ -243,25 +243,25 @@ Arithmetic operations emit the corresponding LLVM instructions:
     ret void
   }
   
-  define i64 @__init_global.syliTest_arith.d() {
+  define i64 @__init_global.syliTest_arith.d() gc "statepoint-example" {
   bb0:
     %Sy_var0 = sdiv i64 20, 4
     ret i64 %Sy_var0
   }
   
-  define i64 @__init_global.syliTest_arith.c() {
+  define i64 @__init_global.syliTest_arith.c() gc "statepoint-example" {
   bb0:
     %Sy_var0 = mul i64 4, 6
     ret i64 %Sy_var0
   }
   
-  define i64 @__init_global.syliTest_arith.b() {
+  define i64 @__init_global.syliTest_arith.b() gc "statepoint-example" {
   bb0:
     %Sy_var0 = sub i64 10, 2
     ret i64 %Sy_var0
   }
   
-  define i64 @__init_global.syliTest_arith.a() {
+  define i64 @__init_global.syliTest_arith.a() gc "statepoint-example" {
   bb0:
     %Sy_var0 = add i64 5, 3
     ret i64 %Sy_var0
@@ -303,9 +303,9 @@ Arithmetic operations emit the corresponding LLVM instructions:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p
@@ -325,7 +325,7 @@ Comparison operations emit icmp instructions:
   @syliTest_cmp.eq = global i1 zeroinitializer
   @syliTest_cmp.lt = global i1 zeroinitializer
   
-  define void @__init.Test_cmp() {
+  define void @__init.Test_cmp() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call i1 @__init_global.syliTest_cmp.eq()
     store i1 %__init_tmp_0, ptr @syliTest_cmp.eq
@@ -334,13 +334,13 @@ Comparison operations emit icmp instructions:
     ret void
   }
   
-  define i1 @__init_global.syliTest_cmp.lt() {
+  define i1 @__init_global.syliTest_cmp.lt() gc "statepoint-example" {
   bb0:
     %Sy_var0 = icmp slt i64 2, 5
     ret i1 %Sy_var0
   }
   
-  define i1 @__init_global.syliTest_cmp.eq() {
+  define i1 @__init_global.syliTest_cmp.eq() gc "statepoint-example" {
   bb0:
     %Sy_var0 = icmp eq i64 5, 5
     ret i1 %Sy_var0
@@ -382,9 +382,9 @@ Comparison operations emit icmp instructions:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p
@@ -399,12 +399,12 @@ Simple Function:
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define void @__init.Test_fn() {
+  define void @__init.Test_fn() gc "statepoint-example" {
   bb0:
     ret void
   }
   
-  define i64 @syliTest_fn.add(i64 %x, i64 %y) {
+  define i64 @syliTest_fn.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_var0 = add i64 %x, 20
     %Sy_var1 = add i64 %Sy_var0, %y
@@ -447,9 +447,9 @@ Simple Function:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p

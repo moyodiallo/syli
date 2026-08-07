@@ -213,25 +213,25 @@
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) {
+  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
     call void @syliTest_file.main()
     ret i32 0
   }
   
-  define void @syli_modules_init() {
+  define void @syli_modules_init() gc "statepoint-example" {
   bb0:
     call void @__init.Test_file()
     ret void
   }
   
-  define void @__init.Test_file() {
+  define void @__init.Test_file() gc "statepoint-example" {
   bb0:
     ret void
   }
   
-  define void @syliTest_file.main() {
+  define void @syliTest_file.main() gc "statepoint-example" {
   bb0:
     %Sy_var3 = alloca ptr addrspace(1)
     call void @syli_rt_gc_cycle()
@@ -277,19 +277,19 @@
     ret void
   }
   
-  define i64 @syliTest_file.sub__i64__i64_ret_i64(i64 %x, i64 %y) {
+  define i64 @syliTest_file.sub__i64__i64_ret_i64(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_var0 = sub i64 %x, %y
     ret i64 %Sy_var0
   }
   
-  define i64 @syliTest_file.add__i64__i64_ret_i64(i64 %x, i64 %y) {
+  define i64 @syliTest_file.add__i64__i64_ret_i64(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_var0 = add i64 %x, %y
     ret i64 %Sy_var0
   }
   
-  define i64 @__make_closure_accum.syliTest_file.add.49_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_file.add.49_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -299,7 +299,7 @@
     ret i64 %Sy_rst
   }
   
-  define i64 @__make_closure_accum.syliTest_file.sub.59_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.syliTest_file.sub.59_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -309,13 +309,13 @@
     ret i64 %Sy_rst
   }
   
-  define i64 @__wrapper.syliTest_file.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) {
+  define i64 @__wrapper.syliTest_file.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
   bb0:
     %Sy_rst = call i64 @syliTest_file.add__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
   }
   
-  define i64 @__wrapper.syliTest_file.sub.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) {
+  define i64 @__wrapper.syliTest_file.sub.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
   bb0:
     %Sy_rst = call i64 @syliTest_file.sub__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
@@ -357,9 +357,9 @@
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p

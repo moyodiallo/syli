@@ -12,14 +12,14 @@ Signature with external declaration emits an external declaration in LLVM IR:
   
   @syliTest_int.x = global i64 42
   
-  define void @__init.Test_int() {
+  define void @__init.Test_int() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call i64 @__init_global.syliTest_int.x()
     store i64 %__init_tmp_0, ptr @syliTest_int.x
     ret void
   }
   
-  define i64 @__init_global.syliTest_int.x() {
+  define i64 @__init_global.syliTest_int.x() gc "statepoint-example" {
   bb0:
     ret i64 42
   }
@@ -60,9 +60,9 @@ Signature with external declaration emits an external declaration in LLVM IR:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p

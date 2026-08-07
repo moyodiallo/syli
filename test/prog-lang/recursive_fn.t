@@ -79,32 +79,32 @@
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) {
+  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
     call void @syliTest_file.main()
     ret i32 0
   }
   
-  define void @syli_modules_init() {
+  define void @syli_modules_init() gc "statepoint-example" {
   bb0:
     call void @__init.Test_file()
     ret void
   }
   
-  define void @__init.Test_file() {
+  define void @__init.Test_file() gc "statepoint-example" {
   bb0:
     ret void
   }
   
-  define void @syliTest_file.main() {
+  define void @syliTest_file.main() gc "statepoint-example" {
   bb0:
     %Sy_var0 = call i64 @syliTest_file.factorial(i64 5)
     call void @syli_print_i64(i64 %Sy_var0)
     ret void
   }
   
-  define i64 @syliTest_file.factorial(i64 %n) {
+  define i64 @syliTest_file.factorial(i64 %n) gc "statepoint-example" {
   bb0:
     %Sy_var1 = alloca i64
     %Sy_var0 = icmp eq i64 %n, 0
@@ -159,9 +159,9 @@
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p

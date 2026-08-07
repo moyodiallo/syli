@@ -285,27 +285,28 @@ Closure as an argument with multiple captured variables:
   declare ptr addrspace(1) @syli_rt_ownership_alloc_object(i64, i32, i32)
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
+  declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
   declare ptr addrspace(1) @syli_rt_ownership_share(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) {
+  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
     %__dropped_main_ret = call i64 @syliTest_multi.main()
     ret i32 0
   }
   
-  define void @syli_modules_init() {
+  define void @syli_modules_init() gc "statepoint-example" {
   bb0:
     call void @__init.Test_multi()
     ret void
   }
   
-  define void @__init.Test_multi() {
+  define void @__init.Test_multi() gc "statepoint-example" {
   bb0:
     ret void
   }
   
-  define i64 @syliTest_multi.main() {
+  define i64 @syliTest_multi.main() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
@@ -336,6 +337,7 @@ Closure as an argument with multiple captured variables:
     %Sy_tmp10 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
     %Sy_tmp11 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp10, i32 0, i32 2, i32 2
     store ptr addrspace(1) %Sy_tmp_1, ptr addrspace(1) %Sy_tmp11
+    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %Sy_var1, ptr addrspace(1) %Sy_tmp_1)
     ; nop
     %Sy_var2 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_var1, i64 3, i64 4)
     call void @syli_rt_gc_cycle()
@@ -353,12 +355,13 @@ Closure as an argument with multiple captured variables:
     %Sy_tmp16 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var3)
     %Sy_tmp17 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp16, i32 0, i32 2, i32 1
     store ptr addrspace(1) %Sy_tmp_2, ptr addrspace(1) %Sy_tmp17
+    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %Sy_var3, ptr addrspace(1) %Sy_tmp_2)
     ; nop
     %Sy_var4 = call i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr addrspace(1) %Sy_var3, double 1., double 2.)
     ret i64 %Sy_var4
   }
   
-  define i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr addrspace(1) %f, double %x, double %y) {
+  define i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr addrspace(1) %f, double %x, double %y) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
@@ -370,7 +373,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %Sy_var0
   }
   
-  define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) {
+  define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
@@ -380,17 +383,17 @@ Closure as an argument with multiple captured variables:
     ret i64 %Sy_var0
   }
   
-  define i64 @syliTest_multi.add__i64__i64__i64_ret_i64(i64 %x, i64 %y, i64 %z) {
+  define i64 @syliTest_multi.add__i64__i64__i64_ret_i64(i64 %x, i64 %y, i64 %z) gc "statepoint-example" {
   bb0:
     ret i64 %x
   }
   
-  define i64 @syliTest_multi.add__i64__f64__f64_ret_i64(i64 %x, double %y, double %z) {
+  define i64 @syliTest_multi.add__i64__f64__f64_ret_i64(i64 %x, double %y, double %z) gc "statepoint-example" {
   bb0:
     ret i64 %x
   }
   
-  define i64 @__make_closure_accum.dispatch.65_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__make_closure_accum.dispatch.65_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb-1:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -410,7 +413,7 @@ Closure as an argument with multiple captured variables:
     unreachable
   }
   
-  define i64 @__partial_closure_accum.clos0_arg2_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__partial_closure_accum.clos0_arg2_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -424,7 +427,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %Sy_rst
   }
   
-  define i64 @__partial_closure_accum.dispatch.clos0_arg2_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) {
+  define i64 @__partial_closure_accum.dispatch.clos0_arg2_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -442,7 +445,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %Sy_rst
   }
   
-  define i64 @__wrapper.syliTest_multi.add.i64_f64_f64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2) {
+  define i64 @__wrapper.syliTest_multi.add.i64_f64_f64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2) gc "statepoint-example" {
   bb0:
     %Sy_s1 = bitcast i64 %Sy_x1 to double
     %Sy_s2 = bitcast i64 %Sy_x2 to double
@@ -450,7 +453,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %Sy_rst
   }
   
-  define i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2) {
+  define i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2) gc "statepoint-example" {
   bb0:
     %Sy_rst = call i64 @syliTest_multi.add__i64__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2)
     ret i64 %Sy_rst
@@ -492,9 +495,9 @@ Closure as an argument with multiple captured variables:
     %is_borrow = icmp eq i64 %tag, 0
     br i1 %is_borrow, label %promote, label %done
   promote:
-    call void @syli_rt_ownership_incr(ptr addrspace(1) %p)
     %r = or i64 %pi, 1
     %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
     ret ptr addrspace(1) %rp
   done:
     ret ptr addrspace(1) %p

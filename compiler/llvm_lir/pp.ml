@@ -101,9 +101,12 @@ let func_to_string (f : func) =
          (fun (ty, name) -> Printf.sprintf "%s %%%s" (string_of_lltype ty) name)
          f.params)
   in
-  Printf.bprintf buf "define %s @%s(%s) {\n"
+  let attrs_str =
+    match f.attributes with [] -> "" | attrs -> " " ^ String.concat " " attrs
+  in
+  Printf.bprintf buf "define %s @%s(%s)%s {\n"
     (string_of_lltype f.ret_type)
-    f.name params_str;
+    f.name params_str attrs_str;
   List.iter
     (fun block -> Printf.bprintf buf "%s" (block_to_string block))
     f.blocks;

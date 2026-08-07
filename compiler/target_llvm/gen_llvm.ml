@@ -625,6 +625,7 @@ let lower_function (ctx : lower_ctx) (fn : Rir.function_rir) : lower_ctx * func
         (match fn.visibility with
         | CR_Public -> External
         | CR_Private -> Private);
+      attributes = [ "gc \"statepoint-example\"" ];
     } )
 
 let lower_global (g : Rir.global_value) : global_var =

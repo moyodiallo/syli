@@ -145,6 +145,7 @@ type func = {
   params : (lltype * string) list;
   blocks : block list;
   linkage : linkage;
+  attributes : string list;
 }
 (** An LLVM function definition. *)
 
