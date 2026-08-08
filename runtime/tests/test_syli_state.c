@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "syli/config.h"
 #include "syli/gc_helpers.h"
 #include "syli/object.h"
 #include "syli/stack_frame.h"

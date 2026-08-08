@@ -1,4 +1,4 @@
-(**TODO: this file need refactoring i.e the frontend refactoring *)
+(**TODO: this file need refactoring i.e the command line refactoring *)
 
 let usage () =
   Printf.eprintf
@@ -63,6 +63,46 @@ let () =
             | None -> name
         in
         let opt = find_tool "opt" in
+        let uname () =
+          match Unix.open_process_in "uname" with
+          | ic ->
+              let s = input_line ic in
+              close_in ic;
+              s
+        in
+        let os =
+          match Sys.getenv_opt "SYLI_TARGET_OS" with
+          | Some s -> s
+          | None -> ( try uname () with _ -> "unknown")
+        in
+        let arch =
+          match Sys.getenv_opt "SYLI_TARGET_ARCH" with
+          | Some s -> s
+          | None -> (
+              try
+                let ic = Unix.open_process_in "uname -m" in
+                let s = input_line ic in
+                close_in ic;
+                s
+              with _ -> "unknown")
+        in
+        let unwind_lib =
+          match Sys.getenv_opt "SYLI_UNWIND_LIB" with
+          | Some lib -> [ "-l" ^ lib; "-lunwind" ]
+          | None ->
+              if os = "Darwin" then []
+              else if
+                List.exists
+                  (fun a -> a = arch)
+                  [ "x86_64"; "amd64"; "aarch64"; "arm64" ]
+              then
+                let lib =
+                  if arch = "x86_64" || arch = "amd64" then "unwind-x86_64"
+                  else "unwind-aarch64"
+                in
+                [ "-l" ^ lib; "-lunwind" ]
+              else [ "-lunwind" ]
+        in
         let stackmaps_ld =
           Sys.getenv_opt "SYLI_STACKMAPS_LD"
           |> Option.value
@@ -74,9 +114,9 @@ let () =
         let oc = open_out ll_file in
         output_string oc llvm_ir;
         close_out oc;
-        (* Optimize (including inlining), then rewrite calls in gc functions
-           into gc.statepoints, recomputing live roots on the final LLVM IR. *)
         let opt_cmd =
+          (* Optimize (including inlining), then rewrite calls in gc functions
+           into gc.statepoints, recomputing live roots on the final IR. *)
           Printf.sprintf
             "%s -passes='default<O3>,rewrite-statepoints-for-gc' -S %s -o %s"
             opt ll_file rewritten_file
@@ -84,13 +124,18 @@ let () =
         if Sys.command opt_cmd <> 0 then (
           Printf.eprintf "error: opt (rewrite-statepoints-for-gc) failed\n";
           exit 1);
-        let exe =
-          Sys.command
-            (Printf.sprintf
-               "%s -O3 -fno-pie -no-pie -Wno-override-module -Wl,-T,%s -o %s \
-                %s %s -lunwind-x86_64 -lunwind -lm"
-               cc stackmaps_ld exe_file rewritten_file rt)
+        let link_flags =
+          if os = "Darwin" then
+            Printf.sprintf "%s -O3 -Wno-override-module -o %s %s %s" cc exe_file
+              rewritten_file rt
+          else
+            Printf.sprintf
+              "%s -O3 -fno-pie -no-pie -Wno-override-module -Wl,-T,%s -o %s %s \
+               %s %s -lm"
+              cc stackmaps_ld exe_file rewritten_file rt
+              (List.fold_left (fun acc f -> acc ^ " " ^ f) "" unwind_lib)
         in
+        let exe = Sys.command link_flags in
         if exe <> 0 then (
           Printf.eprintf "error: compilation failed (%s exit code %d)\n" cc exe;
           exit 1)

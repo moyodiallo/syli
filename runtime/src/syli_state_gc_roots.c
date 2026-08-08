@@ -1,18 +1,47 @@
+// This module is about to collect all the roots of each frame [collect_frame]
+// via the LLVM stackmap and feed the tracing-worklist.
+
+// The the first collection it constructs a table of all record, so that
+// looking for a record anytime would be simply to faster in O(log n).
+
 #include "syli/gc_helpers.h"
 #include "syli/gc_roots.h"
 #include "syli/object.h"
 #include "syli/syli_state.h"
 
+#if defined(__APPLE__)
+#include <unwind.h>
+#else
 #include <libunwind.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__APPLE__)
+/* Mach-O: ld64 defines section bounds symbols */
+extern char section$start$__LLVM_STACKMAPS$__llvm_stackmaps[]
+    __attribute__((weak));
+extern char section$end$__LLVM_STACKMAPS$__llvm_stackmaps[]
+    __attribute__((weak));
+#else
 extern unsigned char __start_llvm_stackmaps[] __attribute__((weak));
 extern unsigned char __stop_llvm_stackmaps[] __attribute__((weak));
+#endif
 
 #define STACKMAP_VERSION 3
+
+static void stackmap_bounds(unsigned char** start, unsigned char** stop)
+{
+#if defined(__APPLE__)
+    *start = (unsigned char*)section$start$__LLVM_STACKMAPS$__llvm_stackmaps;
+    *stop  = (unsigned char*)section$end$__LLVM_STACKMAPS$__llvm_stackmaps;
+#else
+    *start = __start_llvm_stackmaps;
+    *stop  = __stop_llvm_stackmaps;
+#endif
+}
 
 enum {
     LOC_REGISTER      = 1,
@@ -24,8 +53,9 @@ enum {
 
 void syli_rt_stackmap_check_version(void)
 {
-    unsigned char* start = __start_llvm_stackmaps;
-    unsigned char* stop  = __stop_llvm_stackmaps;
+    unsigned char* start;
+    unsigned char* stop;
+    stackmap_bounds(&start, &stop);
     if (syli_rt_stackmap_supported(start, stop))
         return;
     fprintf(stderr,
@@ -49,14 +79,17 @@ static SyliStackMap_Record* advance_record(SyliStackMap_Record* record)
     unsigned char* p = (unsigned char*)(locations + record->num_locations);
 
     if ((record->num_locations * sizeof(SyliStackMap_Location)) % 8 == 4)
-        p += 4;
+        p += 4; // Padding uint32
 
-    uint16_t num_liveouts;
-    memcpy(&num_liveouts, p + 2, sizeof(num_liveouts));
-    p += 4 + 4 * num_liveouts;
+    p += 2; // Padding uint16
+
+    uint16_t num_liveouts = *((u_int16_t*)p);
+
+    p += 2; // NumLiveOuts uint16
+    p += 4 * num_liveouts; // LiveOuts[NumLiveOuts]
 
     if ((4 * num_liveouts + 4) % 8 == 4)
-        p += 4;
+        p += 4; // Padding uint32
 
     return (SyliStackMap_Record*)p;
 }
@@ -139,16 +172,22 @@ SyliStackMap_Record_Entry syli_lookup_record_entry(uint64_t pc)
     return entry;
 }
 
-static uintptr_t get_register_value(unw_cursor_t* cursor, unsigned dwarf)
+#if defined(__APPLE__)
+static uintptr_t get_register_value(void* cursor, unsigned dwarf)
+{
+    return (uintptr_t)_Unwind_GetGR((struct _Unwind_Context*)cursor, dwarf);
+}
+#else
+static uintptr_t get_register_value(void* cursor, unsigned dwarf)
 {
     unw_word_t value;
-    if (unw_get_reg(cursor, dwarf, &value))
+    if (unw_get_reg((unw_cursor_t*)cursor, dwarf, &value))
         return 0;
     return (uintptr_t)value;
 }
+#endif
 
-static uintptr_t decode_location(
-    unw_cursor_t* cursor, const SyliStackMap_Location loc)
+static uintptr_t decode_location(void* cursor, const SyliStackMap_Location loc)
 {
     uintptr_t base;
 
@@ -174,18 +213,55 @@ static uintptr_t decode_location(
     }
 }
 
-void syli_rt_collect_stack_roots(void)
+static void collect_frame(uintptr_t ip, void* cursor)
 {
-    unsigned char* start = __start_llvm_stackmaps;
-    unsigned char* stop  = __stop_llvm_stackmaps;
-    if (!start || !stop || start == stop)
+    const SyliStackMap_Record_Entry entry = syli_lookup_record_entry(ip);
+
+    if (!entry.locations || !entry.record)
         return;
+
+    for (unsigned i = 0; i < entry.record->num_locations; i++) {
+        uintptr_t value = decode_location(cursor, entry.locations[i]);
+        if (!value)
+            continue;
+        gc_tracing_worklist_push((obj_ptr)value);
+    }
+}
+
+static int stack_roots_ready(void)
+{
+    unsigned char* start;
+    unsigned char* stop;
+    stackmap_bounds(&start, &stop);
+    if (!start || !stop || start == stop)
+        return 0;
 
     if (syli_state.stackmap_record_entry == NULL)
         syli_build_stackmap_record_entry(start);
 
     assert(syli_state.stackmap_record_entry != NULL);
-    if (syli_state.stackmap_record_entry == NULL)
+    return syli_state.stackmap_record_entry != NULL;
+}
+
+#if defined(__APPLE__)
+static _Unwind_Reason_Code unwind_callback(
+    struct _Unwind_Context* ctx, void* arg)
+{
+    (void)arg;
+    collect_frame((uintptr_t)_Unwind_GetIP(ctx), ctx);
+    return _URC_NO_REASON;
+}
+
+void syli_rt_collect_stack_roots(void)
+{
+    if (!stack_roots_ready())
+        return;
+    _Unwind_Backtrace(unwind_callback, NULL);
+}
+#else
+void syli_rt_collect_stack_roots(void)
+{
+    if (!stack_roots_ready())
         return;
 
     unw_context_t uc;
@@ -199,18 +275,7 @@ void syli_rt_collect_stack_roots(void)
         unw_word_t ip;
         if (unw_get_reg(&cur, UNW_REG_IP, &ip))
             continue;
-        const SyliStackMap_Record_Entry entry
-            = syli_lookup_record_entry((uintptr_t)ip);
-
-        if (!entry.locations || !entry.record)
-            continue;
-
-        for (unsigned i = 0; i < entry.record->num_locations; i++) {
-            uintptr_t value = decode_location(&cur, entry.locations[i]);
-            if (!value)
-                continue;
-            obj_ptr obj = (obj_ptr)value;
-            gc_tracing_worklist_push(obj);
-        }
+        collect_frame((uintptr_t)ip, &cur);
     }
 }
+#endif

@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "syli/config.h"
 #include "syli/gc_helpers.h"
 #include "syli/syli.h"
 #include "syli/syli_state.h"

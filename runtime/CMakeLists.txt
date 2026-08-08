@@ -29,7 +29,7 @@ set(COMMON_C_FLAGS
 
 # Optional native architecture optimization
 option(USE_MARCH_NATIVE "Enable -march=native optimization" ON)
-if(USE_MARCH_NATIVE)
+if(USE_MARCH_NATIVE AND NOT APPLE)
     list(APPEND COMMON_C_FLAGS -march=native)
 endif()
 
@@ -57,6 +57,7 @@ add_library(syliruntime STATIC
     src/main.c
     src/syli_primitives.c
     src/syli.c
+    src/env.c
 )
 
 target_include_directories(syliruntime PUBLIC
@@ -66,9 +67,16 @@ target_include_directories(syliruntime PUBLIC
 
 target_link_libraries(syliruntime PRIVATE runtime_sanitizers)
 
-# libunwind for the stack-map root unwinder
+# libunwind for the stack-map root unwinder (Linux only; macOS provides the
+# `_Unwind_*` API in libSystem)
 find_library(UNWIND_LIB unwind)
-find_library(UNWIND_ARCH_LIB unwind-x86_64)
+if(APPLE)
+    unset(UNWIND_ARCH_LIB)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    find_library(UNWIND_ARCH_LIB unwind-aarch64)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    find_library(UNWIND_ARCH_LIB unwind-x86_64)
+endif()
 if(UNWIND_LIB)
   target_link_libraries(syliruntime PRIVATE ${UNWIND_LIB})
 endif()

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "syli/config.h"
+#include "syli/env.h"
 #include "syli/gc_helpers.h"
 #include "syli/gc_roots.h"
 #include "syli/object.h"
@@ -20,27 +20,10 @@ void syli_state_init()
     // Zero out the entire state to ensure clean initialization
     memset(&syli_state, 0, sizeof(Syli_state));
 
-    // Initialize thresholds
-    syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 1000;
-    syli_state.THRESHOLD_RELEASING_BUCKET    = 1000;
+    syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE
+        = syli_env.syli_gc_suspect_threshold;
 
-    const char* env_suspect_threshold = getenv("SYLI_GC_SUSPECT_THRESHOLD");
-    if (env_suspect_threshold != NULL) {
-        char* end                = NULL;
-        unsigned long long value = strtoull(env_suspect_threshold, &end, 10);
-        if (end != env_suspect_threshold && *end == '\0') {
-            syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = (size_t)value;
-        }
-    }
-
-    const char* env_releasing_threshold = getenv("SYLI_GC_RELEASING_THRESHOLD");
-    if (env_releasing_threshold != NULL) {
-        char* end                = NULL;
-        unsigned long long value = strtoull(env_releasing_threshold, &end, 10);
-        if (end != env_releasing_threshold && *end == '\0') {
-            syli_state.THRESHOLD_RELEASING_BUCKET = (size_t)value;
-        }
-    }
+    syli_state.THRESHOLD_RELEASING_BUCKET = syli_env.syli_gc_release_threshold;
 
     syli_state.FULL_BUCKET_SUSPECT_LOST_CYCLE = 10000;
 

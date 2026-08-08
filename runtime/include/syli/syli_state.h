@@ -9,6 +9,9 @@
 #include "gc_roots.h"
 #include "object.h"
 #include "stack_frame.h"
+#include "env.h"
+
+#define BUDGET_BATCH_SIZE 1000
 
 typedef struct Suspected {
     obj_ptr obj;

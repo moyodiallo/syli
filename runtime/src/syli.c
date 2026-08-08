@@ -60,8 +60,10 @@ void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr)
                 return;
             }
             gc_vector_push_back(&syli_state.releasing_waitlist, obj_ptr);
+            return;
+        } else if (syli_object_is_cyclic(obj)) {
+            gc_add_suspect(obj_ptr);
         }
-        return;
     }
 }
 
