@@ -22,9 +22,6 @@ let rec transform_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   | CTy_Array inner ->
       let acc', inner' = t.ty t acc inner in
       (acc', { ty_desc = CTy_Array inner' })
-  | CTy_Ref inner ->
-      let acc', inner' = t.ty t acc inner in
-      (acc', { ty_desc = CTy_Ref inner' })
   | CTy_Defined ({ args; _ } as named) ->
       let acc', args' = List.fold_left_map (fun a p -> t.ty t a p) acc args in
       (acc', { ty_desc = CTy_Defined { named with args = args' } })
@@ -46,13 +43,6 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
   let acc'', node' =
     match e.node with
     | CExp_Constant _ | CExp_Ident _ | CExp_Continue -> (acc', e.node)
-    | CExp_UnOp { op; value } ->
-        let a, value' = t.expr t acc' value in
-        (a, CExp_UnOp { op; value = value' })
-    | CExp_BinOp { op; lvalue; rvalue } ->
-        let a, lvalue' = t.expr t acc' lvalue in
-        let a', rvalue' = t.expr t a rvalue in
-        (a', CExp_BinOp { op; lvalue = lvalue'; rvalue = rvalue' })
     | CExp_VariantConstructor { tag; arg } ->
         let a, arg' =
           match arg with
@@ -79,22 +69,6 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
         let a, record' = t.expr t acc' record in
         let a', value' = t.expr t a value in
         (a', CExp_FieldSet { record = record'; field_idx; value = value' })
-    | CExp_ArrayCreate { element_ty; size } ->
-        let a, element_ty' = t.ty t acc' element_ty in
-        let a', size' = t.expr t a size in
-        (a', CExp_ArrayCreate { element_ty = element_ty'; size = size' })
-    | CExp_ArrayLength inner ->
-        let a, inner' = t.expr t acc' inner in
-        (a, CExp_ArrayLength inner')
-    | CExp_ArrayGet { arr; idx } ->
-        let a, arr' = t.expr t acc' arr in
-        let a', idx' = t.expr t a idx in
-        (a', CExp_ArrayGet { arr = arr'; idx = idx' })
-    | CExp_ArraySet { arr; idx; value } ->
-        let a, arr' = t.expr t acc' arr in
-        let a', idx' = t.expr t a idx in
-        let a'', value' = t.expr t a' value in
-        (a'', CExp_ArraySet { arr = arr'; idx = idx'; value = value' })
     | CExp_Lambda lam ->
         let a, lam' = transform_lambda t acc' lam in
         (a, CExp_Lambda lam')
@@ -150,7 +124,7 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
               then_branch = then_branch';
               else_branch = else_branch';
             } )
-    | Exp_Match { expr = scrutinee; cases } ->
+    | CExp_Match { expr = scrutinee; cases } ->
         let a, scrutinee' = t.expr t acc' scrutinee in
         let a', cases' =
           List.fold_left_map
@@ -166,7 +140,7 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
               (st'', { c with when_condition = when_condition'; body = body' }))
             a cases
         in
-        (a', Exp_Match { expr = scrutinee'; cases = cases' })
+        (a', CExp_Match { expr = scrutinee'; cases = cases' })
   in
   (acc'', { e with node = node'; ty = expr_ty' })
 

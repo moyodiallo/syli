@@ -12,31 +12,29 @@ let mk_expr startpos endpos expr_desc : expr =
 let mk_ty startpos endpos ty_desc : ty =
   { id = fresh_id (); ty_desc; loc = mk_loc startpos endpos }
 
-let mk_ident startpos endpos name : ident =
-  { name; path = []; id = fresh_id (); loc = mk_loc startpos endpos }
+let mk_ident ?(is_operator = false) startpos endpos name : ident =
+  {
+    name;
+    path = [];
+    id = fresh_id ();
+    loc = mk_loc startpos endpos;
+    is_operator;
+  }
 
 let mk_structure_item startpos endpos structure_item_desc : structure_item =
   { id = fresh_id (); structure_item_desc; loc = mk_loc startpos endpos }
 
-let mk_signature_item startpos endpos name value_ty : signature_item =
-  let signature_item_desc =
-    Sig_Value { name; params = []; value_ty; external_fn = None }
-  in
+let mk_signature_value startpos endpos name ty : signature_item =
+  let signature_item_desc = Sig_Value { name; ty } in
   { id = fresh_id (); signature_item_desc; loc = mk_loc startpos endpos }
 
-let mk_signature_external_value startpos endpos name ret_ty ext_fn :
-    signature_item =
+let mk_signature_external_value startpos endpos fname ty ext_fn : signature_item
+    =
   let mk_external_fn c_name : external_fn =
     { c_name; calling_convention = None }
   in
   let signature_item_desc =
-    Sig_Value
-      {
-        name;
-        params = [];
-        value_ty = ret_ty;
-        external_fn = Some (mk_external_fn ext_fn);
-      }
+    Sig_Extern { fname; ty; external_fn = mk_external_fn ext_fn }
   in
   { id = fresh_id (); signature_item_desc; loc = mk_loc startpos endpos }
 
@@ -60,7 +58,7 @@ let mk_lambda startpos endpos params body ret_ty_opt : lambda =
   { params; body; ret_ty = ret_ty_opt; loc = mk_loc startpos endpos }
 
 let mk_param startpos endpos pattern mut_flag param_ty_opt : param =
-  { pattern; mut_flag; param_ty = param_ty_opt; loc = mk_loc startpos endpos }
+  { pattern; param_ty = param_ty_opt; loc = mk_loc startpos endpos }
 
 let mk_record_field_expr startpos endpos field_name field_value : record_field =
   { id = fresh_id (); field_name; field_value; loc = mk_loc startpos endpos }
@@ -75,8 +73,9 @@ let mk_record_field_decl startpos endpos field_name field_ty field_mut :
     loc = mk_loc startpos endpos;
   }
 
-let mk_letdef startpos endpos let_kind pattern rec_flag value ty_opt : letdef =
-  { let_kind; pattern; rec_flag; value; ty_opt; loc = mk_loc startpos endpos }
+let mk_letdef startpos endpos let_kind pattern rec_flag value ty_annot : letdef
+    =
+  { let_kind; pattern; rec_flag; value; ty_annot; loc = mk_loc startpos endpos }
 
 let mk_module_struct startpos endpos name structure_items : module_structure =
   { id = fresh_id (); name; structure_items; loc = mk_loc startpos endpos }

@@ -17,8 +17,8 @@ let string_of_constant_ty = function
   | CTy_Bool -> "bool"
   | CTy_Float -> "float"
   | CTy_Double -> "double"
-  | CTy_StringLit -> "str"
-  | CTy_CharLit -> "char"
+  | CTy_String -> "str"
+  | CTy_Char -> "char"
 
 let rec string_of_ty ty =
   match ty.ty_desc with
@@ -30,40 +30,10 @@ let rec string_of_ty ty =
   | CTy_Tuple ts ->
       Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty ts))
   | CTy_Array t -> Printf.sprintf "array<%s>" (string_of_ty t)
-  | CTy_Ref t -> Printf.sprintf "ref<%s>" (string_of_ty t)
   | CTy_Defined { name; args = [] } -> name.fullname
   | CTy_Defined { name; args } ->
       Printf.sprintf "%s<%s>" name.fullname
         (String.concat ", " (List.map string_of_ty args))
-
-(* -------------------- *)
-(* Operators            *)
-(* -------------------- *)
-
-let string_of_unop = function
-  | CUnop_Logical CNot -> "!"
-  | CUnop_Arithmetic CNeg -> "-"
-  | CUnop_Bitwise CBitNot -> "~"
-
-let string_of_binop = function
-  | CBinop_Arithmetic CAdd -> "+"
-  | CBinop_Arithmetic CSub -> "-"
-  | CBinop_Arithmetic CMul -> "*"
-  | CBinop_Arithmetic CDiv -> "/"
-  | CBinop_Arithmetic CMod -> "%"
-  | CBinop_Logical CAnd -> "&&"
-  | CBinop_Logical COr -> "||"
-  | CBinop_Bitwise CBitAnd -> "&"
-  | CBinop_Bitwise CBitOr -> "lor"
-  | CBinop_Bitwise CBitXor -> "^"
-  | CBinop_Bitwise CLShift -> "<<"
-  | CBinop_Bitwise CRShift -> ">>"
-  | CBinop_Comparison CEq -> "=="
-  | CBinop_Comparison CNe -> "!="
-  | CBinop_Comparison CLt -> "<"
-  | CBinop_Comparison CLe -> "<="
-  | CBinop_Comparison CGt -> ">"
-  | CBinop_Comparison CGe -> ">="
 
 (* -------------------- *)
 (* Expressions          *)
@@ -84,13 +54,6 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
   match e.node with
   | CExp_Constant c -> string_of_constant c
   | CExp_Ident id -> id.fullname
-  | CExp_UnOp { op; value } ->
-      Printf.sprintf "%s%s" (string_of_unop op) (string_of_expr ~indent value)
-  | CExp_BinOp { op; lvalue; rvalue } ->
-      Printf.sprintf "(%s %s %s)"
-        (string_of_expr ~indent lvalue)
-        (string_of_binop op)
-        (string_of_expr ~indent rvalue)
   | CExp_Record fields ->
       let fs =
         String.concat "; "
@@ -111,20 +74,6 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
       Printf.sprintf "%s.%d <- %s"
         (string_of_expr_inner ~indent record)
         field_idx
-        (string_of_expr ~indent value)
-  | CExp_ArrayCreate { element_ty; size } ->
-      Printf.sprintf "array_create<%s>[%s]" (string_of_ty element_ty)
-        (string_of_expr ~indent size)
-  | CExp_ArrayLength arr ->
-      Printf.sprintf "array_length(%s)" (string_of_expr ~indent arr)
-  | CExp_ArrayGet { arr; idx } ->
-      Printf.sprintf "%s[%s]"
-        (string_of_expr_inner ~indent arr)
-        (string_of_expr ~indent idx)
-  | CExp_ArraySet { arr; idx; value } ->
-      Printf.sprintf "%s[%s] <- %s"
-        (string_of_expr_inner ~indent arr)
-        (string_of_expr ~indent idx)
         (string_of_expr ~indent value)
   | CExp_Lambda lam ->
       (* Return type is already shown in the lambda signature *)
@@ -163,7 +112,7 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
           exprs
       in
       Printf.sprintf "{\n%s\n%s}" (String.concat "\n" stmts) p
-  | CExp_If { cond; then_branch; else_branch } ->
+  | CExp_If { condition; then_branch; else_branch } ->
       let else_str =
         match else_branch with
         | None -> ""
@@ -173,7 +122,7 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
               (string_of_expr ~indent:(indent + 1) e)
       in
       Printf.sprintf "if %s\n%s%s%s"
-        (string_of_expr ~indent cond)
+        (string_of_expr ~indent condition)
         (indent_str (indent + 1))
         (string_of_expr ~indent:(indent + 1) then_branch)
         else_str

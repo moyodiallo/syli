@@ -16,7 +16,6 @@ let rec transform_ty (t : transformer) (ty : ty) : ty =
     match ty.ty_desc with
     | Ty_Constant _ | Ty_Var _ | Ty_Any -> ty.ty_desc
     | Ty_Array inner -> Ty_Array (t.ty t inner)
-    | Ty_Ref inner -> Ty_Ref (t.ty t inner)
     | Ty_Tuple tys -> Ty_Tuple (List.map (t.ty t) tys)
     | Ty_Arrow (params, ret) -> Ty_Arrow (List.map (t.ty t) params, t.ty t ret)
     | Ty_Defined ({ args; _ } as defined) ->

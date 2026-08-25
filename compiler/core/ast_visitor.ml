@@ -15,7 +15,6 @@ let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
       let acc' = List.fold_left (v.ty v) acc params in
       v.ty v acc' ret
   | CTy_Array inner -> v.ty v acc inner
-  | CTy_Ref inner -> v.ty v acc inner
   | CTy_Defined { args; _ } -> List.fold_left (v.ty v) acc args
   | CTy_Tuple elements -> List.fold_left (v.ty v) acc elements
 
@@ -27,10 +26,6 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   let acc' = v.ty v acc e.ty in
   match e.node with
   | CExp_Constant _ | CExp_Ident _ | CExp_Continue -> acc'
-  | CExp_UnOp { value; _ } -> v.expr v acc' value
-  | CExp_BinOp { lvalue; rvalue; _ } ->
-      let acc'' = v.expr v acc' lvalue in
-      v.expr v acc'' rvalue
   | CExp_VariantConstructor { arg; _ } ->
       Option.fold ~none:acc' ~some:(v.expr v acc') arg
   | CExp_Record fields ->
@@ -43,17 +38,6 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_FieldSet { record; value; _ } ->
       let acc'' = v.expr v acc' record in
       v.expr v acc'' value
-  | CExp_ArrayCreate { element_ty; size } ->
-      let acc'' = v.ty v acc' element_ty in
-      v.expr v acc'' size
-  | CExp_ArrayLength inner -> v.expr v acc' inner
-  | CExp_ArrayGet { arr; idx } ->
-      let acc'' = v.expr v acc' arr in
-      v.expr v acc'' idx
-  | CExp_ArraySet { arr; idx; value } ->
-      let acc'' = v.expr v acc' arr in
-      let acc''' = v.expr v acc'' idx in
-      v.expr v acc''' value
   | CExp_Lambda lam -> visit_lambda v acc' lam
   | CExp_Apply { closure_fun; args } ->
       let acc'' = v.expr v acc' closure_fun in
@@ -63,11 +47,11 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_Break e_opt | CExp_Return e_opt ->
       Option.fold ~none:acc' ~some:(v.expr v acc') e_opt
   | CExp_Seq exprs -> List.fold_left (v.expr v) acc' exprs
-  | CExp_If { cond; then_branch; else_branch } ->
-      let acc'' = v.expr v acc' cond in
+  | CExp_If { condition; then_branch; else_branch } ->
+      let acc'' = v.expr v acc' condition in
       let acc''' = v.expr v acc'' then_branch in
       Option.fold ~none:acc''' ~some:(v.expr v acc''') else_branch
-  | Exp_Match { expr = scrutinee; cases } ->
+  | CExp_Match { expr = scrutinee; cases } ->
       let acc'' = v.expr v acc' scrutinee in
       List.fold_left
         (fun a (c : pattern_case) ->
@@ -98,11 +82,7 @@ let visit_type_decl_children (v : 'acc visitor) (acc : 'acc) (td : ty_decl) :
 
 let visit_signature_item_children (v : 'acc visitor) (acc : 'acc)
     (s : signature_item) : 'acc =
-  match s.signature_item_desc with
-  | CSig_Fun { params; ret_ty; _ } ->
-      let acc' = List.fold_left (v.ty v) acc params in
-      v.ty v acc' ret_ty
-  | CSig_Type td -> v.type_decl v acc td
+  match s.signature_item_desc with CSig_Type td -> v.type_decl v acc td
 
 let visit_structure_item_children (v : 'acc visitor) (acc : 'acc)
     (d : structure_item) : 'acc =

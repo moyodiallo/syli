@@ -2,37 +2,16 @@
 (* Core AST for Syli                    *)
 (* ==================================== *)
 
-(*
-  Compilation Pipeline:
-
-    Surface AST
-    → Typed AST
-        - Name resolution and symbol disambiguation
-        - Type inference and checking
-        - Field index resolution (record fields → indices)
-    → Core AST
-        - Fully desugared (no syntactic sugar)
-        - Pattern matching compiled to switch/tag checks
-        - Modules flattened into top-level bindings
-        - Type-annotated
-        - Reduced to a minimal set of core constructs
-    → SSA IR (control-flow explicit, SSA form)
-    → LIR (LLVM-oriented lowering)
-    → LLVM IR
-
-  Notes:
-
-    - Core AST is not a direct subset of Surface AST, but a canonicalized form.
-    - All high-level constructs (match, for, collections, etc.)
-      are eliminated or rewritten into primitive operations.
-*)
-
 type path = string list
-type ident = { name : string; fullname : string; path : path; id : int }
 
-(* Unique identifiers *)
+type ident = {
+  name : string;
+  fullname : string;
+  path : path;
+  id : int;
+  is_operator : bool;
+}
 
-(* Internal types used for inference *)
 type mut_flag = CMutable | CImmutable
 type rec_flag = CRecursive | CNonRecursive
 
@@ -49,18 +28,17 @@ type constant_ty =
   | CTy_Bool
   | CTy_Float
   | CTy_Double
-  | CTy_StringLit
-  | CTy_CharLit
+  | CTy_String
+  | CTy_Char
 
 type ty = { ty_desc : ty_desc }
 
 and ty_desc =
-  | CTy_Var of int (* type variable *)
+  | CTy_Var of int  (** type variable *)
   | CTy_Constant of constant_ty
-  | CTy_Arrow of ty list * ty (* (T, T, ...) -> T *)
-  | CTy_Tuple of ty list (* (T, T, ...) *)
-  | CTy_Array of ty (* array<T> *)
-  | CTy_Ref of ty (* ref<T> *)
+  | CTy_Arrow of ty * ty  (** T0 -> T *)
+  | CTy_Tuple of ty list  (** (T0, T1, ...,TN) *)
+  | CTy_Array of ty  (** array[T] *)
   | CTy_Defined of { name : ident; args : ty list }
 
 and constructor_decl = {
@@ -95,26 +73,6 @@ and ty_decl_desc =
 (* Expression AST       *)
 (* -------------------- *)
 
-type unop_logical = CNot
-type unop_arithmetic = CNeg
-type unop_bitwise = CBitNot
-
-type unop =
-  | CUnop_Logical of unop_logical
-  | CUnop_Arithmetic of unop_arithmetic
-  | CUnop_Bitwise of unop_bitwise
-
-type binop_comparison = CEq | CNe | CLt | CLe | CGt | CGe
-type binop_arithmetic = CAdd | CSub | CMul | CDiv | CMod
-type binop_logical = CAnd | COr
-type binop_bitwise = CBitAnd | CBitOr | CBitXor | CLShift | CRShift
-
-type binop =
-  | CBinop_Arithmetic of binop_arithmetic
-  | CBinop_Logical of binop_logical
-  | CBinop_Bitwise of binop_bitwise
-  | CBinop_Comparison of binop_comparison
-
 type expr = { id : int; node : expr_node; ty : ty }
 and lambda = { params : ident list; body : expr; ret_ty : ty }
 and record_field = { field_idx : int; field_ty : ty; field_value : expr }
@@ -130,16 +88,9 @@ and constant =
 and expr_node =
   | CExp_Constant of constant
   | CExp_Ident of ident
-  | CExp_UnOp of { op : unop; value : expr }
-  | CExp_BinOp of { op : binop; lvalue : expr; rvalue : expr }
   | CExp_Record of record_field list
   | CExp_VariantConstructor of { tag : int; arg : expr option }
-  | CExp_Field of { record : expr; field_idx : int }
-  | CExp_FieldSet of { record : expr; field_idx : int; value : expr }
-  | CExp_ArrayCreate of { element_ty : ty; size : expr }
-  | CExp_ArrayLength of expr
-  | CExp_ArrayGet of { arr : expr; idx : expr }
-  | CExp_ArraySet of { arr : expr; idx : expr; value : expr }
+  | CExp_Array of { element_ty : ty; elements : expr list; size : expr }
   | CExp_Lambda of lambda
   | CExp_Apply of { closure_fun : expr; args : expr list }
   | CExp_Let of { rec_flag : rec_flag; name : ident; value : expr }
@@ -148,8 +99,14 @@ and expr_node =
   | CExp_Continue
   | CExp_Return of expr option
   | CExp_Seq of expr list
-  | CExp_If of { cond : expr; then_branch : expr; else_branch : expr option }
-  | Exp_Match of { expr : expr; cases : pattern_case list }
+  | CExp_If of {
+      condition : expr;
+      then_branch : expr;
+      else_branch : expr option;
+    }
+  | CExp_Match of { expr : expr; cases : pattern_case list }
+  | CExp_Field of { record : expr; field_idx : int }
+  | CExp_FieldSet of { record : expr; field_idx : int; value : expr }
 
 and pattern_case = {
   id : int;
@@ -178,22 +135,21 @@ and pattern_desc =
 (*-------------------------------------*)
 
 type signature_item_desc =
-  | CSig_Fun of {
-      name : ident;
-      params : ty list;
-      ret_ty : ty;
-      external_fn : external_fn option;
-    }
-  | CSig_Type of ty_decl (* type exposed *)
+  | CSig_Value of { name : ident; ty : ty }
+  | CSig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
+  | CSig_Primitive of { name : ident; ty : ty; prim_name : string }
+  | CSig_Type of ty_decl
 
 and external_fn = {
-  c_name : string; (* Actual C symbol name *)
-  calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
+  c_name : string;  (** Actual C symbol name *)
+  calling_convention : string option;  (** e.g., "ccc", "fastcc", etc. *)
 }
 
 and signature_item = { id : int; signature_item_desc : signature_item_desc }
 
 and structure_item_desc =
+  | CStr_Extern of { fname : ident; ty : ty; external_fn : external_fn }
+  | CStr_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
   | CStr_Let of { rec_flag : rec_flag; name : ident; value : expr }
       (** All values and functions *)
   | CStr_TypeDef of ty_decl  (** type definition: type foo = ... *)
@@ -205,7 +161,6 @@ and module_core = {
   name : ident;
   structure_items : structure_item list;
   signature_items : signature_item list;
-  has_main_function : bool;
 }
 
 type program_core = module_core

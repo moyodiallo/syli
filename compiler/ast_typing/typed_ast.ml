@@ -5,7 +5,14 @@
 type path = string list
 
 type location = { start_pos : int; end_pos : int; filename : string }
-and ident = { name : string; id : int; path : string list; loc : location }
+
+and ident = {
+  name : string;
+  id : int;
+  path : string list;
+  loc : location;
+  is_operator : bool;
+}
 
 type mut_flag = TMutable | TImmutable
 type rec_flag = TRecursive | TNonRecursive
@@ -21,10 +28,10 @@ type constant_ty =
   | TTy_UInt64
   | TTy_Bool
   | TTy_Unit
-  | TTy_Float
-  | TTy_Double
-  | TTy_StringLit
-  | TTy_CharLit
+  | TTy_F32
+  | TTy_F64
+  | TTy_String
+  | TTy_Char
 
 type ty = { ty_desc : ty_desc }
 
@@ -32,10 +39,9 @@ and ty_desc =
   | TTy_Var of int
   | TTy_Any
   | TTy_Constant of constant_ty
-  | TTy_Arrow of ty list * ty
+  | TTy_Arrow of ty * ty
   | TTy_Tuple of ty list
   | TTy_Array of ty
-  | TTy_Ref of ty
   | TTy_Defined of { name : ident; args : ty list }
 
 and variant_constructor_decl = {
@@ -71,26 +77,6 @@ type ty_decl = {
   annotations : string list;
   loc : location;
 }
-
-type unop_logical = TNot
-type unop_arithmetic = TNeg
-type unop_bitwise = TBitNot
-
-type unop =
-  | TUnop_Logical of unop_logical
-  | TUnop_Arithmetic of unop_arithmetic
-  | TUnop_Bitwise of unop_bitwise
-
-type binop_comparison = TEq | TNe | TLt | TLe | TGt | TGe
-type binop_arithmetic = TAdd | TSub | TMul | TDiv | TMod
-type binop_logical = TAnd | TOr
-type binop_bitwise = TBitAnd | TBitOr | TBitXor | TLShift | TRShift
-
-type binop =
-  | TBinop_Arithmetic of binop_arithmetic
-  | TBinop_Logical of binop_logical
-  | TBinop_Bitwise of binop_bitwise
-  | TBinop_Comparison of binop_comparison
 
 and param = {
   pattern : pattern;
@@ -141,30 +127,24 @@ and expr_desc =
   | TExp_Tuple of { elements : expr list }
   | TExp_Record of { fields : record_field list }
   | TExp_VariantConstructor of { name : ident; args : expr option }
-  | TExp_ArrayCreate of { element_ty : ty; size : expr }
-  | TExp_ArrayLength of { arr : expr }
-  | TExp_ArrayGet of { arr : expr; idx : expr }
-  | TExp_ArraySet of { arr : expr; idx : expr; value : expr }
-  | TExp_UnOp of { op : unop; value : expr }
-  | TExp_BinOp of { op : binop; lvalue : expr; rvalue : expr }
-  | TExp_Ref of { value : expr }
-  | TExp_Deref of { value : expr }
+  | TExp_Array of { element_ty : ty; elements : expr list; size : expr }
   | TExp_Lambda of lambda
   | TExp_Apply of { closure_fun : expr; args : expr list }
   | TExp_Let of letdef
-  | TExp_Assign of { target : expr; value : expr }
-  | TExp_AssignRef of { target : expr; value : expr }
-  | TExp_If of { cond : expr; then_branch : expr; else_branch : expr option }
-  | TExp_While of { cond : expr; body : expr }
-  | TExp_ForIn of { iter_var : pattern; iterable : expr; body : expr }
+  | TExp_If of {
+      condition : expr;
+      then_branch : expr;
+      else_branch : expr option;
+    }
+  | TExp_While of { condition : expr; body : expr }
   | TExp_Loop of { expr : expr }
   | TExp_Break of { expr_opt : expr option }
   | TExp_Continue
   | TExp_Return of { expr_opt : expr option }
   | TExp_Seq of { exprs : expr list }
   | TExp_Match of { expr : expr; cases : pattern_case list }
-  | TExp_Field of { record : expr; field_name : string; idx : int }
-  | TExp_Index of { collection : expr; index : expr }
+  | TExp_Field of { record : expr; field_name : ident }
+  | TExp_FieldSet of { record : expr; field_name : ident; value : expr }
 
 and pattern_case = {
   id : int;
@@ -197,14 +177,11 @@ and pattern_desc =
   | TPat_Any
 
 type signature_item_desc =
-  | TSig_Fun of {
-      name : ident;
-      params : ty list;
-      ret_ty : ty;
-      external_fn : external_fn option;
-    }
+  | TSig_Value of { name : ident; ty : ty }
+  | TSig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
+  | TSig_Primitive of { name : ident; ty : ty; prim_name : string }
   | TSig_Type of ty_decl (* type exposed *)
-  | TSig_Module of module_signature
+  | TSig_ModuleSignature of module_signature
 
 and external_fn = {
   c_name : string; (* Actual C symbol name *)
@@ -219,16 +196,12 @@ and signature_item = {
 }
 
 and structure_item_desc =
+  | TStr_Extern of { fname : ident; ty : ty; external_fn : external_fn }
+  | TStr_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
   | TStr_Let of letdef
-  | TStr_Fun of {
-      rec_flag : rec_flag;
-      name : ident;
-      body : expr; (* should be a lambda expression *)
-      ty_opt : ty option;
-    }
-  | TStr_TypeDef of ty_decl (* type definition: type Foo = ... *)
-  | TStr_ModuleStruct of module_structure
-  | TStr_Signature of signature_item list
+  | TStr_Type of ty_decl (* type definition: type foo = ... *)
+  | TStr_ModuleStructure of module_structure
+  | TStr_ModuleSignature of module_signature
 
 and structure_item = {
   id : int;

@@ -53,7 +53,7 @@ let collect_global_names (prog : program_core) : StringSet.t =
     List.fold_left
       (fun acc (sig_item : signature_item) ->
         match sig_item.signature_item_desc with
-        | CSig_Fun { name; _ } -> StringSet.add name.fullname acc
+        | CSig_Value { name; _ } -> StringSet.add name.fullname acc
         | _ -> acc)
       StringSet.empty prog.signature_items
   in

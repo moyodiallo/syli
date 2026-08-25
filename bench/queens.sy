@@ -8,11 +8,11 @@ let rec queens col ld rd bits count =
     if bits == 0 then
       count
     else
-      let bit = bits & (-bits)
-      let new_col = col | bit
-      let new_ld = (ld | bit) << 1
-      let new_rd = (rd | bit) >> 1
-      let next_bits = (~(new_col | new_ld | new_rd)) & 255
+      let bit = bits land  (-bits)
+      let new_col = col lor bit
+      let new_ld = (ld lor bit) lshif 1
+      let new_rd = (rd lor bit) rshift 1
+      let next_bits = (~(new_col lor new_ld lor new_rd)) land 255
       let count = queens new_col new_ld new_rd next_bits count
       queens col ld rd (bits ^ bit) count
 fn main () = syli_print_i64(queens 0 0 0 255 0)

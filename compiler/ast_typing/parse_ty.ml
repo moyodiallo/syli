@@ -15,10 +15,10 @@ let const_ty_of_parsing (c : Syli_parsing.Ast.constant_ty) : constant_ty =
   | Ty_UInt64 -> TTy_UInt64
   | Ty_Bool -> TTy_Bool
   | Ty_Unit -> TTy_Unit
-  | Ty_Float -> TTy_Float
-  | Ty_Double -> TTy_Double
-  | Ty_StringLit -> TTy_StringLit
-  | Ty_CharLit -> TTy_CharLit
+  | Ty_F32 -> TTy_F32
+  | Ty_F64 -> TTy_F64
+  | Ty_String -> TTy_String
+  | Ty_Char -> TTy_Char
 
 let loc_of_parsing (loc : Syli_parsing.Ast.location) : location =
   { start_pos = loc.start_pos; end_pos = loc.end_pos; filename = loc.filename }
@@ -44,9 +44,6 @@ let rec ty_of_parsing (ctx : Env.infer_ctx) (t : Syli_parsing.Ast.ty) :
   | Ty_Array elem ->
       let ctx, elem = ty_of_parsing ctx elem in
       (ctx, mk_ty @@ TTy_Array elem)
-  | Ty_Ref elem ->
-      let ctx, elem = ty_of_parsing ctx elem in
-      (ctx, mk_ty @@ TTy_Ref elem)
   | Ty_Defined d ->
       let ctx, args = List.fold_left_map ty_of_parsing ctx d.args in
       (ctx, { ty_desc = TTy_Defined { name = ident_of_parsing d.name; args } })
@@ -60,41 +57,6 @@ let constant_desc_of_parsing (d : Syli_parsing.Ast.constant_desc) :
   | Const_FloatLit s -> (TConst_FloatLit s, TTy_Double)
   | Const_CharLit s -> (TConst_CharLit s, TTy_CharLit)
   | Const_StringLit s -> (TConst_StringLit s, TTy_StringLit)
-
-let unop_of_parsing (op : Syli_parsing.Ast.unop) : unop =
-  match op with
-  | Unop_Logical Not -> TUnop_Logical TNot
-  | Unop_Arithmetic Neg -> TUnop_Arithmetic TNeg
-  | Unop_Bitwise BitNot -> TUnop_Bitwise TBitNot
-
-let binop_of_parsing (op : Syli_parsing.Ast.binop) : binop =
-  match op with
-  | Binop_Arithmetic a ->
-      TBinop_Arithmetic
-        (match a with
-        | Add -> TAdd
-        | Sub -> TSub
-        | Mul -> TMul
-        | Div -> TDiv
-        | Mod -> TMod)
-  | Binop_Logical l -> TBinop_Logical (match l with And -> TAnd | Or -> TOr)
-  | Binop_Bitwise b ->
-      TBinop_Bitwise
-        (match b with
-        | BitAnd -> TBitAnd
-        | BitOr -> TBitOr
-        | BitXor -> TBitXor
-        | LShift -> TLShift
-        | RShift -> TRShift)
-  | Binop_Comparison c ->
-      TBinop_Comparison
-        (match c with
-        | Eq -> TEq
-        | Ne -> TNe
-        | Lt -> TLt
-        | Le -> TLe
-        | Gt -> TGt
-        | Ge -> TGe)
 
 let field_mut_of_parsing = function
   | Mutable -> TMutable
@@ -205,7 +167,7 @@ let rec signature_item_of_parsing (ctx : Env.infer_ctx)
   | Sig_Type td ->
       let ctx, td = ty_decl_of_parsing ctx td in
       (ctx, { id = si.id; signature_item_desc = TSig_Type td; loc })
-  | Sig_Module ms ->
+  | Sig_ModuleSignature ms ->
       let ctx, ms = module_signature_of_parsing ctx ms in
       (ctx, { id = si.id; signature_item_desc = TSig_Module ms; loc })
 

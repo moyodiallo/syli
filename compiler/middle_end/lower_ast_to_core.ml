@@ -71,42 +71,6 @@ let rec desugar_ty (t : Typed_ast.ty) : ty =
 
 and env_path_of_ident (id : Typed_ast.ident) : string list = id.path
 
-let desugar_unop (u : Typed_ast.unop) : unop =
-  match u with
-  | TUnop_Logical TNot -> (CUnop_Logical CNot : unop)
-  | TUnop_Arithmetic TNeg -> (CUnop_Arithmetic CNeg : unop)
-  | TUnop_Bitwise TBitNot -> (CUnop_Bitwise CBitNot : unop)
-
-let desugar_binop (b : Typed_ast.binop) : binop =
-  match b with
-  | TBinop_Arithmetic a ->
-      CBinop_Arithmetic
-        (match a with
-        | TAdd -> CAdd
-        | TSub -> CSub
-        | TMul -> CMul
-        | TDiv -> CDiv
-        | TMod -> CMod)
-  | TBinop_Logical l ->
-      CBinop_Logical (match l with TAnd -> CAnd | TOr -> COr)
-  | TBinop_Bitwise b ->
-      CBinop_Bitwise
-        (match b with
-        | TBitAnd -> CBitAnd
-        | TBitOr -> CBitOr
-        | TBitXor -> CBitXor
-        | TLShift -> CLShift
-        | TRShift -> CRShift)
-  | TBinop_Comparison c ->
-      CBinop_Comparison
-        (match c with
-        | TEq -> CEq
-        | TNe -> CNe
-        | TLt -> CLt
-        | TLe -> CLe
-        | TGt -> CGt
-        | TGe -> CGe)
-
 let hash_index (name : string) : int = abs (Hashtbl.hash name)
 
 let rec desugar_pattern (p : Typed_ast.pattern) : pattern =
@@ -419,16 +383,9 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               })
             cases
         in
-        (Exp_Match { expr = scrutinee'; cases = cases' }, env)
+        (CExp_Match { expr = scrutinee'; cases = cases' }, env)
     | TExp_Field { record; idx; _ } ->
         ( CExp_Field { record = fst (desugar_expr env record); field_idx = idx },
-          env )
-    | TExp_Index { collection; index } ->
-        ( CExp_ArrayGet
-            {
-              arr = fst (desugar_expr env collection);
-              idx = fst (desugar_expr env index);
-            },
           env )
   in
   ({ id = e.id; node; ty }, env')
@@ -673,7 +630,6 @@ let desugarize_module_structure (module_structure : Typed_ast.module_structure)
     structure_items =
       desugarize_structure_items env module_structure.structure_items;
     signature_items;
-    has_main_function = false;
   }
 
 let prefix_syli = "syli"
@@ -732,7 +688,6 @@ let desugarize_ast (program : Typed_ast.module_structure) : program_core =
     structure_items =
       desugarize_structure_items root_env program.structure_items;
     signature_items;
-    has_main_function = false;
   }
 
 let lower program = desugarize_ast program

@@ -14,12 +14,11 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Constant TTy_UInt8 -> "uint8"
   | TTy_Constant TTy_Bool -> "bool"
   | TTy_Constant TTy_Unit -> "unit"
-  | TTy_Constant TTy_Float -> "float"
-  | TTy_Constant TTy_Double -> "double"
-  | TTy_Constant TTy_StringLit -> "str"
-  | TTy_Constant TTy_CharLit -> "char"
+  | TTy_Constant TTy_F32 -> "f32"
+  | TTy_Constant TTy_F64 -> "f64"
+  | TTy_Constant TTy_String -> "str"
+  | TTy_Constant TTy_Char -> "char"
   | TTy_Array ty -> "array[" ^ string_of_ty ty ^ "]"
-  | TTy_Ref ty -> "ref<" ^ string_of_ty ty ^ ">"
   | TTy_Tuple tys -> "(" ^ String.concat " * " (List.map string_of_ty tys) ^ ")"
   | TTy_Arrow (params, ret) ->
       let params_str = String.concat " -> " (List.map string_of_ty params) in
@@ -30,31 +29,6 @@ let rec string_of_ty (t : ty) : string =
       if args = [] then base
       else base ^ "[" ^ String.concat ", " (List.map string_of_ty args) ^ "]"
   | TTy_Any -> "_"
-
-let string_of_unop : unop -> string = function
-  | TUnop_Logical TNot -> "!"
-  | TUnop_Arithmetic TNeg -> "-"
-  | TUnop_Bitwise TBitNot -> "~"
-
-let string_of_binop : binop -> string = function
-  | TBinop_Arithmetic TAdd -> "+"
-  | TBinop_Arithmetic TSub -> "-"
-  | TBinop_Arithmetic TMul -> "*"
-  | TBinop_Arithmetic TDiv -> "/"
-  | TBinop_Arithmetic TMod -> "%"
-  | TBinop_Logical TAnd -> "&&"
-  | TBinop_Logical TOr -> "||"
-  | TBinop_Bitwise TBitAnd -> "&"
-  | TBinop_Bitwise TBitOr -> "lor"
-  | TBinop_Bitwise TBitXor -> "^"
-  | TBinop_Bitwise TLShift -> "<<"
-  | TBinop_Bitwise TRShift -> ">>"
-  | TBinop_Comparison TEq -> "=="
-  | TBinop_Comparison TNe -> "!="
-  | TBinop_Comparison TLt -> "<"
-  | TBinop_Comparison TLe -> "<="
-  | TBinop_Comparison TGt -> ">"
-  | TBinop_Comparison TGe -> ">="
 
 let rec string_of_pattern (p : pattern) : string =
   match p.pattern_desc with
@@ -116,9 +90,6 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
   | TExp_ArraySet { arr; idx; value } ->
       "array.set(" ^ string_of_expr ~ind expr ^ ", " ^ string_of_expr ~ind idx
       ^ ", " ^ string_of_expr ~ind value ^ ")"
-  | TExp_UnOp { op; value } -> string_of_unop op ^ string_of_expr ~ind value
-  | TExp_Ref { value } -> "ref " ^ string_of_expr ~ind value
-  | TExp_Deref { value } -> "*" ^ string_of_expr ~ind value
   | TExp_BinOp { op; lvalue; rvalue } ->
       "(" ^ string_of_expr ~ind lvalue ^ " " ^ string_of_binop op ^ " "
       ^ string_of_expr ~ind rvalue ^ ")"
@@ -143,10 +114,6 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
         match l.pattern.pattern_desc with TPat_Ident s -> s.name | _ -> "_"
       in
       "let " ^ lhs ^ " = " ^ string_of_expr ~ind l.value
-  | TExp_Assign { target; value } ->
-      string_of_expr ~ind target ^ " = " ^ string_of_expr ~ind value
-  | TExp_AssignRef { target; value } ->
-      string_of_expr ~ind target ^ " := " ^ string_of_expr ~ind value
   | TExp_If { cond; then_branch; else_branch = None } ->
       "if " ^ string_of_expr ~ind cond ^ " then "
       ^ string_of_expr ~ind then_branch

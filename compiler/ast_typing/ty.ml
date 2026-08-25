@@ -16,8 +16,8 @@ let string_of_const_ty = function
   | TTy_Unit -> "unit"
   | TTy_Float -> "float"
   | TTy_Double -> "double"
-  | TTy_StringLit -> "str"
-  | TTy_CharLit -> "char"
+  | TTy_String -> "str"
+  | TTy_Char -> "char"
 
 let rec string_of_ty (t : ty) : string =
   match t.ty_desc with

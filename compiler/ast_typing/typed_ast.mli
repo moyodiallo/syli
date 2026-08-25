@@ -7,8 +7,15 @@ type path = string list
 type location = { start_pos : int; end_pos : int; filename : string }
 (** Source location in the input file. *)
 
-and ident = { name : string; id : int; path : string list; loc : location }
-(** A name with unique ID, path, and source location. *)
+and ident = {
+  name : string;
+  id : int;
+  path : string list;
+  loc : location;
+  is_operator : bool;
+}
+(** A name with unique ID, path, and source location; [is_operator] marks the
+    dedicated operator namespace. *)
 
 (** Mutability flag for typed bindings. *)
 type mut_flag = TMutable | TImmutable
@@ -28,10 +35,10 @@ type constant_ty =
   | TTy_UInt64
   | TTy_Bool
   | TTy_Unit
-  | TTy_Float
-  | TTy_Double
-  | TTy_StringLit
-  | TTy_CharLit
+  | TTy_F32
+  | TTy_F64
+  | TTy_String
+  | TTy_Char
 
 type ty = { ty_desc : ty_desc }
 (** A type node in the typed AST. *)
@@ -41,10 +48,9 @@ and ty_desc =
   | TTy_Var of int
   | TTy_Any
   | TTy_Constant of constant_ty
-  | TTy_Arrow of ty list * ty
+  | TTy_Arrow of ty * ty
   | TTy_Tuple of ty list
   | TTy_Array of ty
-  | TTy_Ref of ty
   | TTy_Defined of { name : ident; args : ty list }
 
 and variant_constructor_decl = {
@@ -85,46 +91,7 @@ type ty_decl = {
 }
 (** A full type declaration in the typed AST. *)
 
-(** Logical negation unary operator. *)
-type unop_logical = TNot
-
-(** Arithmetic negation unary operator. *)
-type unop_arithmetic = TNeg
-
-(** Bitwise negation unary operator. *)
-type unop_bitwise = TBitNot
-
-(** A unary operator (logical, arithmetic, or bitwise). *)
-type unop =
-  | TUnop_Logical of unop_logical
-  | TUnop_Arithmetic of unop_arithmetic
-  | TUnop_Bitwise of unop_bitwise
-
-(** Comparison binary operators. *)
-type binop_comparison = TEq | TNe | TLt | TLe | TGt | TGe
-
-(** Arithmetic binary operators. *)
-type binop_arithmetic = TAdd | TSub | TMul | TDiv | TMod
-
-(** Logical binary operators. *)
-type binop_logical = TAnd | TOr
-
-(** Bitwise binary operators. *)
-type binop_bitwise = TBitAnd | TBitOr | TBitXor | TLShift | TRShift
-
-(** A binary operator (arithmetic, logical, bitwise, or comparison). *)
-type binop =
-  | TBinop_Arithmetic of binop_arithmetic
-  | TBinop_Logical of binop_logical
-  | TBinop_Bitwise of binop_bitwise
-  | TBinop_Comparison of binop_comparison
-
-and param = {
-  pattern : pattern;
-  mut_flag : mut_flag;
-  param_ty : ty option;
-  loc : location;
-}
+and param = { pattern : pattern; param_ty : ty option; loc : location }
 (** A function parameter with optional type annotation. *)
 
 and lambda = {
@@ -133,9 +100,8 @@ and lambda = {
   ret_ty : ty option;
   loc : location;
 }
-(** A lambda expression with typed parameters and body. *)
+(** A lambda expression in the typed AST. *)
 
-(** Kind of typed let-binding. *)
 and let_kind = TLetVal | TLetFun
 
 and letdef = {
@@ -154,54 +120,46 @@ and record_field = {
   field_value : expr;
   loc : location;
 }
-(** A record field in an expression. *)
+(** A record field expression in the typed AST. *)
 
-(** Descriptor for a constant literal value. *)
 and constant_desc =
   | TConst_Unit
   | TConst_BoolLit of string
   | TConst_IntLit of string
   | TConst_FloatLit of string
   | TConst_CharLit of string
-  | TConst_StringLit of string
+  | TConst_StringLit of string  (** Description of a typed literal constant. *)
 
 and constant = { id : int; constant_desc : constant_desc; loc : location }
-(** A constant literal with an ID and location. *)
+(** A literal constant in the typed AST. *)
 
 and expr = { id : int; expr_desc : expr_desc; loc : location; ty : ty }
-(** A typed expression with an ID, description, location, and type. *)
+(** A typed expression node. *)
 
-(** The description of a typed expression. *)
 and expr_desc =
   | TExp_Constant of constant
   | TExp_Ident of ident
   | TExp_Tuple of { elements : expr list }
   | TExp_Record of { fields : record_field list }
-  | TExp_VariantConstructor of { name : ident; args : expr option }
-  | TExp_ArrayCreate of { element_ty : ty; size : expr }
-  | TExp_ArrayLength of { arr : expr }
-  | TExp_ArrayGet of { arr : expr; idx : expr }
-  | TExp_ArraySet of { arr : expr; idx : expr; value : expr }
-  | TExp_UnOp of { op : unop; value : expr }
-  | TExp_BinOp of { op : binop; lvalue : expr; rvalue : expr }
-  | TExp_Ref of { value : expr }
-  | TExp_Deref of { value : expr }
+  | TExp_VariantConstructor of { name : ident; arg : expr option }
+  | TExp_Array of { element_ty : ty; elements : expr list; size : expr }
   | TExp_Lambda of lambda
   | TExp_Apply of { closure_fun : expr; args : expr list }
   | TExp_Let of letdef
-  | TExp_Assign of { target : expr; value : expr }
-  | TExp_AssignRef of { target : expr; value : expr }
-  | TExp_If of { cond : expr; then_branch : expr; else_branch : expr option }
-  | TExp_While of { cond : expr; body : expr }
-  | TExp_ForIn of { iter_var : pattern; iterable : expr; body : expr }
+  | TExp_If of {
+      condition : expr;
+      then_branch : expr;
+      else_branch_opt : expr option;
+    }
+  | TExp_While of { condidition : expr; body : expr }
   | TExp_Loop of { expr : expr }
   | TExp_Break of { expr_opt : expr option }
   | TExp_Continue
   | TExp_Return of { expr_opt : expr option }
   | TExp_Seq of { exprs : expr list }
   | TExp_Match of { expr : expr; cases : pattern_case list }
-  | TExp_Field of { record : expr; field_name : string; idx : int }
-  | TExp_Index of { collection : expr; index : expr }
+  | TExp_Field of { record : expr; field_name : string }
+  | TExp_FieldSet of { record : expr; field_name : string; value : expr }
 
 and pattern_case = {
   id : int;
@@ -211,17 +169,15 @@ and pattern_case = {
   loc : location;
   ty : ty;
 }
-(** A pattern-matching case with optional guard and inferred type. *)
 
 and pattern = { id : int; pattern_desc : pattern_desc; loc : location; ty : ty }
-(** A pattern node with ID, description, location, and type. *)
 
 and pattern_record_field = {
   name : ident;
   pattern : pattern option;
   loc : location;
 }
-(** A single field in a record pattern. *)
+(** A single field in a typed record pattern. *)
 
 (** The description of a typed pattern. *)
 and pattern_desc =
@@ -239,14 +195,11 @@ and pattern_desc =
 
 (** Description of a typed signature item. *)
 type signature_item_desc =
-  | TSig_Fun of {
-      name : ident;
-      params : ty list;
-      ret_ty : ty;
-      external_fn : external_fn option;
-    }
+  | TSig_Value of { name : ident; ty : ty }
+  | TSig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
+  | TSig_Primitive of { name : ident; ty : ty; prim_name : string }
   | TSig_Type of ty_decl
-  | TSig_Module of module_signature
+  | TSig_ModuleSignature of module_signature
 
 and external_fn = {
   c_name : string;
@@ -264,16 +217,12 @@ and signature_item = {
 
 (** Description of a typed structure item. *)
 and structure_item_desc =
+  | TStr_Extern of { fname : ident; ty : ty; external_fn : external_fn }
+  | TStr_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
   | TStr_Let of letdef
-  | TStr_Fun of {
-      rec_flag : rec_flag;
-      name : ident;
-      body : expr;
-      ty_opt : ty option;
-    }
-  | TStr_TypeDef of ty_decl
-  | TStr_ModuleStruct of module_structure
-  | TStr_Signature of signature_item list
+  | TStr_Type of ty_decl
+  | TStr_ModuleStructure of module_structure
+  | TStr_ModuleSignature of module_signature
 
 and structure_item = {
   id : int;
