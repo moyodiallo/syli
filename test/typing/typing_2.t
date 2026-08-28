@@ -1,6 +1,6 @@
   $ cat >parse0.src <<EOF
-  > type person = { name: str; age: int64 }
-  > fn add () =
+  > type person = { name: string; age: i64 }
+  > let add () =
   >     let record =
   >     {
   >         name = "test";
@@ -13,12 +13,12 @@
   Typed parse0.src successfully: module Parse0 with 2 top-level typed items
   Type Environment:
   {
-    add : (unit) -> int64
+    add : unit -> i64
   }
 
   $ cat >parse0.src <<EOF
-  > type person = { name: str; age: int64 }
-  > fn add () =
+  > type person = { name: string; age: i64 }
+  > let add () =
   >     let record =
   >     {
   >         name = "test";
@@ -31,13 +31,13 @@
   Typed parse0.src successfully: module Parse0 with 2 top-level typed items
   Type Environment:
   {
-    add : (unit) -> int64
+    add : unit -> i64
   }
 
   $ cat >parse0.src <<EOF
-  > type grown_person = { name: str; age: int64; grown: bool }
-  > type person = { name: str; age: int64 }
-  > fn add () =
+  > type grown_person = { name: string; age: i64; grown: bool }
+  > type person = { name: string; age: i64 }
+  > let add () =
   >     let record =
   >     {
   >         name = "test";
@@ -52,13 +52,13 @@
   Typed parse0.src successfully: module Parse0 with 3 top-level typed items
   Type Environment:
   {
-    add : (unit) -> int64
+    add : unit -> i64
   }
 
   $ cat >parse0.src <<EOF
-  > type grown_person = { name: str; age: int64; grown: bool }
-  > type person = { name: str; age: int64 }
-  > fn add () =
+  > type grown_person = { name: string; age: i64; grown: bool }
+  > type person = { name: string; age: i64 }
+  > let add () =
   >     let record =
   >     {
   >         name = "test";
@@ -74,9 +74,9 @@
   [2]
 
   $ cat >parse0.src <<EOF
-  > type grown_person = { name: str; age: int64; grown: bool }
-  > type person = { name: str; age: int64 }
-  > fn add () =
+  > type grown_person = { name: string; age: i64; grown: bool }
+  > type person = { name: string; age: i64 }
+  > let add () =
   >     let record =
   >     {
   >         name = "test";
@@ -88,5 +88,5 @@
   > end
   > EOF
   $ dune exec sylic typing parse0.src
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: double vs int64")
+  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: f64 vs i64")
   [2]

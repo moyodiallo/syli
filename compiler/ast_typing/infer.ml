@@ -199,8 +199,8 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
           match TyEnv.lookup_opt i.name ctx.env with
           | Some s -> instantiate_scheme ctx s
           | None ->
-              let ctx, t = fresh_ty ctx in
-              (ctx, t)
+              raise
+                (Type_error (Printf.sprintf "Unbound identifier '%s'" i.name))
       in
       (ctx, { id = e.id; expr_desc = TExp_Ident (ident_of_parsing i); loc; ty })
   | Parsing_ast.Exp_Tuple { elements } ->
@@ -362,7 +362,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         }
       in
       (new_ctx, { id = e.id; expr_desc = TExp_Lambda lambda; loc; ty })
-  | Parsing_ast.Exp_Apply { closure_fun; args } -> (
+  | Parsing_ast.Exp_Apply { closure_fun; args } ->
       let ctx, fn = infer_expr ctx closure_fun in
       let ctx, args = List.fold_left_map infer_expr ctx args in
       let ctx, fn_ty =
@@ -391,54 +391,34 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 raise
                   (Type_error
                      (Printf.sprintf "expected function type, got %s"
-                        (string_of_ty (apply_ty ctx fn.ty)))))
+                        (Pretty_print_code.string_of_ty (apply_ty ctx fn.ty)))))
       in
       let fn = { fn with ty = fn_ty } in
-      let fn_params, fn_ret = get_fn_args_ty (apply_ty ctx fn_ty) in
-      let matched_fn, matched_arg, rest_fn, rest_arg =
-        matching_param_to_arg fn_params args
+      let rec infer_arguments (ctx : infer_ctx) (remaining_ty : ty)
+          (args : expr list) (consumed : int) : infer_ctx * ty =
+        match (remaining_ty.ty_desc, args) with
+        | TTy_Arrow (param, ret), arg :: rest_args ->
+            let ctx = unify_into ctx param arg.ty in
+            infer_arguments ctx ret rest_args (consumed + 1)
+        | _, [] -> (ctx, apply_ty ctx remaining_ty)
+        | _, _ ->
+            (* remaining_ty is not an arrow here, so all arrows are consumed *)
+            raise
+              (Type_error
+                 (Printf.sprintf "function expects %d argument(s), got %d"
+                    consumed
+                    (consumed + List.length args)))
       in
-      match (rest_fn, rest_arg) with
-      | [], [] ->
-          let ctx =
-            List.fold_left2
-              (fun ctx param (arg : Typed_ast.expr) ->
-                unify_into ctx param arg.ty)
-              ctx matched_fn matched_arg
-          in
-          ( ctx,
-            {
-              id = e.id;
-              loc = loc_of_parsing e.loc;
-              expr_desc =
-                TExp_Apply
-                  { closure_fun = fn; args = List.map (apply_expr_ty ctx) args };
-              ty = apply_ty ctx fn_ret;
-            } )
-      | _, [] ->
-          let ctx =
-            List.fold_left2
-              (fun ctx param (arg : Typed_ast.expr) ->
-                unify_into ctx param arg.ty)
-              ctx matched_fn matched_arg
-          in
-          let remaining_fn = List.map (apply_ty ctx) rest_fn in
-          let substituted_ret = apply_ty ctx fn_ret in
-          let partial_ty = arrow_ty_of_params remaining_fn substituted_ret in
-          ( ctx,
-            {
-              id = e.id;
-              loc = loc_of_parsing e.loc;
-              expr_desc =
-                TExp_Apply
-                  { closure_fun = fn; args = List.map (apply_expr_ty ctx) args };
-              ty = apply_ty ctx partial_ty;
-            } )
-      | _, _ ->
-          raise
-            (Type_error
-               (Printf.sprintf "function expects %d argument(s), got %d"
-                  (List.length fn_params) (List.length args))))
+      let ctx, ty = infer_arguments ctx fn_ty args 0 in
+      ( ctx,
+        {
+          id = e.id;
+          loc = loc_of_parsing e.loc;
+          expr_desc =
+            TExp_Apply
+              { closure_fun = fn; args = List.map (apply_expr_ty ctx) args };
+          ty;
+        } )
   | Parsing_ast.Exp_Let ldef ->
       let ctx, tdef = infer_letdef ctx ldef in
       (ctx, { id = e.id; expr_desc = TExp_Let tdef; loc; ty = tdef.value.ty })
@@ -705,6 +685,15 @@ let rec infer_structure_item (ctx : infer_ctx) (si : Parsing_ast.structure_item)
   | Parsing_ast.Str_External { fname; ty; external_fn } ->
       let ctx, ty = ty_of_parsing ctx ty in
       let external_fn = external_fn_of_parsing external_fn in
+      let ctx =
+        {
+          ctx with
+          env =
+            TyEnv.extend fname.name
+              { vars = ty_vars ty |> List.sort_uniq Int.compare; body = ty }
+              ctx.env;
+        }
+      in
       ( ctx,
         {
           id = si.id;

@@ -150,7 +150,7 @@ structure_item_desc:
         if not (Primitives.ty_match_primitive_instance value_ty prim) then
           failwith
             (Printf.sprintf
-               "Primitive %s does not have type %s,"
+               "Primitive '%s' does not have instance of type '%s',"
                symbol_name
                (Pretty_print_code.string_of_ty value_ty));
 

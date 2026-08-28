@@ -59,7 +59,7 @@ Structure parsing with primitive declarations
   let x = 10
   $ dune exec sylic parse parse0.sy
   Parsed parse0.sy
-  extern add_i64 : int64 -> int64 -> int64
+  extern add_i64 : i64 -> i64 -> i64
   let x = 10
 
 Failing, primitive declaration that mismatches the type
@@ -71,7 +71,7 @@ Failing, primitive declaration that mismatches the type
   primitive add_i64 : i64 -> i64 = "add"
   let x = 10
   $ dune exec sylic parse parse0.sy
-  Unexpected error: Failure("Primitive 'add' does not have instance of type 'int64 -> int64',")
+  Unexpected error: Failure("Primitive 'add' does not have instance of type 'i64 -> i64',")
   [1]
 
 Failing primitive declaration that does not exist.

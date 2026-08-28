@@ -2,35 +2,43 @@ Ref type inference:
   $ cat >test_ref.sy <<EOF
   > let a = ref 0
   > let b = ref 1.5
-  > fn incr (r : ref int64) = r := *r + 1
-  > fn main () = 0
+  > let incr (r : ref i64) = r := *r + 1
+  > let main () = 0
   > EOF
   $ dune exec sylic typing test_ref.sy
-  Typed test_ref.sy successfully: module Test_ref with 4 top-level typed items
-  Type Environment:
-  {
-    a : ref<int64>
-    b : ref<double>
-    incr : (ref<int64>) -> unit
-    main : (unit) -> int64
-  }
+  
+  Parse error in test_ref.sy at line 3, column 18
+  
+    3 | let incr (r : ref i64) = r := *r + 1
+                           ^^^^^
+  
+  Unexpected token: 'INT64'
+  
+  [1]
 
 Deref must operate on a ref type:
   $ cat >test_ref.sy <<EOF
-  > fn main () =
+  > let main () =
   >   let x = 5
   >   let y = *x
   > EOF
   $ dune exec sylic typing test_ref.sy
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs ref<'21>")
-  [2]
+  
+  Parse error in test_ref.sy at line 3, column 10
+  
+    3 |   let y = *x
+                   ^
+  
+  Unexpected token: '*'
+  
+  [1]
 
 Reference must have coherantly typed:
   $ cat >test_ref.sy <<EOF
-  > fn main () =
+  > let main () =
   >   let x = ref 5
   >   x := 3.0
   > EOF
   $ dune exec sylic typing test_ref.sy
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs double")
+  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier 'ref'")
   [2]

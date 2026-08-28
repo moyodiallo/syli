@@ -4,7 +4,7 @@ type variant
   > EOF
   $ dune exec sylic parse test_variant.sy
   Parsed test_variant.sy
-  type option = None | Some of int64
+  type option = None | Some of i64
 
 pattern match
   $ cat >test_pattern.sy <<'EOF'

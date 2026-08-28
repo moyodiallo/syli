@@ -1,40 +1,8 @@
 open Typed_ast
 open Env
+open Pretty_print_code
 
 let mk_ty ty_desc = { ty_desc }
-
-let string_of_const_ty = function
-  | TTy_Int8 -> "int8"
-  | TTy_Int16 -> "int16"
-  | TTy_Int32 -> "int32"
-  | TTy_Int64 -> "int64"
-  | TTy_UInt8 -> "uint8"
-  | TTy_UInt16 -> "uint16"
-  | TTy_UInt32 -> "uint32"
-  | TTy_UInt64 -> "uint64"
-  | TTy_Bool -> "bool"
-  | TTy_Unit -> "unit"
-  | TTy_F32 -> "f32"
-  | TTy_F64 -> "f64"
-  | TTy_String -> "str"
-  | TTy_Char -> "char"
-
-let rec string_of_ty (t : ty) : string =
-  match t.ty_desc with
-  | TTy_Var v -> Printf.sprintf "'%d" v
-  | TTy_Any -> "_"
-  | TTy_Constant c -> string_of_const_ty c
-  | TTy_Arrow (arg, ret) ->
-      Printf.sprintf "%s -> %s" (string_of_ty arg) (string_of_ty ret)
-  | TTy_Tuple elems ->
-      Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty elems))
-  | TTy_Array elem -> Printf.sprintf "array<%s>" (string_of_ty elem)
-  | TTy_Defined { name; args } ->
-      let base = name.name in
-      if args = [] then base
-      else
-        Printf.sprintf "%s<%s>" base
-          (String.concat ", " (List.map string_of_ty args))
 
 let is_numeric_const_ty = function
   | TTy_Int8 | TTy_Int16 | TTy_Int32 | TTy_Int64 | TTy_UInt8 | TTy_UInt16
@@ -47,27 +15,6 @@ let is_integer_const_ty = function
   | TTy_UInt32 | TTy_UInt64 ->
       true
   | TTy_Bool | TTy_Unit | TTy_F32 | TTy_F64 | TTy_String | TTy_Char -> false
-
-let normalized_builtin_ty_name (ty : ty) : string option =
-  match ty.ty_desc with
-  | TTy_Constant TTy_Int8 -> Some "int8"
-  | TTy_Constant TTy_Int16 -> Some "int16"
-  | TTy_Constant TTy_Int32 -> Some "int32"
-  | TTy_Constant TTy_Int64 -> Some "int64"
-  | TTy_Constant TTy_UInt8 -> Some "uint8"
-  | TTy_Constant TTy_UInt16 -> Some "uint16"
-  | TTy_Constant TTy_UInt32 -> Some "uint32"
-  | TTy_Constant TTy_UInt64 -> Some "uint64"
-  | TTy_Constant TTy_Bool -> Some "bool"
-  | TTy_Constant TTy_Unit -> Some "unit"
-  | TTy_Constant TTy_F32 -> Some "f32"
-  | TTy_Constant TTy_F64 -> Some "f64"
-  | TTy_Constant TTy_String -> Some "string"
-  | TTy_Constant TTy_Char -> Some "char"
-  | TTy_Defined { name; args = [] } -> Some name.name
-  | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _ | TTy_Array _
-  | TTy_Defined _ ->
-      None
 
 let ensure_numeric_ty (t : ty) : unit =
   match t.ty_desc with
@@ -108,12 +55,7 @@ let rec equal_ty (left : ty) (right : ty) : bool =
       String.equal a_def.name.name b_def.name.name
       && List.length a_def.args = List.length b_def.args
       && List.for_all2 equal_ty a_def.args b_def.args
-  | _ -> (
-      match
-        (normalized_builtin_ty_name left, normalized_builtin_ty_name right)
-      with
-      | Some l, Some r -> String.equal l r
-      | _ -> false)
+  | _ -> false
 
 let rec occurs (v : int) (t : ty) : bool =
   match t.ty_desc with
@@ -195,13 +137,3 @@ let rec ty_vars (t : ty) : int list =
   | TTy_Array elem -> ty_vars elem
   | TTy_Defined d -> List.concat_map ty_vars d.args
   | TTy_Constant _ | TTy_Any -> []
-
-let rec get_fn_args_ty (fn_ty : ty) : ty list * ty =
-  match fn_ty.ty_desc with
-  | TTy_Arrow (arg, ret) ->
-      let args, ret' = get_fn_args_ty ret in
-      (arg :: args, ret')
-  | _ ->
-      raise
-        (Type_error
-           (Printf.sprintf "expected function type, got %s" (string_of_ty fn_ty)))
