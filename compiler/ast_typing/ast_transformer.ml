@@ -16,9 +16,8 @@ let rec transform_ty (t : transformer) (ty : ty) : ty =
     match ty.ty_desc with
     | TTy_Var _ | TTy_Any | TTy_Constant _ -> ty.ty_desc
     | TTy_Array inner -> TTy_Array (t.ty t inner)
-    | TTy_Ref inner -> TTy_Ref (t.ty t inner)
     | TTy_Tuple tys -> TTy_Tuple (List.map (t.ty t) tys)
-    | TTy_Arrow (params, ret) -> TTy_Arrow (List.map (t.ty t) params, t.ty t ret)
+    | TTy_Arrow (param, ret) -> TTy_Arrow (t.ty t param, t.ty t ret)
     | TTy_Defined ({ args; _ } as defined) ->
         TTy_Defined { defined with args = List.map (t.ty t) args }
   in
@@ -83,22 +82,15 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
                 (fun f -> { f with field_value = t.expr t f.field_value })
                 fields;
           }
-    | TExp_VariantConstructor { name; args } ->
-        TExp_VariantConstructor { name; args = Option.map (t.expr t) args }
-    | TExp_ArrayCreate { element_ty; size } ->
-        TExp_ArrayCreate
-          { element_ty = t.ty t element_ty; size = t.expr t size }
-    | TExp_ArrayLength { arr } -> TExp_ArrayLength { arr = t.expr t arr }
-    | TExp_ArrayGet { arr; idx } ->
-        TExp_ArrayGet { arr = t.expr t arr; idx = t.expr t idx }
-    | TExp_ArraySet { arr; idx; value } ->
-        TExp_ArraySet
-          { arr = t.expr t arr; idx = t.expr t idx; value = t.expr t value }
-    | TExp_UnOp { op; value } -> TExp_UnOp { op; value = t.expr t value }
-    | TExp_BinOp { op; lvalue; rvalue } ->
-        TExp_BinOp { op; lvalue = t.expr t lvalue; rvalue = t.expr t rvalue }
-    | TExp_Ref { value } -> TExp_Ref { value = t.expr t value }
-    | TExp_Deref { value } -> TExp_Deref { value = t.expr t value }
+    | TExp_VariantConstructor { name; arg } ->
+        TExp_VariantConstructor { name; arg = Option.map (t.expr t) arg }
+    | TExp_Array { element_ty; elements; size } ->
+        TExp_Array
+          {
+            element_ty = t.ty t element_ty;
+            elements = List.map (t.expr t) elements;
+            size = t.expr t size;
+          }
     | TExp_Lambda lam -> TExp_Lambda (transform_lambda t lam)
     | TExp_Apply { closure_fun; args } ->
         TExp_Apply
@@ -107,26 +99,15 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
             args = List.map (t.expr t) args;
           }
     | TExp_Let ld -> TExp_Let (transform_letdef t ld)
-    | TExp_Assign { target; value } ->
-        TExp_Assign { target = t.expr t target; value = t.expr t value }
-    | TExp_AssignRef { target; value } ->
-        TExp_AssignRef { target = t.expr t target; value = t.expr t value }
-    | TExp_If { cond; then_branch; else_branch } ->
+    | TExp_If { condition; then_branch; else_branch } ->
         TExp_If
           {
-            cond = t.expr t cond;
+            condition = t.expr t condition;
             then_branch = t.expr t then_branch;
             else_branch = Option.map (t.expr t) else_branch;
           }
-    | TExp_While { cond; body } ->
-        TExp_While { cond = t.expr t cond; body = t.expr t body }
-    | TExp_ForIn { iter_var; iterable; body } ->
-        TExp_ForIn
-          {
-            iter_var = t.pattern t iter_var;
-            iterable = t.expr t iterable;
-            body = t.expr t body;
-          }
+    | TExp_While { condition; body } ->
+        TExp_While { condition = t.expr t condition; body = t.expr t body }
     | TExp_Loop { expr } -> TExp_Loop { expr = t.expr t expr }
     | TExp_Break { expr_opt } ->
         TExp_Break { expr_opt = Option.map (t.expr t) expr_opt }
@@ -136,10 +117,11 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
     | TExp_Match { expr; cases } ->
         TExp_Match
           { expr = t.expr t expr; cases = List.map (t.pattern_case t) cases }
-    | TExp_Field { record; field_name; idx } ->
-        TExp_Field { record = t.expr t record; field_name; idx }
-    | TExp_Index { collection; index } ->
-        TExp_Index { collection = t.expr t collection; index = t.expr t index }
+    | TExp_Field { record; field_name } ->
+        TExp_Field { record = t.expr t record; field_name }
+    | TExp_FieldSet { record; field_name; value } ->
+        TExp_FieldSet
+          { record = t.expr t record; field_name; value = t.expr t value }
   in
   { e with expr_desc; ty = t.ty t e.ty }
 
@@ -186,16 +168,11 @@ let transform_signature_item (t : transformer) (s : signature_item) :
     signature_item =
   let signature_item_desc =
     match s.signature_item_desc with
-    | TSig_Fun { name; params; ret_ty; external_fn } ->
-        TSig_Fun
-          {
-            name;
-            params = List.map (t.ty t) params;
-            ret_ty = t.ty t ret_ty;
-            external_fn;
-          }
+    | TSig_Value { name; ty } -> TSig_Value { name; ty = t.ty t ty }
+    | TSig_External { fname; ty; external_fn } ->
+        TSig_External { fname; ty = t.ty t ty; external_fn }
     | TSig_Type td -> TSig_Type (transform_ty_decl t td)
-    | TSig_Module ms -> TSig_Module (t.module_signature t ms)
+    | TSig_ModuleSignature ms -> TSig_ModuleSignature (t.module_signature t ms)
   in
   { s with signature_item_desc }
 
@@ -204,17 +181,11 @@ let transform_structure_item (t : transformer) (s : structure_item) :
   let structure_item_desc =
     match s.structure_item_desc with
     | TStr_Let ld -> TStr_Let (transform_letdef t ld)
-    | TStr_Fun { rec_flag; name; body; ty_opt } ->
-        TStr_Fun
-          {
-            rec_flag;
-            name;
-            body = t.expr t body;
-            ty_opt = Option.map (t.ty t) ty_opt;
-          }
-    | TStr_TypeDef td -> TStr_TypeDef (transform_ty_decl t td)
-    | TStr_ModuleStruct ms -> TStr_ModuleStruct (t.module_structure t ms)
-    | TStr_Signature sigs -> TStr_Signature (List.map (t.signature_item t) sigs)
+    | TStr_External { fname; ty; external_fn } ->
+        TStr_External { fname; ty = t.ty t ty; external_fn }
+    | TStr_Type td -> TStr_Type (transform_ty_decl t td)
+    | TStr_ModuleStructure ms -> TStr_ModuleStructure (t.module_structure t ms)
+    | TStr_ModuleSignature ms -> TStr_ModuleSignature (t.module_signature t ms)
   in
   { s with structure_item_desc }
 

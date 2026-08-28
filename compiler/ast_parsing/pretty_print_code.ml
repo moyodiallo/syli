@@ -2,6 +2,15 @@ open Ast
 
 let indent n = String.make (n * 2) ' '
 
+let is_expr_operator e =
+  match e.expr_desc with Exp_Ident i -> i.is_operator | _ -> false
+
+let is_binding_operator p =
+  match p with Pat_Ident i -> i.is_operator | _ -> false
+
+let is_expr_apply e = match e.expr_desc with Exp_Apply _ -> true | _ -> false
+let surround_with_paren s = "(" ^ s ^ ")"
+
 let rec string_of_ty (ty : ty) : string =
   match ty.ty_desc with
   | Ty_Constant Ty_Int64 -> "int64"
@@ -27,7 +36,7 @@ let rec string_of_ty (ty : ty) : string =
   | Ty_Defined { name; args } ->
       let full = name.name in
       if args = [] then full
-      else full ^ "<" ^ String.concat ", " (List.map string_of_ty args) ^ ">"
+      else full ^ "[" ^ String.concat ", " (List.map string_of_ty args) ^ "]"
 
 let rec string_of_pattern (p : pattern) : string =
   match p.node with
@@ -91,6 +100,10 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
         | Some e -> "(" ^ string_of_expr ~ind e ^ ")"
       in
       name.name ^ args_str
+  | Exp_Array { element_ty; elements; size } ->
+      "array[" ^ string_of_ty element_ty ^ "]["
+      ^ String.concat "; " (List.map (string_of_expr ~ind) elements)
+      ^ "] size(" ^ string_of_expr ~ind size ^ ")"
   | Exp_Lambda { params; body; ret_ty; _ } ->
       let params_str = String.concat ", " (List.map string_of_param params) in
       let ret_str =
@@ -101,14 +114,25 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ string_of_expr ~ind:(ind + 1) body
       ^ "\n" ^ indent ind ^ "}"
   | Exp_Apply { closure_fun; args } ->
-      string_of_expr ~ind closure_fun
-      ^ "("
-      ^ String.concat ", " (List.map (string_of_expr ~ind) args)
-      ^ ")"
+      let closure =
+        if is_expr_operator closure_fun then
+          surround_with_paren @@ string_of_expr ~ind closure_fun
+        else string_of_expr ~ind closure_fun
+      in
+      closure ^ " "
+      ^ String.concat " "
+          (List.map
+             (fun arg ->
+               if not @@ is_expr_apply arg then string_of_expr ~ind arg
+               else surround_with_paren @@ string_of_expr ~ind arg)
+             args)
+      ^ ""
   | Exp_Let ld ->
       "let "
-      ^ string_of_pattern ld.pattern
-      ^ (match ld.ty_opt with None -> "" | Some t -> ": " ^ string_of_ty t)
+      ^ (if is_binding_operator ld.pattern.node then
+           surround_with_paren @@ string_of_pattern ld.pattern
+         else string_of_pattern ld.pattern)
+      ^ (match ld.ty_annot with None -> "" | Some t -> ": " ^ string_of_ty t)
       ^ " = "
       ^ string_of_expr ~ind ld.value
   | Exp_If { condition; then_branch; else_branch = None } ->
@@ -128,8 +152,10 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ indent (ind + 1)
       ^ string_of_expr ~ind:(ind + 1) else_e
       ^ "\n" ^ indent ind ^ "}"
-  | Exp_While { cond; body } ->
-      "while " ^ string_of_expr ~ind cond ^ " {\n"
+  | Exp_While { condition; body } ->
+      "while "
+      ^ string_of_expr ~ind condition
+      ^ " {\n"
       ^ indent (ind + 1)
       ^ string_of_expr ~ind:(ind + 1) body
       ^ "\n" ^ indent ind ^ "}"
@@ -173,6 +199,9 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ "\n" ^ indent ind ^ "}"
   | Exp_Field { record; field_name } ->
       string_of_expr ~ind record ^ "." ^ field_name.name
+  | Exp_FieldSet { record; field_name; value } ->
+      string_of_expr ~ind record ^ "." ^ field_name.name ^ " := "
+      ^ string_of_expr ~ind value
 
 let string_of_field_decl (f : record_field_decl) : string =
   f.field_name.name ^ ": " ^ string_of_ty f.field_ty
@@ -200,7 +229,9 @@ let string_of_ty_decl (td : ty_decl) : string =
 
 let string_of_signature_item (si : signature_item) : string =
   match si.signature_item_desc with
-  | Sig_Value { name; ty } -> string_of_ty ty
+  | Sig_Value { name; ty } -> name.name ^ " : " ^ string_of_ty ty
+  | Sig_External { fname; ty; _ } ->
+      "extern " ^ fname.name ^ " : " ^ string_of_ty ty
   | Sig_Type td -> string_of_ty_decl td
   | Sig_ModuleSignature ms -> "module " ^ ms.name.name
 
@@ -208,5 +239,8 @@ let string_of_structure_item (item : structure_item) : string =
   match item.structure_item_desc with
   | Str_Let ld ->
       string_of_expr { id = item.id; expr_desc = Exp_Let ld; loc = item.loc }
+  | Str_External { fname; ty; _ } ->
+      "extern " ^ fname.name ^ " : " ^ string_of_ty ty
   | Str_Type td -> string_of_ty_decl td
   | Str_ModuleStructure m -> "module " ^ m.name.name
+  | Str_ModuleSignature m -> "module " ^ m.name.name

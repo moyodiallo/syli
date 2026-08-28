@@ -1,5 +1,5 @@
   $ cat >parse0.src <<EOF
-  > fn add () =
+  > let add () =
   >     let record = { name =  "test"; value = 5 }
   >     let n = record.value
   >     record.value = 10
@@ -10,19 +10,19 @@
   > EOF
   $ dune exec sylic parse parse0.src
   Parsed parse0.src
-  fn add = lambda(()) {
+  let add = lambda(()) {
     {
       let record = { name = "test"; value = 5 };
       let n = record.value;
-      record.value = 10;
-      print_int(5)
+      (=) record.value 10;
+      print_int 5
     }
   }
-  let _ = print_int(add(()))
+  let _ = print_int (add ())
 
 
   $ cat >parse0.src <<EOF
-  > fn add () =
+  > let add () =
   >     let record = { name =  "test"; value = 5 }
   >           let n = record.value
   >     record.value = 10
@@ -44,7 +44,7 @@
 
 
   $ cat >parse0.src <<EOF
-  > fn add () =
+  > let add () =
   >     let record = 
   >     {
   >         name = "test"; value = 5 
@@ -69,7 +69,7 @@
 
 
   $ cat >parse0.src <<EOF
-  > fn add () =
+  > let add () =
   >     let record = 
   >     [|
   >       2,
@@ -114,7 +114,7 @@ Closure with multipble chains of captured variables:
 
 Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
-  > fn main () =
+  > let main () =
   >   let add2 =
   >     if true then
   >       3
@@ -125,7 +125,7 @@ Closure as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- parse test_multi.sy
   Parsed test_multi.sy
-  fn main = lambda(()) {
+  let main = lambda(()) {
     {
       let add2 = if true {
         3

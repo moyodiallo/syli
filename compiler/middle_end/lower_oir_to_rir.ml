@@ -199,13 +199,13 @@ let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   | OR_U32 -> RR_U32
   | OR_U16 -> RR_U16
   | OR_U8 -> RR_U8
-  | OR_Float -> RR_Float
-  | OR_Double -> RR_Double
+  | OR_F32 -> RR_Float
+  | OR_F64 -> RR_Double
   | OR_FnPtr -> RR_FnPtr
   | OR_Obj { cyclic_prop; _ } -> RR_Obj_Ptr cyclic_prop
   | OR_Obj_Ptr -> RR_Obj_Ptr Oir.Unknown_cyclic_prop
   | OR_Char -> RR_Char
-  | OR_Str -> RR_Str
+  | OR_String -> RR_Str
   | OR_Void -> RR_Void
 
 let lower_ty (t : Oir.ty) : Rir.ty =

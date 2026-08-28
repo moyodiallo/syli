@@ -12,18 +12,16 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Constant TTy_UInt32 -> "uint32"
   | TTy_Constant TTy_UInt16 -> "uint16"
   | TTy_Constant TTy_UInt8 -> "uint8"
-  | TTy_Constant TTy_Float -> "float"
-  | TTy_Constant TTy_Double -> "double"
+  | TTy_Constant TTy_F32 -> "f32"
+  | TTy_Constant TTy_F64 -> "f64"
   | TTy_Constant TTy_Bool -> "bool"
   | TTy_Constant TTy_Unit -> "unit"
-  | TTy_Constant TTy_StringLit -> "str"
-  | TTy_Constant TTy_CharLit -> "char"
+  | TTy_Constant TTy_String -> "string"
+  | TTy_Constant TTy_Char -> "char"
   | TTy_Var v -> "'" ^ string_of_int v
-  | TTy_Arrow (args, ret) ->
-      let args_str = String.concat ", " (List.map string_of_ty args) in
-      Printf.sprintf "(%s) -> %s" args_str (string_of_ty ret)
+  | TTy_Arrow (arg, ret) ->
+      Printf.sprintf "%s -> %s" (string_of_ty arg) (string_of_ty ret)
   | TTy_Array t' -> Printf.sprintf "array[%s]" (string_of_ty t')
-  | TTy_Ref t' -> Printf.sprintf "ref<%s>" (string_of_ty t')
   | TTy_Tuple ts ->
       let ts_str = String.concat ", " (List.map string_of_ty ts) in
       Printf.sprintf "(%s)" ts_str

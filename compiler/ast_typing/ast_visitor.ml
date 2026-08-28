@@ -15,10 +15,9 @@ let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   match ty.ty_desc with
   | TTy_Var _ | TTy_Any | TTy_Constant _ -> acc
   | TTy_Array inner -> v.ty v acc inner
-  | TTy_Ref inner -> v.ty v acc inner
   | TTy_Tuple tys -> List.fold_left (v.ty v) acc tys
-  | TTy_Arrow (params, ret) ->
-      let acc = List.fold_left (v.ty v) acc params in
+  | TTy_Arrow (param_ty, ret) ->
+      let acc = v.ty v acc param_ty in
       v.ty v acc ret
   | TTy_Defined { args; _ } -> List.fold_left (v.ty v) acc args
 
@@ -57,42 +56,22 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | TExp_Tuple { elements } -> List.fold_left (v.expr v) acc elements
   | TExp_Record { fields } ->
       List.fold_left (fun a f -> v.expr v a f.field_value) acc fields
-  | TExp_VariantConstructor { args; _ } ->
-      Option.fold ~none:acc ~some:(v.expr v acc) args
-  | TExp_ArrayCreate { element_ty; size } ->
-      let acc = v.ty v acc element_ty in
+  | TExp_VariantConstructor { arg; _ } ->
+      Option.fold ~none:acc ~some:(v.expr v acc) arg
+  | TExp_Array { elements; size; _ } ->
+      let acc = List.fold_left (v.expr v) acc elements in
       v.expr v acc size
-  | TExp_ArrayLength { arr } -> v.expr v acc arr
-  | TExp_ArrayGet { arr; idx } ->
-      let acc = v.expr v acc arr in
-      v.expr v acc idx
-  | TExp_ArraySet { arr; idx; value } ->
-      let acc = v.expr v acc arr in
-      let acc = v.expr v acc idx in
-      v.expr v acc value
-  | TExp_UnOp { value; _ } -> v.expr v acc value
-  | TExp_BinOp { lvalue; rvalue; _ } ->
-      let acc = v.expr v acc lvalue in
-      v.expr v acc rvalue
-  | TExp_Ref { value } | TExp_Deref { value } -> v.expr v acc value
   | TExp_Lambda lam -> visit_lambda v acc lam
   | TExp_Apply { closure_fun; args } ->
       let acc = v.expr v acc closure_fun in
       List.fold_left (v.expr v) acc args
   | TExp_Let ld -> visit_letdef v acc ld
-  | TExp_Assign { target; value } | TExp_AssignRef { target; value } ->
-      let acc = v.expr v acc target in
-      v.expr v acc value
-  | TExp_If { cond; then_branch; else_branch } ->
-      let acc = v.expr v acc cond in
+  | TExp_If { condition; then_branch; else_branch } ->
+      let acc = v.expr v acc condition in
       let acc = v.expr v acc then_branch in
       Option.fold ~none:acc ~some:(v.expr v acc) else_branch
-  | TExp_While { cond; body } ->
-      let acc = v.expr v acc cond in
-      v.expr v acc body
-  | TExp_ForIn { iter_var; iterable; body } ->
-      let acc = v.pattern v acc iter_var in
-      let acc = v.expr v acc iterable in
+  | TExp_While { condition; body } ->
+      let acc = v.expr v acc condition in
       v.expr v acc body
   | TExp_Loop { expr } -> v.expr v acc expr
   | TExp_Break { expr_opt } | TExp_Return { expr_opt } ->
@@ -102,9 +81,9 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
       let acc = v.expr v acc scrutinee in
       List.fold_left (v.pattern_case v) acc cases
   | TExp_Field { record; _ } -> v.expr v acc record
-  | TExp_Index { collection; index } ->
-      let acc = v.expr v acc collection in
-      v.expr v acc index
+  | TExp_FieldSet { record; value; _ } ->
+      let acc = v.expr v acc record in
+      v.expr v acc value
 
 let visit_pattern_case_children (v : 'acc visitor) (acc : 'acc)
     (c : pattern_case) : 'acc =
@@ -131,11 +110,10 @@ let visit_ty_decl (v : 'acc visitor) (acc : 'acc) (td : ty_decl) : 'acc =
 let visit_signature_item_children (v : 'acc visitor) (acc : 'acc)
     (s : signature_item) : 'acc =
   match s.signature_item_desc with
-  | TSig_Fun { params; ret_ty; _ } ->
-      let acc = List.fold_left (v.ty v) acc params in
-      v.ty v acc ret_ty
+  | TSig_Value { ty; _ } -> v.ty v acc ty
+  | TSig_External { ty; _ } -> v.ty v acc ty
   | TSig_Type td -> visit_ty_decl v acc td
-  | TSig_Module ms -> v.module_signature v acc ms
+  | TSig_ModuleSignature ms -> v.module_signature v acc ms
 
 let visit_module_signature_children (v : 'acc visitor) (acc : 'acc)
     (ms : module_signature) : 'acc =
@@ -145,12 +123,10 @@ let visit_structure_item_children (v : 'acc visitor) (acc : 'acc)
     (s : structure_item) : 'acc =
   match s.structure_item_desc with
   | TStr_Let ld -> visit_letdef v acc ld
-  | TStr_Fun { body; ty_opt; _ } ->
-      let acc = v.expr v acc body in
-      Option.fold ~none:acc ~some:(v.ty v acc) ty_opt
-  | TStr_TypeDef td -> visit_ty_decl v acc td
-  | TStr_ModuleStruct ms -> v.module_structure v acc ms
-  | TStr_Signature sigs -> List.fold_left (v.signature_item v) acc sigs
+  | TStr_External { ty; _ } -> v.ty v acc ty
+  | TStr_Type td -> visit_ty_decl v acc td
+  | TStr_ModuleStructure ms -> v.module_structure v acc ms
+  | TStr_ModuleSignature ms -> v.module_signature v acc ms
 
 let visit_module_structure_children (v : 'acc visitor) (acc : 'acc)
     (ms : module_structure) : 'acc =

@@ -20,8 +20,8 @@ let rec string_of_ir_type = function
   | OR_U16 -> "u16"
   | OR_U8 -> "u8"
   | OR_Bool -> "bool"
-  | OR_Float -> "f32"
-  | OR_Double -> "f64"
+  | OR_F32 -> "f32"
+  | OR_F64 -> "f64"
   | OR_FnPtr -> "fn_ptr"
   | OR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
       let name = match named with Some n -> n | None -> "obj" in
@@ -31,7 +31,7 @@ let rec string_of_ir_type = function
         (string_of_cyclic_prop cyclic_prop)
   | OR_Obj_Ptr -> "obj_ptr"
   | OR_Char -> "char"
-  | OR_Str -> "str"
+  | OR_String -> "string"
   | OR_Void -> "void"
 
 and string_of_obj_kind = function

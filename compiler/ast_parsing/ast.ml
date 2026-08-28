@@ -169,7 +169,7 @@ and expr_desc =
       then_branch : expr;
       else_branch : expr option;
     }
-  | Exp_While of { cond : expr; body : expr }
+  | Exp_While of { condition : expr; body : expr }
   | Exp_Loop of { condition : expr }
   | Exp_Break of { value : expr option }
   | Exp_Continue
@@ -218,15 +218,18 @@ and pattern_desc =
 
 type signature_item_desc =
   | Sig_Value of { name : ident; ty : ty }
-  | Sig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | Sig_Primitive of { name : ident; ty : ty; prim_name : string }
+  | Sig_External of { fname : ident; ty : ty; external_fn : external_fn }
   | Sig_Type of ty_decl (* type exposed *)
   | Sig_ModuleSignature of module_signature
 
 and external_fn = {
-  c_name : string; (* Actual C symbol name *)
+  symbol : symbol;
+  kind : external_kind;
   calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
 }
+
+and external_kind = Foreign | Primitive
+and symbol = { name : string; loc : location }
 
 and signature_item = {
   id : int;
@@ -235,8 +238,7 @@ and signature_item = {
 }
 
 and structure_item_desc =
-  | Str_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | Str_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
+  | Str_External of { fname : ident; ty : ty; external_fn : external_fn }
   | Str_Let of letdef
   | Str_Type of ty_decl (* type definition: type foo = ... *)
   | Str_ModuleStructure of module_structure

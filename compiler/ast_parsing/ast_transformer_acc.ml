@@ -135,6 +135,19 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
             (a', Some inner')
       in
       (acc', { e with expr_desc = Exp_VariantConstructor { name; arg = arg' } })
+  | Exp_Array { element_ty; elements; size } ->
+      let acc', element_ty' = t.ty t acc element_ty in
+      let acc'', elements' =
+        List.fold_left_map (fun a e' -> t.expr t a e') acc' elements
+      in
+      let acc''', size' = t.expr t acc'' size in
+      ( acc''',
+        {
+          e with
+          expr_desc =
+            Exp_Array
+              { element_ty = element_ty'; elements = elements'; size = size' };
+        } )
   | Exp_Lambda lam ->
       let acc', lam' = transform_lambda t acc lam in
       (acc', { e with expr_desc = Exp_Lambda lam' })
@@ -172,31 +185,32 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
                 else_branch = else_branch';
               };
         } )
-  | Exp_While { cond; body } ->
-      let acc', cond' = t.expr t acc cond in
+  | Exp_While { condition; body } ->
+      let acc', cond' = t.expr t acc condition in
       let acc'', body' = t.expr t acc' body in
-      (acc'', { e with expr_desc = Exp_While { cond = cond'; body = body' } })
+      ( acc'',
+        { e with expr_desc = Exp_While { condition = cond'; body = body' } } )
   | Exp_Loop { condition } ->
-      let acc', expr' = t.expr t acc expr in
+      let acc', expr' = t.expr t acc condition in
       (acc', { e with expr_desc = Exp_Loop { condition = expr' } })
   | Exp_Break { value } ->
-      let acc', expr_opt' =
+      let acc', value' =
         match value with
         | None -> (acc, None)
         | Some e' ->
             let a', e'' = t.expr t acc e' in
             (a', Some e'')
       in
-      (acc', { e with expr_desc = Exp_Break { expr_opt = expr_opt' } })
+      (acc', { e with expr_desc = Exp_Break { value = value' } })
   | Exp_Return { value } ->
-      let acc', expr_opt' =
+      let acc', value' =
         match value with
         | None -> (acc, None)
         | Some e' ->
             let a', e'' = t.expr t acc e' in
             (a', Some e'')
       in
-      (acc', { e with expr_desc = Exp_Return { expr_opt = expr_opt' } })
+      (acc', { e with expr_desc = Exp_Return { value = value' } })
   | Exp_Seq { exprs } ->
       let acc', exprs' =
         List.fold_left_map (fun a e' -> t.expr t a e') acc exprs
@@ -213,6 +227,15 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
   | Exp_Field { record; field_name } ->
       let acc', record' = t.expr t acc record in
       (acc', { e with expr_desc = Exp_Field { record = record'; field_name } })
+  | Exp_FieldSet { record; field_name; value } ->
+      let acc', record' = t.expr t acc record in
+      let acc'', value' = t.expr t acc' value in
+      ( acc'',
+        {
+          e with
+          expr_desc =
+            Exp_FieldSet { record = record'; field_name; value = value' };
+        } )
 
 let transform_pattern_case (t : 'acc transformer) (acc : 'acc)
     (c : pattern_case) : 'acc * pattern_case =
@@ -280,6 +303,13 @@ let transform_signature_item (t : 'acc transformer) (acc : 'acc)
   | Sig_Value { name; ty } ->
       let acc', value_ty' = t.ty t acc ty in
       (acc', { s with signature_item_desc = Sig_Value { name; ty = value_ty' } })
+  | Sig_External { fname; ty; external_fn } ->
+      let acc', ty' = t.ty t acc ty in
+      ( acc',
+        {
+          s with
+          signature_item_desc = Sig_External { fname; ty = ty'; external_fn };
+        } )
   | Sig_Type td ->
       let acc', td' = transform_ty_decl t acc td in
       (acc', { s with signature_item_desc = Sig_Type td' })
@@ -302,17 +332,22 @@ let transform_structure_item (t : 'acc transformer) (acc : 'acc)
   | Str_Let ld ->
       let acc', ld' = transform_letdef t acc ld in
       (acc', { s with structure_item_desc = Str_Let ld' })
+  | Str_External { fname; ty; external_fn } ->
+      let acc', ty' = t.ty t acc ty in
+      ( acc',
+        {
+          s with
+          structure_item_desc = Str_External { fname; ty = ty'; external_fn };
+        } )
   | Str_Type td ->
       let acc', td' = transform_ty_decl t acc td in
       (acc', { s with structure_item_desc = Str_Type td' })
   | Str_ModuleStructure ms ->
       let acc', ms' = t.module_structure t acc ms in
       (acc', { s with structure_item_desc = Str_ModuleStructure ms' })
-  | Str_ModuleSignature sigs ->
-      let acc', sigs' =
-        List.fold_left_map (fun a si -> t.signature_item t a si) acc sigs
-      in
-      (acc', { s with structure_item_desc = Str_ModuleSignature sigs' })
+  | Str_ModuleSignature ms ->
+      let acc', ms' = t.module_signature t acc ms in
+      (acc', { s with structure_item_desc = Str_ModuleSignature ms' })
 
 let transform_module_structure (t : 'acc transformer) (acc : 'acc)
     (ms : module_structure) : 'acc * module_structure =

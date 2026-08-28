@@ -1,33 +1,39 @@
 
   $ cat >parse0.src <<EOF
-  > fn add () =
+  > let add () =
   >  let record = { name = "test"; value = 5 }
   >  let n = record.value
-  >  record.value = 10
-  >  print_int(5)
+  >  record.value := 10
+  >  print_int (5 + 4) (5)
+  >  print_int 5 5
+  >  print_int 5 5 4
   > end
   > EOF
   $ cat parse0.src
-  fn add () =
+  let add () =
    let record = { name = "test"; value = 5 }
    let n = record.value
-   record.value = 10
-   print_int(5)
+   record.value := 10
+   print_int (5 + 4) (5)
+   print_int 5 5
+   print_int 5 5 4
   end
 
   $ dune exec sylic parse parse0.src
   Parsed parse0.src
-  fn add = lambda(()) {
+  let add = lambda(()) {
     {
       let record = { name = "test"; value = 5 };
       let n = record.value;
-      record.value = 10;
-      print_int(5)
+      record.value := 10;
+      print_int ((+) 5 4) 5;
+      print_int 5 5;
+      print_int 5 5 4
     }
   }
 
   $ cat >parse0.src <<EOF
-  > fn add a =
+  > let add a =
   >   let record = { 
   >        name = "test"; value = 5 
   >   }
@@ -36,7 +42,7 @@
   > let _ = print_int (add 10)
   > EOF
   $ cat parse0.src
-  fn add a =
+  let add a =
     let record = { 
          name = "test"; value = 5 
     }
@@ -46,17 +52,17 @@
 
   $ dune exec sylic parse parse0.src
   Parsed parse0.src
-  fn add = lambda(a) {
+  let add = lambda(a) {
     {
       let record = { name = "test"; value = 5 };
       let n = record.value
     }
   }
-  let _ = print_int(add(10))
+  let _ = print_int (add 10)
 
 
   $ cat >parse0.src <<EOF
-  > fn add a =
+  > let add a =
   >   let record = { 
   >        name = "test"; value = 5 
   >   }
@@ -66,17 +72,17 @@
   > EOF
   $ dune exec sylic parse parse0.src
   Parsed parse0.src
-  fn add = lambda(a) {
+  let add = lambda(a) {
     {
       let record = { name = "test"; value = 5 };
       let n = record.value
     }
   }
-  let _ = print_int(add(10))
+  let _ = print_int (add 10)
 
 
   $ cat >parse0.src <<EOF
-  > fn add a =
+  > let add a =
   >   let record = { 
   >        name = "test"; value = 5 
   >     }
@@ -86,16 +92,16 @@
   > EOF
   $ dune exec sylic parse parse0.src
   Parsed parse0.src
-  fn add = lambda(a) {
+  let add = lambda(a) {
     {
       let record = { name = "test"; value = 5 };
       let n = record.value
     }
   }
-  let _ = print_int(add(10))
+  let _ = print_int (add 10)
 
   $ cat >parse0.src <<EOF
-  > fn add a =
+  > let add a =
   >   let record = 
   >   { 
   >        name = "test"; value = 5 
@@ -106,10 +112,10 @@
   > EOF
   $ dune exec sylic parse parse0.src
   Parsed parse0.src
-  fn add = lambda(a) {
+  let add = lambda(a) {
     {
       let record = { name = "test"; value = 5 };
       let n = record.value
     }
   }
-  let _ = print_int(add(10))
+  let _ = print_int (add 10)

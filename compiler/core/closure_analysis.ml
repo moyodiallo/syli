@@ -59,6 +59,9 @@ let collect_global_names (prog : program_core) : StringSet.t =
   in
   StringSet.union from_items from_sigs
 
+let rec ty_arity (ty : ty) : int =
+  match ty.ty_desc with CTy_Arrow (_, ret) -> 1 + ty_arity ret | _ -> 0
+
 let collect_known_functions (prog : program_core) : int StringMap.t =
   let from_lets =
     List.fold_left
@@ -76,13 +79,10 @@ let collect_known_functions (prog : program_core) : int StringMap.t =
     List.fold_left
       (fun acc (sig_item : signature_item) ->
         match sig_item.signature_item_desc with
-        | CSig_Fun { name; params; ret_ty; _ } ->
-            let arity =
-              match (params, ret_ty.ty_desc) with
-              | [], CTy_Arrow (fn_params, _) -> List.length fn_params
-              | _ -> List.length params
-            in
-            StringMap.add name.fullname arity acc
+        | CSig_Value { name; ty } ->
+            StringMap.add name.fullname (ty_arity ty) acc
+        | CSig_External { fname = name; ty; _ } ->
+            StringMap.add name.fullname (ty_arity ty) acc
         | _ -> acc)
       StringMap.empty prog.signature_items
   in

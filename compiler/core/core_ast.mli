@@ -31,8 +31,8 @@ type constant_ty =
   | CTy_UInt8
   | CTy_Unit
   | CTy_Bool
-  | CTy_Float
-  | CTy_Double
+  | CTy_F32
+  | CTy_F64
   | CTy_String
   | CTy_Char
 
@@ -163,22 +163,26 @@ and pattern_desc =
 (** Description of a core signature item. *)
 type signature_item_desc =
   | CSig_Value of { name : ident; ty : ty }
-  | CSig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | CSig_Primitive of { name : ident; ty : ty; prim_name : string }
+  | CSig_External of { fname : ident; ty : ty; external_fn : external_fn }
   | CSig_Type of ty_decl
 
-and external_fn = { c_name : string; calling_convention : string option }
+and external_fn = {
+  symbol : string;
+  kind : external_kind;
+  calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
+}
 (** An FFI external function declaration. *)
+
+and external_kind = Foreign | Primitive
 
 and signature_item = { id : int; signature_item_desc : signature_item_desc }
 (** A signature item with ID. *)
 
 (** Description of a core structure item. *)
 and structure_item_desc =
-  | CStr_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | CStr_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
+  | CStr_External of { fname : ident; ty : ty; external_fn : external_fn }
   | CStr_Let of { rec_flag : rec_flag; name : ident; value : expr }
-  | CStr_TypeDef of ty_decl
+  | CStr_Type of ty_decl
 
 and structure_item = { id : int; structure_item_desc : structure_item_desc }
 (** A structure item with ID. *)

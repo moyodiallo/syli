@@ -144,14 +144,14 @@ let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
         | CTy_UInt8 -> I.CR_U8
         | CTy_Unit -> I.CR_Void
         | CTy_Bool -> I.CR_Bool
-        | CTy_Float -> I.CR_Float
-        | CTy_Double -> I.CR_Double
-        | CTy_StringLit -> I.CR_Str
-        | CTy_CharLit -> I.CR_Char)
+        | CTy_F32 -> I.CR_F32
+        | CTy_F64 -> I.CR_F64
+        | CTy_String -> I.CR_String
+        | CTy_Char -> I.CR_Char)
     | CTy_Var v -> I.CR_GenericTyp { type_var = v }
-    | CTy_Arrow (args, ret) ->
+    | CTy_Arrow (arg, ret) ->
         I.CR_Arrow
-          ( List.map (fun t -> { I.id = fresh_id (); I.ir_type = go t }) args,
+          ( [ { I.id = fresh_id (); I.ir_type = go arg } ],
             { I.id = fresh_id (); I.ir_type = go ret } )
     | CTy_Tuple tys ->
         let fields =
@@ -178,23 +178,6 @@ let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
             obj_kind =
               I.CR_Array_kind
                 { element_ty = { I.id = fresh_id (); I.ir_type = go elem } };
-            tag_variant = None;
-            cyclic_prop = default_cyclic_prop;
-          }
-    | CTy_Ref inner ->
-        let fields =
-          [
-            {
-              I.field_idx = 0;
-              field_ty = { I.id = fresh_id (); I.ir_type = go inner };
-              field_mut = I.Mutable;
-            };
-          ]
-        in
-        I.CR_Obj
-          {
-            named = Some "ref";
-            obj_kind = I.CR_Record_kind { fields; cardinal = 1 };
             tag_variant = None;
             cyclic_prop = default_cyclic_prop;
           }
@@ -239,8 +222,8 @@ let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
   | CR_U32, CR_U32 -> true
   | CR_U16, CR_U16 -> true
   | CR_U8, CR_U8 -> true
-  | CR_Float, CR_Float -> true
-  | CR_Double, CR_Double -> true
+  | CR_F32, CR_F32 -> true
+  | CR_F64, CR_F64 -> true
   | CR_FnPtr, CR_FnPtr -> true
   | CR_Void, CR_Void -> true
   | CR_GenericTyp { type_var = tv1 }, CR_GenericTyp { type_var = tv2 } ->
@@ -250,7 +233,7 @@ let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
       && a.tag_variant = b.tag_variant
       && a.cyclic_prop = b.cyclic_prop
       && obj_kind_equal a.obj_kind b.obj_kind
-  | CR_Str, CR_Str -> true
+  | CR_String, CR_String -> true
   | CR_Obj_Ptr, CR_Obj_Ptr -> true
   | CR_Arrow (args1, ret1), CR_Arrow (args2, ret2) ->
       List.for_all2 ty_equal args1 args2 && ty_equal ret1 ret2
@@ -282,38 +265,6 @@ let ir_const_of_core = function
   | CConst_StringLit s -> I.CR_StringLit s
   | CConst_CharLit s -> I.CR_CharLit s
 
-let binop_of_core (op : C.binop) : I.binop =
-  match op with
-  | CBinop_Arithmetic a -> (
-      match a with
-      | CAdd -> I.CR_Add
-      | CSub -> I.CR_Sub
-      | CMul -> I.CR_Mul
-      | CDiv -> I.CR_Div
-      | CMod -> I.CR_Mod)
-  | CBinop_Logical l -> ( match l with CAnd -> I.CR_And | COr -> I.CR_Or)
-  | CBinop_Bitwise b -> (
-      match b with
-      | CBitAnd -> I.CR_BitAnd
-      | CBitOr -> I.CR_BitOr
-      | CBitXor -> I.CR_BitXor
-      | CLShift -> I.CR_Shl
-      | CRShift -> I.CR_Shr)
-  | CBinop_Comparison c -> (
-      match c with
-      | CEq -> I.CR_Eq
-      | CNe -> I.CR_Ne
-      | CLt -> I.CR_Lt
-      | CLe -> I.CR_Le
-      | CGt -> I.CR_Gt
-      | CGe -> I.CR_Ge)
-
-let unop_of_core (op : C.unop) : I.unop =
-  match op with
-  | CUnop_Arithmetic C.CNeg -> I.CR_Neg
-  | CUnop_Logical C.CNot -> I.CR_Not
-  | CUnop_Bitwise C.CBitNot -> I.CR_BitNot
-
 let void_ir_ty : I.ty = { I.id = 0; I.ir_type = I.CR_Void }
 let void_null = I.CR_OConstant (I.CR_Null, void_ir_ty)
 
@@ -321,8 +272,10 @@ let arg_ty_of_operand = function
   | I.CR_OConstant (_, ty) -> ty
   | I.CR_OVar v -> v.I.ty
 
-let get_args_ty ty =
-  match ty.C.ty_desc with CTy_Arrow (args, _) -> args | _ -> []
+let rec get_args_ty (ty : C.ty) : C.ty list =
+  match ty.ty_desc with
+  | CTy_Arrow (arg, ret) -> arg :: get_args_ty ret
+  | _ -> []
 
 let lower_closure_apply (ctx : ctx) (closure_var : I.var)
     (closure_fun_ty : C.ty) (concrete_arg_ops : I.operand list) (out_ty : I.ty)
@@ -398,38 +351,6 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                (Printf.sprintf
                   "Unbound identifier during Core->SIR lowering: %s" id.fullname))
       )
-  | CExp_UnOp { op; value } ->
-      let ctx, ox = lower_expr ctx value in
-      let ctx, dst = fresh_var ctx out_ty in
-      let rv : I.rvalue =
-        {
-          I.id = dst.I.id;
-          node = I.CR_UnOp { op = unop_of_core op; operand = ox };
-          ty = out_ty;
-        }
-      in
-      let ctx, _ = emit ctx (I.CR_Assign { dst; rvalue = rv }) out_ty in
-      (ctx, I.CR_OVar dst)
-  | CExp_BinOp { op; lvalue; rvalue } ->
-      let ctx, ol = lower_expr ctx lvalue in
-      let ctx, or_ = lower_expr ctx rvalue in
-      let binop_result_ty =
-        match op with
-        | CBinop_Comparison _ -> out_ty
-        | _ -> arg_ty_of_operand ol
-      in
-      let ctx, dst = fresh_var ctx binop_result_ty in
-      let rv : I.rvalue =
-        {
-          I.id = dst.I.id;
-          node = I.CR_BinOp { op = binop_of_core op; lhs = ol; rhs = or_ };
-          ty = binop_result_ty;
-        }
-      in
-      let ctx, _ =
-        emit ctx (I.CR_Assign { dst; rvalue = rv }) binop_result_ty
-      in
-      (ctx, I.CR_OVar dst)
   | CExp_Apply { closure_fun; args } -> (
       let ctx, arg_ops = List.fold_left_map lower_expr ctx args in
       (* Cast each arg operand to the concrete type knowned at apply site.
@@ -568,13 +489,13 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
               (ctx, I.CR_OVar v)))
   | CExp_Seq xs ->
       List.fold_left (fun (ctx, _) x -> lower_expr ctx x) (ctx, void_null) xs
-  | CExp_If { cond; then_branch; else_branch } ->
-      let ctx, cond_op = lower_expr ctx cond in
+  | CExp_If { condition; then_branch; else_branch } ->
+      let ctx, cond_op = lower_expr ctx condition in
       let ctx, cond_var =
         match cond_op with
         | I.CR_OVar v -> (ctx, v)
         | _ ->
-            let ctx, v = fresh_var ctx (mk_ir_ty ctx.type_defs cond.ty) in
+            let ctx, v = fresh_var ctx (mk_ir_ty ctx.type_defs condition.ty) in
             let rv : I.rvalue =
               {
                 I.id = v.I.id;
@@ -596,8 +517,6 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           (I.CR_CondBr
              { cond = cond_var; then_block = then_id; else_block = else_id })
       in
-      (* Thread then_id through pending_merge_id so a nested if's first
-       finish_block uses then_id as its block ID, making it the CondBr target. *)
       let ctx = { ctx with pending_merge_id = Some then_id } in
       let ctx, then_result = lower_expr ctx then_branch in
       let then_rv : I.rvalue =
@@ -612,16 +531,8 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           (I.CR_Assign { dst = result_var; rvalue = then_rv })
           result_var.I.ty
       in
-      (* Create the merge block for a nested if, or the then block for a simple branch *)
-      let ctx =
-        if ctx.pending_merge_id = Some then_id then
-          (* Simple branch: consume pending_merge_id to create the then block *)
-          finish_block ctx (I.CR_Goto merge_id)
-        else
-          (* Nested if: its merge block gets the then result, then flows to outer merge *)
-          finish_block ctx (I.CR_Goto merge_id)
-      in
-      let ctx, else_result =
+      let ctx = finish_block ctx (I.CR_Goto merge_id) in
+      let ctx, _ =
         let ctx = { ctx with pending_merge_id = Some else_id } in
         match else_branch with
         | Some e ->
@@ -638,11 +549,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                 (I.CR_Assign { dst = result_var; rvalue = else_rv })
                 result_var.I.ty
             in
-            let ctx =
-              if ctx.pending_merge_id = Some else_id then
-                finish_block ctx (I.CR_Goto merge_id)
-              else finish_block ctx (I.CR_Goto merge_id)
-            in
+            let ctx = finish_block ctx (I.CR_Goto merge_id) in
             (ctx, r)
         | None -> (ctx, I.CR_OConstant (I.CR_Null, void_ir_ty))
       in
@@ -754,9 +661,8 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           val_ty
       in
       (ctx, void_null)
-  | CExp_VariantConstructor _ | CExp_ArrayCreate _ | CExp_ArrayLength _
-  | CExp_ArrayGet _ | CExp_ArraySet _ | CExp_Loop _ | CExp_Break _
-  | CExp_Continue | CExp_Return _ | Exp_Match _ ->
+  | CExp_VariantConstructor _ | CExp_Array _ | CExp_Loop _ | CExp_Break _
+  | CExp_Continue | CExp_Return _ | CExp_Match _ ->
       raise (Lowering_error "core form not lowered to SIR yet")
 
 and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
@@ -827,21 +733,23 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
 let ffi_of_signature (type_defs : C.ty_decl StringMap.t) (s : C.signature_item)
     : I.ffi_external_function option =
   match s.signature_item_desc with
-  | C.CSig_Fun { name; params; ret_ty; external_fn = Some ext } ->
-      let params, ret_ty =
-        match (params, ret_ty.ty_desc) with
-        | [], CTy_Arrow (fn_params, fn_ret) ->
-            let fn_params =
-              List.filter
-                (fun (t : C.ty) -> t.ty_desc <> C.CTy_Constant C.CTy_Unit)
-                fn_params
-            in
-            (fn_params, fn_ret)
-        | _ -> (params, ret_ty)
+  | C.CSig_External { fname = name; ty; external_fn = ext } ->
+      let rec arrow_parts (t : C.ty) : C.ty list * C.ty =
+        match t.ty_desc with
+        | CTy_Arrow (arg, ret) ->
+            let args, ret_ty = arrow_parts ret in
+            (arg :: args, ret_ty)
+        | _ -> ([], t)
+      in
+      let params, ret_ty = arrow_parts ty in
+      let params =
+        List.filter
+          (fun (t : C.ty) -> t.ty_desc <> C.CTy_Constant C.CTy_Unit)
+          params
       in
       Some
         {
-          I.name = ext.c_name;
+          I.name = ext.symbol;
           syli_name = name.fullname;
           ret_ty = mk_ir_ty type_defs ret_ty;
           params = List.map (mk_ir_ty type_defs) params;
@@ -953,7 +861,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
     List.fold_left
       (fun m (item : C.structure_item) ->
         match item.structure_item_desc with
-        | CStr_TypeDef td -> StringMap.add td.name.fullname td m
+        | CStr_Type td -> StringMap.add td.name.fullname td m
         | _ -> m)
       StringMap.empty prog.C.structure_items
   in
@@ -962,18 +870,17 @@ let lower_program (prog : C.program_core) : I.module_cir =
     List.fold_left
       (fun acc (s : C.signature_item) ->
         match s.signature_item_desc with
-        | C.CSig_Fun { name; params; ret_ty; external_fn = Some _ } ->
-            let arity =
-              match (params, ret_ty.ty_desc) with
-              | [], CTy_Arrow (fn_params, _) ->
-                  List.length
-                    (List.filter
-                       (fun (t : C.ty) ->
-                         t.ty_desc <> C.CTy_Constant C.CTy_Unit)
-                       fn_params)
-              | _ -> List.length params
+        | C.CSig_External { fname = name; ty; _ } ->
+            let rec arity_of_type (t : C.ty) : int =
+              match t.ty_desc with
+              | CTy_Arrow (arg, ret) ->
+                  let arg_count =
+                    if arg.ty_desc = CTy_Constant CTy_Unit then 0 else 1
+                  in
+                  arg_count + arity_of_type ret
+              | _ -> 0
             in
-            StringMap.add name.fullname arity acc
+            StringMap.add name.fullname (arity_of_type ty) acc
         | _ -> acc)
       StringMap.empty prog.signature_items
   in
@@ -1090,7 +997,8 @@ let lower_program (prog : C.program_core) : I.module_cir =
                   }
                 in
                 (ctx, init_fn :: fns, gv :: globs))
-        | CStr_TypeDef _ -> (ctx, fns, globs))
+        | CStr_Type _ -> (ctx, fns, globs)
+        | CStr_External _ -> (ctx, fns, globs))
       ({ empty_ctx with toplevel_functions; analysis; type_defs }, [], [])
       prog.C.structure_items
   in

@@ -25,12 +25,10 @@ let rec transform_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   | TTy_Tuple tys ->
       let acc', tys' = List.fold_left_map (fun a ty' -> t.ty t a ty') acc tys in
       (acc', { ty_desc = TTy_Tuple tys' })
-  | TTy_Arrow (params, ret) ->
-      let acc', params' =
-        List.fold_left_map (fun a ty' -> t.ty t a ty') acc params
-      in
+  | TTy_Arrow (param_ty, ret) ->
+      let acc', param_ty' = t.ty t acc param_ty in
       let acc'', ret' = t.ty t acc' ret in
-      (acc'', { ty_desc = TTy_Arrow (params', ret') })
+      (acc'', { ty_desc = TTy_Arrow (param_ty', ret') })
   | TTy_Defined ({ args; _ } as defined) ->
       let acc', args' =
         List.fold_left_map (fun a ty' -> t.ty t a ty') acc args
@@ -130,40 +128,28 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
           acc fields
       in
       (acc', { e with expr_desc = TExp_Record { fields = fields' } })
-  | TExp_VariantConstructor { name; args } ->
+  | TExp_VariantConstructor { name; arg } ->
       let acc', args' =
-        match args with
+        match arg with
         | None -> (acc, None)
         | Some arg ->
             let a', arg' = t.expr t acc arg in
             (a', Some arg')
       in
       ( acc',
-        { e with expr_desc = TExp_VariantConstructor { name; args = args' } } )
-  | TExp_ArrayCreate { element_ty; size } ->
+        { e with expr_desc = TExp_VariantConstructor { name; arg = args' } } )
+  | TExp_Array { element_ty; elements; size } ->
       let acc', element_ty' = t.ty t acc element_ty in
-      let acc'', size' = t.expr t acc' size in
-      ( acc'',
-        {
-          e with
-          expr_desc =
-            TExp_ArrayCreate { element_ty = element_ty'; size = size' };
-        } )
-  | TExp_ArrayLength { arr } ->
-      let acc', arr' = t.expr t acc arr in
-      (acc', { e with expr_desc = TExp_ArrayLength { arr = arr' } })
-  | TExp_ArrayGet { arr; idx } ->
-      let acc', arr' = t.expr t acc arr in
-      let acc'', idx' = t.expr t acc' idx in
-      (acc'', { e with expr_desc = TExp_ArrayGet { arr = arr'; idx = idx' } })
-  | TExp_ArraySet { arr; idx; value } ->
-      let acc', arr' = t.expr t acc arr in
-      let acc'', idx' = t.expr t acc' idx in
-      let acc''', value' = t.expr t acc'' value in
+      let acc'', elements' =
+        List.fold_left_map (fun a e' -> t.expr t a e') acc' elements
+      in
+      let acc''', size' = t.expr t acc'' size in
       ( acc''',
         {
           e with
-          expr_desc = TExp_ArraySet { arr = arr'; idx = idx'; value = value' };
+          expr_desc =
+            TExp_Array
+              { element_ty = element_ty'; elements = elements'; size = size' };
         } )
   | TExp_Lambda lam ->
       let acc', lam' = transform_lambda t acc lam in
@@ -181,8 +167,8 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
   | TExp_Let ld ->
       let acc', ld' = transform_letdef t acc ld in
       (acc', { e with expr_desc = TExp_Let ld' })
-  | TExp_If { cond; then_branch; else_branch } ->
-      let acc', cond' = t.expr t acc cond in
+  | TExp_If { condition; then_branch; else_branch } ->
+      let acc', cond' = t.expr t acc condition in
       let acc'', then_branch' = t.expr t acc' then_branch in
       let acc''', else_branch' =
         match else_branch with
@@ -197,15 +183,16 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
           expr_desc =
             TExp_If
               {
-                cond = cond';
+                condition = cond';
                 then_branch = then_branch';
                 else_branch = else_branch';
               };
         } )
-  | TExp_While { cond; body } ->
-      let acc', cond' = t.expr t acc cond in
+  | TExp_While { condition; body } ->
+      let acc', cond' = t.expr t acc condition in
       let acc'', body' = t.expr t acc' body in
-      (acc'', { e with expr_desc = TExp_While { cond = cond'; body = body' } })
+      ( acc'',
+        { e with expr_desc = TExp_While { condition = cond'; body = body' } } )
   | TExp_Loop { expr } ->
       let acc', expr' = t.expr t acc expr in
       (acc', { e with expr_desc = TExp_Loop { expr = expr' } })
@@ -240,18 +227,17 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
       ( acc'',
         { e with expr_desc = TExp_Match { expr = scrutinee'; cases = cases' } }
       )
-  | TExp_Field { record; field_name; idx } ->
+  | TExp_Field { record; field_name } ->
       let acc', record' = t.expr t acc record in
-      ( acc',
-        { e with expr_desc = TExp_Field { record = record'; field_name; idx } }
-      )
-  | TExp_Index { collection; index } ->
-      let acc', collection' = t.expr t acc collection in
-      let acc'', index' = t.expr t acc' index in
+      (acc', { e with expr_desc = TExp_Field { record = record'; field_name } })
+  | TExp_FieldSet { record; field_name; value } ->
+      let acc', record' = t.expr t acc record in
+      let acc'', value' = t.expr t acc' value in
       ( acc'',
         {
           e with
-          expr_desc = TExp_Index { collection = collection'; index = index' };
+          expr_desc =
+            TExp_FieldSet { record = record'; field_name; value = value' };
         } )
 
 let transform_pattern_case (t : 'acc transformer) (acc : 'acc)
@@ -317,23 +303,23 @@ let transform_ty_decl (t : 'acc transformer) (acc : 'acc) (td : ty_decl) :
 let transform_signature_item (t : 'acc transformer) (acc : 'acc)
     (s : signature_item) : 'acc * signature_item =
   match s.signature_item_desc with
-  | TSig_Fun { name; params; ret_ty; external_fn } ->
-      let acc', params' =
-        List.fold_left_map (fun a ty -> t.ty t a ty) acc params
-      in
-      let acc'', ret_ty' = t.ty t acc' ret_ty in
-      ( acc'',
+  | TSig_Value { name; ty } ->
+      let acc', value_ty' = t.ty t acc ty in
+      ( acc',
+        { s with signature_item_desc = TSig_Value { name; ty = value_ty' } } )
+  | TSig_External { fname; ty; external_fn } ->
+      let acc', ty' = t.ty t acc ty in
+      ( acc',
         {
           s with
-          signature_item_desc =
-            TSig_Fun { name; params = params'; ret_ty = ret_ty'; external_fn };
+          signature_item_desc = TSig_External { fname; ty = ty'; external_fn };
         } )
   | TSig_Type td ->
       let acc', td' = transform_ty_decl t acc td in
       (acc', { s with signature_item_desc = TSig_Type td' })
-  | TSig_Module ms ->
+  | TSig_ModuleSignature ms ->
       let acc', ms' = t.module_signature t acc ms in
-      (acc', { s with signature_item_desc = TSig_Module ms' })
+      (acc', { s with signature_item_desc = TSig_ModuleSignature ms' })
 
 let transform_module_signature (t : 'acc transformer) (acc : 'acc)
     (ms : module_signature) : 'acc * module_signature =
@@ -350,32 +336,22 @@ let transform_structure_item (t : 'acc transformer) (acc : 'acc)
   | TStr_Let ld ->
       let acc', ld' = transform_letdef t acc ld in
       (acc', { s with structure_item_desc = TStr_Let ld' })
-  | TStr_Fun { rec_flag; name; body; ty_opt } ->
-      let acc', body' = t.expr t acc body in
-      let acc'', ty_opt' =
-        match ty_opt with
-        | None -> (acc', None)
-        | Some ty ->
-            let a', ty' = t.ty t acc' ty in
-            (a', Some ty')
-      in
-      ( acc'',
+  | TStr_External { fname; ty; external_fn } ->
+      let acc', ty' = t.ty t acc ty in
+      ( acc',
         {
           s with
-          structure_item_desc =
-            TStr_Fun { rec_flag; name; body = body'; ty_opt = ty_opt' };
+          structure_item_desc = TStr_External { fname; ty = ty'; external_fn };
         } )
-  | TStr_TypeDef td ->
+  | TStr_Type td ->
       let acc', td' = transform_ty_decl t acc td in
-      (acc', { s with structure_item_desc = TStr_TypeDef td' })
-  | TStr_ModuleStruct ms ->
+      (acc', { s with structure_item_desc = TStr_Type td' })
+  | TStr_ModuleStructure ms ->
       let acc', ms' = t.module_structure t acc ms in
-      (acc', { s with structure_item_desc = TStr_ModuleStruct ms' })
-  | TStr_Signature sigs ->
-      let acc', sigs' =
-        List.fold_left_map (fun a si -> t.signature_item t a si) acc sigs
-      in
-      (acc', { s with structure_item_desc = TStr_Signature sigs' })
+      (acc', { s with structure_item_desc = TStr_ModuleStructure ms' })
+  | TStr_ModuleSignature ms ->
+      let acc', ms' = t.module_signature t acc ms in
+      (acc', { s with structure_item_desc = TStr_ModuleSignature ms' })
 
 let transform_module_structure (t : 'acc transformer) (acc : 'acc)
     (ms : module_structure) : 'acc * module_structure =

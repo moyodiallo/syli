@@ -13,15 +13,13 @@ val constant_desc_of_parsing :
   Syli_parsing.Ast.constant_desc ->
   Typed_ast.constant_desc * Typed_ast.constant_ty
 
-val unop_of_parsing : Syli_parsing.Ast.unop -> Typed_ast.unop
-val binop_of_parsing : Syli_parsing.Ast.binop -> Typed_ast.binop
 val field_mut_of_parsing : Syli_parsing.Ast.mut_flag -> Typed_ast.mut_flag
 
 val ty_decl_of_parsing :
   Env.infer_ctx -> Syli_parsing.Ast.ty_decl -> Env.infer_ctx * Typed_ast.ty_decl
 
 val external_fn_of_parsing :
-  Typed_ast.location -> Syli_parsing.Ast.external_fn -> Typed_ast.external_fn
+  Syli_parsing.Ast.external_fn -> Typed_ast.external_fn
 
 val signature_item_of_parsing :
   Env.infer_ctx ->

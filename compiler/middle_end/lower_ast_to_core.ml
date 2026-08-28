@@ -45,15 +45,13 @@ let rec desugar_ty (t : Typed_ast.ty) : ty =
           | TTy_UInt64 -> CTy_UInt64
           | TTy_Bool -> CTy_Bool
           | TTy_Unit -> CTy_Unit
-          | TTy_Float -> CTy_Float
-          | TTy_Double -> CTy_Double
-          | TTy_StringLit -> CTy_StringLit
-          | TTy_CharLit -> CTy_CharLit)
-    | TTy_Arrow (args, ret) ->
-        CTy_Arrow (List.map desugar_ty args, desugar_ty ret)
+          | TTy_F32 -> CTy_F32
+          | TTy_F64 -> CTy_F64
+          | TTy_String -> CTy_String
+          | TTy_Char -> CTy_Char)
+    | TTy_Arrow (arg, ret) -> CTy_Arrow (desugar_ty arg, desugar_ty ret)
     | TTy_Tuple elems -> CTy_Tuple (List.map desugar_ty elems)
     | TTy_Array elem -> CTy_Array (desugar_ty elem)
-    | TTy_Ref elem -> CTy_Ref (desugar_ty elem)
     | TTy_Defined d ->
         CTy_Defined
           {
@@ -63,6 +61,7 @@ let rec desugar_ty (t : Typed_ast.ty) : ty =
                 fullname = d.name.name;
                 path = env_path_of_ident d.name;
                 id = d.name.id;
+                is_operator = d.name.is_operator;
               };
             args = List.map desugar_ty d.args;
           }
@@ -90,6 +89,7 @@ let rec desugar_pattern (p : Typed_ast.pattern) : pattern =
             fullname = name.name;
             path = name.path;
             id = name.id;
+            is_operator = name.is_operator;
           }
     | TPat_Tuple { elements } ->
         error_at p.loc "tuple pattern is not lowered to core yet"
@@ -104,6 +104,7 @@ let rec desugar_pattern (p : Typed_ast.pattern) : pattern =
                      fullname = f.name.name;
                      path = f.name.path;
                      id = f.name.id;
+                     is_operator = f.name.is_operator;
                    };
                  pattern = Option.map desugar_pattern f.pattern;
                })
@@ -132,6 +133,7 @@ let desugar_lambda_params (env : env) (params : Typed_ast.param list) :
                      fullname = name.name;
                      path = name.path;
                      id = p.pattern.id;
+                     is_operator = name.is_operator;
                    },
                    name.name )
            | TPat_Unit -> None
@@ -167,6 +169,7 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               fullname = qualify_name env i.name;
               path = i.path;
               id = i.id;
+              is_operator = i.is_operator;
             },
           env )
     | TExp_Tuple _ ->
@@ -182,54 +185,17 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               })
         in
         (CExp_Record lowered_fields, env)
-    | TExp_VariantConstructor { name; args } ->
+    | TExp_VariantConstructor { name; arg } ->
         let tag = hash_index name.name in
         ( CExp_VariantConstructor
-            { tag; arg = Option.map (fun a -> fst (desugar_expr env a)) args },
+            { tag; arg = Option.map (fun a -> fst (desugar_expr env a)) arg },
           env )
-    | TExp_ArrayCreate { element_ty; size } ->
-        ( CExp_ArrayCreate
+    | TExp_Array { element_ty; elements; size } ->
+        ( CExp_Array
             {
               element_ty = desugar_ty element_ty;
+              elements = List.map (fun a -> fst (desugar_expr env a)) elements;
               size = fst (desugar_expr env size);
-            },
-          env )
-    | TExp_ArrayLength { arr } ->
-        (CExp_ArrayLength (fst (desugar_expr env arr)), env)
-    | TExp_ArrayGet { arr; idx } ->
-        ( CExp_ArrayGet
-            {
-              arr = fst (desugar_expr env arr);
-              idx = fst (desugar_expr env idx);
-            },
-          env )
-    | TExp_ArraySet { arr; idx; value } ->
-        ( CExp_ArraySet
-            {
-              arr = fst (desugar_expr env arr);
-              idx = fst (desugar_expr env idx);
-              value = fst (desugar_expr env value);
-            },
-          env )
-    | TExp_UnOp { op; value } ->
-        ( CExp_UnOp
-            { op = desugar_unop op; value = fst (desugar_expr env value) },
-          env )
-    | TExp_Ref { value } ->
-        let x_e = fst (desugar_expr env value) in
-        let field =
-          { field_idx = 0; field_ty = desugar_ty value.ty; field_value = x_e }
-        in
-        (CExp_Record [ field ], env)
-    | TExp_Deref { value } ->
-        let x_e = fst (desugar_expr env value) in
-        (CExp_Field { record = x_e; field_idx = 0 }, env)
-    | TExp_BinOp { op; lvalue; rvalue } ->
-        ( CExp_BinOp
-            {
-              op = desugar_binop op;
-              lvalue = fst (desugar_expr env lvalue);
-              rvalue = fst (desugar_expr env rvalue);
             },
           env )
     | TExp_Lambda l ->
@@ -290,39 +256,33 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
                   fullname = qualified_name;
                   path = name.path;
                   id = l.pattern.id;
+                  is_operator = name.is_operator;
                 };
               value = fst (desugar_expr value_env l.value);
             },
           env' )
-    | TExp_Assign { target; value } -> (
-        let target_e = fst (desugar_expr env target) in
+    | TExp_FieldSet { record; field_name; value } ->
+        let record_e = fst (desugar_expr env record) in
         let value_e = fst (desugar_expr env value) in
-        match target_e.node with
-        | CExp_Field { record; field_idx } ->
-            (CExp_FieldSet { record; field_idx; value = value_e }, env)
-        | _ -> error_at target.loc "assignment target is not a field in Core")
-    | TExp_AssignRef { target; value } ->
-        let target_e = fst (desugar_expr env target) in
-        let value_e = fst (desugar_expr env value) in
-        ( CExp_FieldSet { record = target_e; field_idx = 0; value = value_e },
-          env )
-    | TExp_If { cond; then_branch; else_branch } ->
+        let field_idx = Int.abs field_name.id in
+        (CExp_FieldSet { record = record_e; field_idx; value = value_e }, env)
+    | TExp_If { condition; then_branch; else_branch } ->
         ( CExp_If
             {
-              cond = fst (desugar_expr env cond);
+              condition = fst (desugar_expr env condition);
               then_branch = fst (desugar_expr env then_branch);
               else_branch =
                 Option.map (fun e -> fst (desugar_expr env e)) else_branch;
             },
           env )
-    | TExp_While { cond; body } ->
+    | TExp_While { condition; body } ->
         ( CExp_Loop
             {
               id = e.id;
               node =
                 CExp_If
                   {
-                    cond = fst (desugar_expr env cond);
+                    condition = fst (desugar_expr env condition);
                     then_branch =
                       {
                         id = body.id;
@@ -349,7 +309,6 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               ty = desugar_ty e.ty;
             },
           env )
-    | TExp_ForIn _ -> error_at e.loc "for-in is not lowered to Core yet"
     | TExp_Loop { expr } -> (CExp_Loop (fst (desugar_expr env expr)), env)
     | TExp_Break { expr_opt } ->
         ( CExp_Break (Option.map (fun e -> fst (desugar_expr env e)) expr_opt),
@@ -384,8 +343,12 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
             cases
         in
         (CExp_Match { expr = scrutinee'; cases = cases' }, env)
-    | TExp_Field { record; idx; _ } ->
-        ( CExp_Field { record = fst (desugar_expr env record); field_idx = idx },
+    | TExp_Field { record; field_name } ->
+        ( CExp_Field
+            {
+              record = fst (desugar_expr env record);
+              field_idx = Int.abs field_name.id;
+            },
           env )
   in
   ({ id = e.id; node; ty }, env')
@@ -444,6 +407,7 @@ let desugar_type_decl (env : env) (td : Typed_ast.ty_decl) : ty_decl =
         fullname = td.name.name;
         path = td.name.path;
         id = td.name.id;
+        is_operator = td.name.is_operator;
       };
     params = List.map (fun (p : Typed_ast.ident) -> p.name) td.params;
     def;
@@ -455,12 +419,12 @@ let rec desugarize_structure_items (env : env)
     List.fold_left
       (fun (env, acc) (item : Typed_ast.structure_item) ->
         match item.structure_item_desc with
-        | Typed_ast.TStr_Let l ->
+        | Typed_ast.TStr_Let ldef ->
             let name =
-              match l.pattern.pattern_desc with
+              match ldef.pattern.pattern_desc with
               | TPat_Ident n -> n
               | _ ->
-                  error_at l.loc
+                  error_at ldef.loc
                     "top-level let pattern must desugar to identifier"
             in
             let qname = toplevel_name env name.name in
@@ -479,7 +443,7 @@ let rec desugarize_structure_items (env : env)
                   CStr_Let
                     {
                       rec_flag =
-                        (match l.rec_flag with
+                        (match ldef.rec_flag with
                         | TRecursive -> CRecursive
                         | TNonRecursive -> CNonRecursive);
                       name =
@@ -487,51 +451,49 @@ let rec desugarize_structure_items (env : env)
                           name = name.name;
                           fullname = qname;
                           path = name.path;
-                          id = l.pattern.id;
+                          id = ldef.pattern.id;
+                          is_operator = name.is_operator;
                         };
-                      value = fst (desugar_expr body_env l.value);
+                      value = fst (desugar_expr body_env ldef.value);
                     };
               }
               :: acc )
-        | Typed_ast.TStr_Fun { rec_flag; name; body; _ } ->
-            let qname = toplevel_name env name.name in
-            let body_env =
-              {
-                env with
-                subst = StringMap.add name.name qname env.subst;
-                fn_scope = qname :: env.fn_scope;
-              }
-            in
-            let env' = { body_env with fn_scope = env.fn_scope } in
-            ( env',
-              {
-                id = item.id;
-                structure_item_desc =
-                  CStr_Let
-                    {
-                      rec_flag =
-                        (match rec_flag with
-                        | TRecursive -> CRecursive
-                        | TNonRecursive -> CNonRecursive);
-                      name =
-                        {
-                          name = name.name;
-                          fullname = qname;
-                          path = name.path;
-                          id = item.id;
-                        };
-                      value = fst (desugar_expr body_env body);
-                    };
-              }
-              :: acc )
-        | Typed_ast.TStr_TypeDef td ->
+        | Typed_ast.TStr_External { fname; ty; external_fn } ->
             ( env,
               {
                 id = item.id;
-                structure_item_desc = CStr_TypeDef (desugar_type_decl env td);
+                structure_item_desc =
+                  CStr_External
+                    {
+                      fname =
+                        {
+                          name = fname.name;
+                          fullname = qualify_name env fname.name;
+                          path = fname.path;
+                          id = fname.id;
+                          is_operator = fname.is_operator;
+                        };
+                      ty = desugar_ty ty;
+                      external_fn =
+                        {
+                          symbol = external_fn.symbol.name;
+                          kind =
+                            (match external_fn.kind with
+                            | Typed_ast.Foreign -> Foreign
+                            | Typed_ast.Primitive -> Primitive);
+                          calling_convention = external_fn.calling_convention;
+                        };
+                    };
               }
               :: acc )
-        | Typed_ast.TStr_ModuleStruct ms ->
+        | Typed_ast.TStr_Type td ->
+            ( env,
+              {
+                id = item.id;
+                structure_item_desc = CStr_Type (desugar_type_decl env td);
+              }
+              :: acc )
+        | Typed_ast.TStr_ModuleStructure ms ->
             let env' =
               {
                 current_path = env.current_path @ [ ms.name.name ];
@@ -541,7 +503,7 @@ let rec desugarize_structure_items (env : env)
             in
             let items' = desugarize_structure_items env' ms.structure_items in
             (env, List.rev_append items' acc)
-        | Typed_ast.TStr_Signature _ -> (env, acc))
+        | Typed_ast.TStr_ModuleSignature _ -> (env, acc))
       (env, []) items
   in
   List.rev result
@@ -551,13 +513,13 @@ let rec desugarize_signature_items (env : env)
   List.concat_map
     (fun (item : Typed_ast.signature_item) ->
       match item.signature_item_desc with
-      | Typed_ast.TSig_Fun { name; params; ret_ty; external_fn } ->
+      | Typed_ast.TSig_Value { name; ty } ->
           let qname = toplevel_name env name.name in
           [
             {
               id = item.id;
               signature_item_desc =
-                CSig_Fun
+                CSig_Value
                   {
                     name =
                       {
@@ -565,18 +527,38 @@ let rec desugarize_signature_items (env : env)
                         fullname = qname;
                         path = name.path;
                         id = name.id;
+                        is_operator = name.is_operator;
                       };
-                    params = List.map desugar_ty params;
-                    ret_ty = desugar_ty ret_ty;
+                    ty = desugar_ty ty;
+                  };
+            };
+          ]
+      | Typed_ast.TSig_External { fname; ty; external_fn } ->
+          let qname = toplevel_name env fname.name in
+          [
+            {
+              id = item.id;
+              signature_item_desc =
+                CSig_External
+                  {
+                    fname =
+                      {
+                        name = fname.name;
+                        fullname = qname;
+                        path = fname.path;
+                        id = fname.id;
+                        is_operator = fname.is_operator;
+                      };
+                    ty = desugar_ty ty;
                     external_fn =
-                      Option.map
-                        (fun (e : Typed_ast.external_fn) ->
-                          ({
-                             c_name = e.c_name;
-                             calling_convention = e.calling_convention;
-                           }
-                            : Syli_core.Core_ast.external_fn))
-                        external_fn;
+                      {
+                        symbol = external_fn.symbol.name;
+                        kind =
+                          (match external_fn.kind with
+                          | Typed_ast.Foreign -> Foreign
+                          | Typed_ast.Primitive -> Primitive);
+                        calling_convention = external_fn.calling_convention;
+                      };
                   };
             };
           ]
@@ -587,7 +569,7 @@ let rec desugarize_signature_items (env : env)
               signature_item_desc = CSig_Type (desugar_type_decl env td);
             };
           ]
-      | Typed_ast.TSig_Module ms ->
+      | Typed_ast.TSig_ModuleSignature ms ->
           let env =
             {
               current_path = env.current_path @ [ ms.name.name ];
@@ -614,7 +596,8 @@ let desugarize_module_structure (module_structure : Typed_ast.module_structure)
     List.concat_map
       (fun (item : Typed_ast.structure_item) ->
         match item.structure_item_desc with
-        | Typed_ast.TStr_Signature sigs -> desugarize_signature_items env sigs
+        | Typed_ast.TStr_ModuleSignature ms ->
+            desugarize_signature_items env ms.signature_items
         | _ -> [])
       module_structure.structure_items
   in
@@ -626,6 +609,7 @@ let desugarize_module_structure (module_structure : Typed_ast.module_structure)
         fullname = module_structure.name.name;
         path = module_structure.name.path;
         id = module_structure.name.id;
+        is_operator = module_structure.name.is_operator;
       };
     structure_items =
       desugarize_structure_items env module_structure.structure_items;
@@ -646,8 +630,8 @@ let desugarize_ast (program : Typed_ast.module_structure) : program_core =
     List.concat_map
       (fun (item : Typed_ast.structure_item) ->
         match item.structure_item_desc with
-        | Typed_ast.TStr_Signature sigs ->
-            desugarize_signature_items root_env sigs
+        | Typed_ast.TStr_ModuleSignature ms ->
+            desugarize_signature_items root_env ms.signature_items
         | _ -> [])
       program.structure_items
   in
@@ -656,14 +640,14 @@ let desugarize_ast (program : Typed_ast.module_structure) : program_core =
     List.concat_map
       (fun (item : Typed_ast.structure_item) ->
         match item.structure_item_desc with
-        | Typed_ast.TStr_Signature sigs ->
+        | Typed_ast.TStr_ModuleSignature ms ->
             List.filter_map
               (fun (si : Typed_ast.signature_item) ->
                 match si.signature_item_desc with
-                | Typed_ast.TSig_Fun { name; external_fn = Some _; _ } ->
-                    Some (name.name, toplevel_name root_env name.name)
+                | Typed_ast.TSig_External { fname; _ } ->
+                    Some (fname.name, toplevel_name root_env fname.name)
                 | _ -> None)
-              sigs
+              ms.signature_items
         | _ -> [])
       program.structure_items
   in
@@ -684,6 +668,7 @@ let desugarize_ast (program : Typed_ast.module_structure) : program_core =
         fullname = program.name.name;
         path = program.name.path;
         id = program.name.id;
+        is_operator = program.name.is_operator;
       };
     structure_items =
       desugarize_structure_items root_env program.structure_items;

@@ -15,8 +15,8 @@ let string_of_constant_ty = function
   | CTy_UInt8 -> "u8"
   | CTy_Unit -> "unit"
   | CTy_Bool -> "bool"
-  | CTy_Float -> "float"
-  | CTy_Double -> "double"
+  | CTy_F32 -> "f32"
+  | CTy_F64 -> "f64"
   | CTy_String -> "str"
   | CTy_Char -> "char"
 
@@ -24,9 +24,13 @@ let rec string_of_ty ty =
   match ty.ty_desc with
   | CTy_Var n -> Printf.sprintf "'a%d" n
   | CTy_Constant c -> string_of_constant_ty c
-  | CTy_Arrow (params, ret) ->
-      let ps = String.concat ", " (List.map string_of_ty params) in
-      Printf.sprintf "(%s) -> %s" ps (string_of_ty ret)
+  | CTy_Arrow (param, ret) ->
+      let param_str =
+        match param.ty_desc with
+        | CTy_Tuple ts -> String.concat ", " (List.map string_of_ty ts)
+        | _ -> string_of_ty param
+      in
+      Printf.sprintf "(%s) -> %s" param_str (string_of_ty ret)
   | CTy_Tuple ts ->
       Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty ts))
   | CTy_Array t -> Printf.sprintf "array<%s>" (string_of_ty t)
@@ -67,6 +71,10 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
   | CExp_VariantConstructor { tag; arg = None } -> Printf.sprintf "ctor(%d)" tag
   | CExp_VariantConstructor { tag; arg = Some a } ->
       Printf.sprintf "ctor(%d, %s)" tag (string_of_expr ~indent a)
+  | CExp_Array { element_ty; elements; size } ->
+      Printf.sprintf "array<%s>[%s]{%s}" (string_of_ty element_ty)
+        (string_of_expr ~indent size)
+        (String.concat "; " (List.map (string_of_expr ~indent) elements))
   | CExp_Field { record; field_idx } ->
       (* Use inner for record so the annotation doesn't sit between record and .field *)
       Printf.sprintf "%s.%d" (string_of_expr_inner ~indent record) field_idx
@@ -126,7 +134,7 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
         (indent_str (indent + 1))
         (string_of_expr ~indent:(indent + 1) then_branch)
         else_str
-  | Exp_Match { expr = scrutinee; cases } ->
+  | CExp_Match { expr = scrutinee; cases } ->
       let cases_str =
         List.map
           (fun (c : pattern_case) ->
@@ -182,7 +190,7 @@ and string_of_pattern ?(indent = 0) (p : pattern) : string =
 and string_of_expr ?(indent = 0) e =
   let inner = string_of_expr_inner ~indent e in
   match e.node with
-  | CExp_Lambda _ | CExp_Let _ | CExp_Seq _ | CExp_If _ | Exp_Match _
+  | CExp_Lambda _ | CExp_Let _ | CExp_Seq _ | CExp_If _ | CExp_Match _
   | CExp_Loop _ | CExp_Break _ | CExp_Continue | CExp_Return _ ->
       inner
   | _ -> Printf.sprintf "%s : %s" inner (string_of_ty e.ty)
@@ -249,13 +257,15 @@ let string_of_ty_decl (td : ty_decl) =
 
 let string_of_structure_item item =
   match item.structure_item_desc with
+  | CStr_External { fname; ty; _ } ->
+      Printf.sprintf "extern %s : %s" fname.fullname (string_of_ty ty)
   | CStr_Let { rec_flag; name; value } ->
       let rec_str =
         match rec_flag with CRecursive -> "rec " | CNonRecursive -> ""
       in
       Printf.sprintf "let %s%s = %s" rec_str name.fullname
         (string_of_expr ~indent:1 value)
-  | CStr_TypeDef td -> string_of_ty_decl td
+  | CStr_Type td -> string_of_ty_decl td
 
 let string_of_module m =
   let buf = Buffer.create 256 in

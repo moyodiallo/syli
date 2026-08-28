@@ -149,17 +149,17 @@ and expr_desc =
   | TExp_If of {
       condition : expr;
       then_branch : expr;
-      else_branch_opt : expr option;
+      else_branch : expr option;
     }
-  | TExp_While of { condidition : expr; body : expr }
+  | TExp_While of { condition : expr; body : expr }
   | TExp_Loop of { expr : expr }
   | TExp_Break of { expr_opt : expr option }
   | TExp_Continue
   | TExp_Return of { expr_opt : expr option }
   | TExp_Seq of { exprs : expr list }
   | TExp_Match of { expr : expr; cases : pattern_case list }
-  | TExp_Field of { record : expr; field_name : string }
-  | TExp_FieldSet of { record : expr; field_name : string; value : expr }
+  | TExp_Field of { record : expr; field_name : ident }
+  | TExp_FieldSet of { record : expr; field_name : ident; value : expr }
 
 and pattern_case = {
   id : int;
@@ -196,17 +196,20 @@ and pattern_desc =
 (** Description of a typed signature item. *)
 type signature_item_desc =
   | TSig_Value of { name : ident; ty : ty }
-  | TSig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | TSig_Primitive of { name : ident; ty : ty; prim_name : string }
+  | TSig_External of { fname : ident; ty : ty; external_fn : external_fn }
   | TSig_Type of ty_decl
   | TSig_ModuleSignature of module_signature
 
+and symbol = { name : string; loc : location }
+
 and external_fn = {
-  c_name : string;
-  calling_convention : string option;
-  loc : location;
+  symbol : symbol;
+  kind : external_kind;
+  calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
 }
 (** An FFI external function declaration. *)
+
+and external_kind = Foreign | Primitive
 
 and signature_item = {
   id : int;
@@ -217,8 +220,7 @@ and signature_item = {
 
 (** Description of a typed structure item. *)
 and structure_item_desc =
-  | TStr_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | TStr_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
+  | TStr_External of { fname : ident; ty : ty; external_fn : external_fn }
   | TStr_Let of letdef
   | TStr_Type of ty_decl
   | TStr_ModuleStructure of module_structure

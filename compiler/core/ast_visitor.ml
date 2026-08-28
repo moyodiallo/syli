@@ -11,9 +11,9 @@ type 'acc visitor = {
 let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   match ty.ty_desc with
   | CTy_Var _ | CTy_Constant _ -> acc
-  | CTy_Arrow (params, ret) ->
-      let acc' = List.fold_left (v.ty v) acc params in
-      v.ty v acc' ret
+  | CTy_Arrow (param, ret) ->
+      let acc = v.ty v acc param in
+      v.ty v acc ret
   | CTy_Array inner -> v.ty v acc inner
   | CTy_Defined { args; _ } -> List.fold_left (v.ty v) acc args
   | CTy_Tuple elements -> List.fold_left (v.ty v) acc elements
@@ -28,6 +28,9 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_Constant _ | CExp_Ident _ | CExp_Continue -> acc'
   | CExp_VariantConstructor { arg; _ } ->
       Option.fold ~none:acc' ~some:(v.expr v acc') arg
+  | CExp_Array { elements; size; _ } ->
+      let acc'' = List.fold_left (v.expr v) acc' elements in
+      v.expr v acc'' size
   | CExp_Record fields ->
       List.fold_left
         (fun a (f : record_field) ->
@@ -82,13 +85,17 @@ let visit_type_decl_children (v : 'acc visitor) (acc : 'acc) (td : ty_decl) :
 
 let visit_signature_item_children (v : 'acc visitor) (acc : 'acc)
     (s : signature_item) : 'acc =
-  match s.signature_item_desc with CSig_Type td -> v.type_decl v acc td
+  match s.signature_item_desc with
+  | CSig_Value { ty; _ } -> v.ty v acc ty
+  | CSig_External { ty; _ } -> v.ty v acc ty
+  | CSig_Type td -> v.type_decl v acc td
 
 let visit_structure_item_children (v : 'acc visitor) (acc : 'acc)
     (d : structure_item) : 'acc =
   match d.structure_item_desc with
+  | CStr_External { ty; _ } -> v.ty v acc ty
   | CStr_Let { value; _ } -> v.expr v acc value
-  | CStr_TypeDef td -> v.type_decl v acc td
+  | CStr_Type td -> v.type_decl v acc td
 
 let default_ty (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   visit_ty_children v acc ty
@@ -184,7 +191,7 @@ let collect_type_defs (prog : program_core) : (string * ty_decl) list =
         (fun v acc d ->
           let acc' =
             match d.structure_item_desc with
-            | CStr_TypeDef td -> (td.name.fullname, td) :: acc
+            | CStr_Type td -> (td.name.fullname, td) :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc' d);

@@ -54,8 +54,8 @@ and ir_type =
   | OR_U32
   | OR_U16
   | OR_U8
-  | OR_Float
-  | OR_Double
+  | OR_F32
+  | OR_F64
   | OR_FnPtr
   | OR_Obj of {
       named : string option;
@@ -65,7 +65,7 @@ and ir_type =
     }
   | OR_Obj_Ptr
   | OR_Char
-  | OR_Str
+  | OR_String
   | OR_Void
 
 and ty = { id : int; ir_type : ir_type }

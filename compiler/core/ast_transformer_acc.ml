@@ -13,12 +13,10 @@ type 'acc transformer = {
 let rec transform_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   match ty.ty_desc with
   | CTy_Var _ | CTy_Constant _ -> (acc, ty)
-  | CTy_Arrow (params, ret) ->
-      let acc', params' =
-        List.fold_left_map (fun a p -> t.ty t a p) acc params
-      in
+  | CTy_Arrow (param, ret) ->
+      let acc', param' = t.ty t acc param in
       let acc'', ret' = t.ty t acc' ret in
-      (acc'', { ty_desc = CTy_Arrow (params', ret') })
+      (acc'', { ty_desc = CTy_Arrow (param', ret') })
   | CTy_Array inner ->
       let acc', inner' = t.ty t acc inner in
       (acc', { ty_desc = CTy_Array inner' })
@@ -52,6 +50,15 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
               (st, Some inner')
         in
         (a, CExp_VariantConstructor { tag; arg = arg' })
+    | CExp_Array { element_ty; elements; size } ->
+        let a, element_ty' = t.ty t acc' element_ty in
+        let a', elements' =
+          List.fold_left_map (fun st el -> t.expr t st el) a elements
+        in
+        let a'', size' = t.expr t a' size in
+        ( a'',
+          CExp_Array
+            { element_ty = element_ty'; elements = elements'; size = size' } )
     | CExp_Record fields ->
         let a, fields' =
           List.fold_left_map
@@ -107,8 +114,8 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
           List.fold_left_map (fun st item -> t.expr t st item) acc' items
         in
         (a, CExp_Seq items')
-    | CExp_If { cond; then_branch; else_branch } ->
-        let a, cond' = t.expr t acc' cond in
+    | CExp_If { condition; then_branch; else_branch } ->
+        let a, cond' = t.expr t acc' condition in
         let a', then_branch' = t.expr t a then_branch in
         let a'', else_branch' =
           match else_branch with
@@ -120,7 +127,7 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
         ( a'',
           CExp_If
             {
-              cond = cond';
+              condition = cond';
               then_branch = then_branch';
               else_branch = else_branch';
             } )
@@ -185,16 +192,15 @@ let transform_type_decl (t : 'acc transformer) (acc : 'acc) (td : ty_decl) :
 let transform_signature_item (t : 'acc transformer) (acc : 'acc)
     (s : signature_item) : 'acc * signature_item =
   match s.signature_item_desc with
-  | CSig_Fun { name; params; ret_ty; external_fn } ->
-      let acc', params' =
-        List.fold_left_map (fun a ty -> t.ty t a ty) acc params
-      in
-      let acc'', ret_ty' = t.ty t acc' ret_ty in
-      ( acc'',
+  | CSig_Value { name; ty } ->
+      let acc', ty' = t.ty t acc ty in
+      (acc', { s with signature_item_desc = CSig_Value { name; ty = ty' } })
+  | CSig_External { fname; ty; external_fn } ->
+      let acc', ty' = t.ty t acc ty in
+      ( acc',
         {
           s with
-          signature_item_desc =
-            CSig_Fun { name; params = params'; ret_ty = ret_ty'; external_fn };
+          signature_item_desc = CSig_External { fname; ty = ty'; external_fn };
         } )
   | CSig_Type type_decl ->
       let acc', type_decl' = t.type_decl t acc type_decl in
@@ -203,6 +209,13 @@ let transform_signature_item (t : 'acc transformer) (acc : 'acc)
 let transform_structure_item (t : 'acc transformer) (acc : 'acc)
     (d : structure_item) : 'acc * structure_item =
   match d.structure_item_desc with
+  | CStr_External { fname; ty; external_fn } ->
+      let a, ty' = t.ty t acc ty in
+      ( a,
+        {
+          d with
+          structure_item_desc = CStr_External { fname; ty = ty'; external_fn };
+        } )
   | CStr_Let { rec_flag; name; value } ->
       let a, value' = t.expr t acc value in
       ( a,
@@ -210,9 +223,9 @@ let transform_structure_item (t : 'acc transformer) (acc : 'acc)
           d with
           structure_item_desc = CStr_Let { rec_flag; name; value = value' };
         } )
-  | CStr_TypeDef type_decl ->
+  | CStr_Type type_decl ->
       let a, type_decl' = t.type_decl t acc type_decl in
-      (a, { d with structure_item_desc = CStr_TypeDef type_decl' })
+      (a, { d with structure_item_desc = CStr_Type type_decl' })
 
 let transform_program (t : 'acc transformer) (acc : 'acc) (p : program_core) :
     'acc * program_core =

@@ -67,8 +67,8 @@ and ir_type =
   | CR_U32
   | CR_U16
   | CR_U8
-  | CR_Float
-  | CR_Double
+  | CR_F32
+  | CR_F64
   | CR_FnPtr
   | CR_Obj of {
       named : string option;
@@ -78,7 +78,7 @@ and ir_type =
     }
   | CR_Obj_Ptr
   | CR_Char
-  | CR_Str
+  | CR_String
   | CR_Void
   | CR_GenericTyp of { type_var : int }
   | CR_Arrow of ty list * ty

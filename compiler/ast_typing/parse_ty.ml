@@ -24,7 +24,13 @@ let loc_of_parsing (loc : Syli_parsing.Ast.location) : location =
   { start_pos = loc.start_pos; end_pos = loc.end_pos; filename = loc.filename }
 
 let ident_of_parsing (id : Syli_parsing.Ast.ident) : ident =
-  { name = id.name; id = id.id; path = []; loc = loc_of_parsing id.loc }
+  {
+    name = id.name;
+    id = id.id;
+    path = [];
+    loc = loc_of_parsing id.loc;
+    is_operator = id.is_operator;
+  }
 
 let mk_ty ty_desc = { ty_desc }
 
@@ -37,10 +43,10 @@ let rec ty_of_parsing (ctx : Env.infer_ctx) (t : Syli_parsing.Ast.ty) :
   | Ty_Tuple elems ->
       let ctx, elems = List.fold_left_map ty_of_parsing ctx elems in
       (ctx, mk_ty @@ TTy_Tuple elems)
-  | Ty_Arrow (args, ret) ->
-      let ctx, args = List.fold_left_map ty_of_parsing ctx args in
+  | Ty_Arrow (arg, ret) ->
+      let ctx, arg = ty_of_parsing ctx arg in
       let ctx, ret = ty_of_parsing ctx ret in
-      (ctx, mk_ty @@ TTy_Arrow (args, ret))
+      (ctx, mk_ty @@ TTy_Arrow (arg, ret))
   | Ty_Array elem ->
       let ctx, elem = ty_of_parsing ctx elem in
       (ctx, mk_ty @@ TTy_Array elem)
@@ -54,9 +60,9 @@ let constant_desc_of_parsing (d : Syli_parsing.Ast.constant_desc) :
   | Const_Unit -> (TConst_Unit, TTy_Unit)
   | Const_BoolLit s -> (TConst_BoolLit s, TTy_Bool)
   | Const_IntLit s -> (TConst_IntLit s, TTy_Int64)
-  | Const_FloatLit s -> (TConst_FloatLit s, TTy_Double)
-  | Const_CharLit s -> (TConst_CharLit s, TTy_CharLit)
-  | Const_StringLit s -> (TConst_StringLit s, TTy_StringLit)
+  | Const_FloatLit s -> (TConst_FloatLit s, TTy_F64)
+  | Const_CharLit s -> (TConst_CharLit s, TTy_Char)
+  | Const_StringLit s -> (TConst_StringLit s, TTy_String)
 
 let field_mut_of_parsing = function
   | Mutable -> TMutable
@@ -131,7 +137,14 @@ let rec ty_decl_of_parsing (ctx : Env.infer_ctx) (td : Syli_parsing.Ast.ty_decl)
       name = ident_of_parsing td.name;
       params =
         List.map
-          (fun p -> { name = p; id = Hashtbl.hash (td.id, p); path = []; loc })
+          (fun p ->
+            {
+              name = p;
+              id = Hashtbl.hash (td.id, p);
+              path = [];
+              loc;
+              is_operator = false;
+            })
           td.params;
       def;
       annotations =
@@ -139,28 +152,39 @@ let rec ty_decl_of_parsing (ctx : Env.infer_ctx) (td : Syli_parsing.Ast.ty_decl)
       loc;
     } )
 
-let external_fn_of_parsing (loc : location) (e : Syli_parsing.Ast.external_fn) :
-    external_fn =
-  { c_name = e.c_name; calling_convention = e.calling_convention; loc }
+let symbol_of_parsing (s : Syli_parsing.Ast.symbol) : symbol =
+  { name = s.name; loc = loc_of_parsing s.loc }
+
+let external_fn_of_parsing (e : Syli_parsing.Ast.external_fn) : external_fn =
+  {
+    symbol = symbol_of_parsing e.symbol;
+    kind = (match e.kind with Foreign -> Foreign | Primitive -> Primitive);
+    calling_convention = e.calling_convention;
+  }
 
 let rec signature_item_of_parsing (ctx : Env.infer_ctx)
     (si : Syli_parsing.Ast.signature_item) : Env.infer_ctx * signature_item =
   let loc = loc_of_parsing si.loc in
   match si.signature_item_desc with
-  | Sig_Value { name; params; value_ty; external_fn } ->
-      let ctx, params = List.fold_left_map ty_of_parsing ctx params in
-      let ctx, ret_ty = ty_of_parsing ctx value_ty in
+  | Sig_Value { name; ty } ->
+      let ctx, ty = ty_of_parsing ctx ty in
+      ( ctx,
+        {
+          id = si.id;
+          signature_item_desc = TSig_Value { name = ident_of_parsing name; ty };
+          loc;
+        } )
+  | Sig_External { fname; ty; external_fn } ->
+      let ctx, ty = ty_of_parsing ctx ty in
       ( ctx,
         {
           id = si.id;
           signature_item_desc =
-            TSig_Fun
+            TSig_External
               {
-                name = ident_of_parsing name;
-                params;
-                ret_ty;
-                external_fn =
-                  Option.map (external_fn_of_parsing loc) external_fn;
+                fname = ident_of_parsing fname;
+                ty;
+                external_fn = external_fn_of_parsing external_fn;
               };
           loc;
         } )
@@ -169,7 +193,7 @@ let rec signature_item_of_parsing (ctx : Env.infer_ctx)
       (ctx, { id = si.id; signature_item_desc = TSig_Type td; loc })
   | Sig_ModuleSignature ms ->
       let ctx, ms = module_signature_of_parsing ctx ms in
-      (ctx, { id = si.id; signature_item_desc = TSig_Module ms; loc })
+      (ctx, { id = si.id; signature_item_desc = TSig_ModuleSignature ms; loc })
 
 and module_signature_of_parsing (ctx : Env.infer_ctx)
     (ms : Syli_parsing.Ast.module_signature) : Env.infer_ctx * module_signature

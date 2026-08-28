@@ -91,8 +91,8 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
   | Cir.CR_U32 -> Oir.OR_U32
   | Cir.CR_U16 -> Oir.OR_U16
   | Cir.CR_U8 -> Oir.OR_U8
-  | Cir.CR_Float -> Oir.OR_Float
-  | Cir.CR_Double -> Oir.OR_Double
+  | Cir.CR_F32 -> Oir.OR_F32
+  | Cir.CR_F64 -> Oir.OR_F64
   | Cir.CR_FnPtr -> Oir.OR_FnPtr
   | Cir.CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
       Oir.OR_Obj
@@ -104,7 +104,7 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
         }
   | Cir.CR_Obj_Ptr -> Oir.OR_Obj_Ptr
   | Cir.CR_Char -> Oir.OR_Char
-  | Cir.CR_Str -> Oir.OR_Str
+  | Cir.CR_String -> Oir.OR_String
   | Cir.CR_Void -> Oir.OR_Void
   | Cir.CR_GenericTyp _ ->
       failwith

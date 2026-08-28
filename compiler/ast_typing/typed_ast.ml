@@ -78,12 +78,7 @@ type ty_decl = {
   loc : location;
 }
 
-and param = {
-  pattern : pattern;
-  mut_flag : mut_flag;
-  param_ty : ty option;
-  loc : location;
-}
+and param = { pattern : pattern; param_ty : ty option; loc : location }
 
 and lambda = {
   params : param list;
@@ -126,7 +121,7 @@ and expr_desc =
   | TExp_Ident of ident
   | TExp_Tuple of { elements : expr list }
   | TExp_Record of { fields : record_field list }
-  | TExp_VariantConstructor of { name : ident; args : expr option }
+  | TExp_VariantConstructor of { name : ident; arg : expr option }
   | TExp_Array of { element_ty : ty; elements : expr list; size : expr }
   | TExp_Lambda of lambda
   | TExp_Apply of { closure_fun : expr; args : expr list }
@@ -178,16 +173,19 @@ and pattern_desc =
 
 type signature_item_desc =
   | TSig_Value of { name : ident; ty : ty }
-  | TSig_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | TSig_Primitive of { name : ident; ty : ty; prim_name : string }
+  | TSig_External of { fname : ident; ty : ty; external_fn : external_fn }
   | TSig_Type of ty_decl (* type exposed *)
   | TSig_ModuleSignature of module_signature
 
+and symbol = { name : string; loc : location }
+
 and external_fn = {
-  c_name : string; (* Actual C symbol name *)
+  symbol : symbol;
+  kind : external_kind;
   calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
-  loc : location;
 }
+
+and external_kind = Foreign | Primitive
 
 and signature_item = {
   id : int;
@@ -196,8 +194,7 @@ and signature_item = {
 }
 
 and structure_item_desc =
-  | TStr_Extern of { fname : ident; ty : ty; external_fn : external_fn }
-  | TStr_Primitive of { name : ident; ty_opt : ty option; prim_name : string }
+  | TStr_External of { fname : ident; ty : ty; external_fn : external_fn }
   | TStr_Let of letdef
   | TStr_Type of ty_decl (* type definition: type foo = ... *)
   | TStr_ModuleStructure of module_structure

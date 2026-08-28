@@ -63,29 +63,29 @@ rule token = parse
   | "fun"       { FUN }
   | "type"      { TYPE }
   | "of"        { OF }
-  | "module"    { MODULE }
+  | "structure" { STRUCTURE }
   | "val"       { VAL }
-  | "extern"    { EXTERN }
+  | "foreign"   { FOREIGN }
   | "primitive" { PRIMITIVE }
   | "signature" { SIGNATURE }
   | "rec"       { REC }
+  | "when"      { WHEN }
 
   (* --- Types --- *)
-  | "str"       { TY_STR }
   | "f32"       { TY_F32 }
   | "f64"       { TY_F64 }
   | "char"      { TY_CHAR }
   | "unit"      { TY_UNIT }
   | "bool"      { TY_BOOL }
   | "array"     { TY_ARRAY }
-  | "int64"     { TY_INT64 }
-  | "int32"     { TY_INT32 }
-  | "int16"     { TY_INT16 }
-  | "int8"      { TY_INT8 }
-  | "uint64"    { TY_UINT64 }
-  | "uint32"    { TY_UINT32 }
-  | "uint16"    { TY_UINT16 }
-  | "uint8"     { TY_UINT8 }
+  | "i64"       { TY_INT64 }
+  | "i32"       { TY_INT32 }
+  | "i16"       { TY_INT16 }
+  | "i8"        { TY_INT8 }
+  | "u64"       { TY_UINT64 }
+  | "u32"       { TY_UINT32 }
+  | "u16"       { TY_UINT16 }
+  | "u8"        { TY_UINT8 }
   | "string"    { TY_STRING }
 
   (* --- Boolean literals --- *)
