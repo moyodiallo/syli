@@ -13,12 +13,17 @@ let mk_structure_item id structure_item_desc : structure_item =
 let mk_toplevel_let id rec_flag name value : structure_item =
   mk_structure_item id
     (CStr_Let
-       { rec_flag; name = { name; fullname = name; path = []; id = 0 }; value })
+       {
+         rec_flag;
+         name = { name; path = []; id = 0; is_operator = false };
+         value;
+         public = true;
+       })
 
-let ident ?(id = 0) name = { name; fullname = name; path = []; id }
+let ident ?(id = 0) name = { name; path = []; id; is_operator = false }
 
 let mk_ident_expr eid name vid =
-  mk_expr eid (CExp_Ident { name; fullname = name; path = []; id = vid })
+  mk_expr eid (CExp_Ident { name; path = []; id = vid; is_operator = false })
 
 let mk_const_unit id = mk_expr id (CExp_Constant CConst_Unit)
 
@@ -28,25 +33,21 @@ let mk_lambda ?(ty_desc = unit_ty) params body : lambda =
 let mk_prog structure_items =
   {
     id = 0;
-    name = { name = "Test"; fullname = "Test"; path = []; id = 0 };
+    name = { name = "Test"; path = []; id = 0; is_operator = false };
     structure_items;
-    signature_items = [];
-    has_main_function = false;
   }
 
 let pp_var_ids ids =
   "{"
   ^ String.concat ", "
       (List.map
-         (fun id -> Printf.sprintf "%s#%d" id.fullname id.id)
+         (fun (id : ident) -> Printf.sprintf "%s#%d" id.name id.id)
          (VarIdSet.elements ids))
   ^ "}"
 
 let pp_lambda (lam : lambda) =
   let params =
-    List.map
-      (fun (p : ident) -> Printf.sprintf "%s#%d" p.fullname p.id)
-      lam.params
+    List.map (fun (p : ident) -> Printf.sprintf "%s#%d" p.name p.id) lam.params
   in
   Printf.sprintf "lambda(params=[%s])" (String.concat ", " params)
 

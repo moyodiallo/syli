@@ -10,11 +10,6 @@ type 'acc transformer = {
     'acc ->
     Core_ast.structure_item ->
     'acc * Core_ast.structure_item;
-  signature_item :
-    'acc transformer ->
-    'acc ->
-    Core_ast.signature_item ->
-    'acc * Core_ast.signature_item;
   type_decl :
     'acc transformer -> 'acc -> Core_ast.ty_decl -> 'acc * Core_ast.ty_decl;
 }
@@ -29,12 +24,6 @@ val transform_expr :
 
 val transform_type_decl :
   'acc transformer -> 'acc -> Core_ast.ty_decl -> 'acc * Core_ast.ty_decl
-
-val transform_signature_item :
-  'acc transformer ->
-  'acc ->
-  Core_ast.signature_item ->
-  'acc * Core_ast.signature_item
 
 val transform_structure_item :
   'acc transformer ->
@@ -59,12 +48,6 @@ val default_structure_item :
   Core_ast.structure_item ->
   'acc * Core_ast.structure_item
 
-val default_signature_item :
-  'acc transformer ->
-  'acc ->
-  Core_ast.signature_item ->
-  'acc * Core_ast.signature_item
-
 val default_type_decl :
   'acc transformer -> 'acc -> Core_ast.ty_decl -> 'acc * Core_ast.ty_decl
 
@@ -79,12 +62,6 @@ val apply_structure_item :
   'acc ->
   Core_ast.structure_item ->
   'acc * Core_ast.structure_item
-
-val apply_signature_item :
-  'acc transformer ->
-  'acc ->
-  Core_ast.signature_item ->
-  'acc * Core_ast.signature_item
 
 val apply_type_decl :
   'acc transformer -> 'acc -> Core_ast.ty_decl -> 'acc * Core_ast.ty_decl

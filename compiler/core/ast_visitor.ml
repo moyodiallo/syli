@@ -4,7 +4,6 @@ type 'acc visitor = {
   ty : 'acc visitor -> 'acc -> ty -> 'acc;
   expr : 'acc visitor -> 'acc -> expr -> 'acc;
   structure_item : 'acc visitor -> 'acc -> structure_item -> 'acc;
-  signature_item : 'acc visitor -> 'acc -> signature_item -> 'acc;
   type_decl : 'acc visitor -> 'acc -> ty_decl -> 'acc;
 }
 
@@ -83,13 +82,6 @@ let visit_type_decl_children (v : 'acc visitor) (acc : 'acc) (td : ty_decl) :
                 a fields)
         acc constructors
 
-let visit_signature_item_children (v : 'acc visitor) (acc : 'acc)
-    (s : signature_item) : 'acc =
-  match s.signature_item_desc with
-  | CSig_Value { ty; _ } -> v.ty v acc ty
-  | CSig_External { ty; _ } -> v.ty v acc ty
-  | CSig_Type td -> v.type_decl v acc td
-
 let visit_structure_item_children (v : 'acc visitor) (acc : 'acc)
     (d : structure_item) : 'acc =
   match d.structure_item_desc with
@@ -107,10 +99,6 @@ let default_structure_item (v : 'acc visitor) (acc : 'acc) (d : structure_item)
     : 'acc =
   visit_structure_item_children v acc d
 
-let default_signature_item (v : 'acc visitor) (acc : 'acc) (s : signature_item)
-    : 'acc =
-  visit_signature_item_children v acc s
-
 let default_type_decl (v : 'acc visitor) (acc : 'acc) (td : ty_decl) : 'acc =
   visit_type_decl_children v acc td
 
@@ -119,7 +107,6 @@ let identity_visitor : 'acc visitor =
     ty = default_ty;
     expr = default_expr;
     structure_item = default_structure_item;
-    signature_item = default_signature_item;
     type_decl = default_type_decl;
   }
 
@@ -133,16 +120,11 @@ let visit_structure_item (v : 'acc visitor) (acc : 'acc) (d : structure_item) :
     'acc =
   v.structure_item v acc d
 
-let visit_signature_item (v : 'acc visitor) (acc : 'acc) (s : signature_item) :
-    'acc =
-  v.signature_item v acc s
-
 let visit_type_decl (v : 'acc visitor) (acc : 'acc) (td : ty_decl) : 'acc =
   v.type_decl v acc td
 
 let visit_program (v : 'acc visitor) (acc : 'acc) (prog : program_core) : 'acc =
-  let acc' = List.fold_left (v.signature_item v) acc prog.signature_items in
-  List.fold_left (v.structure_item v) acc' prog.structure_items
+  List.fold_left (v.structure_item v) acc prog.structure_items
 
 let collect_idents (prog : program_core) : string list =
   let visitor =
@@ -152,8 +134,8 @@ let collect_idents (prog : program_core) : string list =
         (fun v acc e ->
           let acc' =
             match e.node with
-            | CExp_Ident { fullname; _ } -> fullname :: acc
-            | CExp_Let { name = { fullname; _ }; _ } -> fullname :: acc
+            | CExp_Ident { name; _ } -> name :: acc
+            | CExp_Let { name = { name; _ }; _ } -> name :: acc
             | _ -> acc
           in
           visit_expr_children v acc' e);
@@ -170,12 +152,9 @@ let collect_function_names (prog : program_core) : string list =
           let acc' =
             match d.structure_item_desc with
             | CStr_Let
-                {
-                  name = { fullname; _ };
-                  value = { node = CExp_Lambda _; _ };
-                  _;
-                } ->
-                fullname :: acc
+                { name = { name; _ }; value = { node = CExp_Lambda _; _ }; _ }
+              ->
+                name :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc' d);
@@ -191,7 +170,7 @@ let collect_type_defs (prog : program_core) : (string * ty_decl) list =
         (fun v acc d ->
           let acc' =
             match d.structure_item_desc with
-            | CStr_Type td -> (td.name.fullname, td) :: acc
+            | CStr_Type td -> (td.name.name, td) :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc' d);

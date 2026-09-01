@@ -421,7 +421,13 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         } )
   | Parsing_ast.Exp_Let ldef ->
       let ctx, tdef = infer_letdef ctx ldef in
-      (ctx, { id = e.id; expr_desc = TExp_Let tdef; loc; ty = tdef.value.ty })
+      ( ctx,
+        {
+          id = e.id;
+          expr_desc = TExp_Let tdef;
+          loc;
+          ty = mk_ty (TTy_Constant TTy_Unit);
+        } )
   | Parsing_ast.Exp_If { condition; then_branch; else_branch } ->
       let ctx, cond = infer_expr ctx condition in
       let ctx = unify_into ctx cond.ty (mk_ty (TTy_Constant TTy_Bool)) in

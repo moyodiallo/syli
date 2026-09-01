@@ -25,6 +25,7 @@ type ctx = {
   tmp_counter : int ref;
   block_counter : int ref;
   pending_merge_id : int option;
+  ffi_external_functions : I.ffi_external_function list;
 }
 
 let empty_analysis : CA.core_closure_analysis =
@@ -43,6 +44,7 @@ let empty_ctx =
     tmp_counter = ref 0;
     block_counter = ref 0;
     pending_merge_id = None;
+    ffi_external_functions = [];
   }
 
 let fresh_id = Syli_ir.Cir.fresh_id
@@ -62,8 +64,8 @@ let fresh_var (ctx : ctx) (ty : I.ty) : ctx * I.var =
 let env_add_var ctx (var : var) =
   { ctx with env = StringMap.add var.I.name var ctx.env }
 
-let env_mem_var ctx (id : C.ident) = StringMap.mem id.fullname ctx.env
-let env_find_var_opt ctx (id : C.ident) = StringMap.find_opt id.fullname ctx.env
+let env_mem_var ctx (id : C.ident) = StringMap.mem id.name ctx.env
+let env_find_var_opt ctx (id : C.ident) = StringMap.find_opt id.name ctx.env
 
 let emit (ctx : ctx) (node : I.statement_node) (ty : I.ty) : ctx * I.statement =
   let id = fresh_id () in
@@ -182,7 +184,7 @@ let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
             cyclic_prop = default_cyclic_prop;
           }
     | CTy_Defined { name; _ } -> (
-        match StringMap.find_opt name.fullname type_defs with
+        match StringMap.find_opt name.name type_defs with
         | Some { def = CTydef_Record decl_fields; _ } ->
             let fields =
               List.map
@@ -196,7 +198,7 @@ let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
             in
             I.CR_Obj
               {
-                named = Some name.fullname;
+                named = Some name.name;
                 obj_kind =
                   I.CR_Record_kind { fields; cardinal = List.length fields };
                 tag_variant = None;
@@ -206,7 +208,7 @@ let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
         | Some { def = CTydef_Variant _ | CTydef_Abstract; _ } ->
             failwith "Not yet supported"
         | None ->
-            let msg = Printf.sprintf "Type %s not found" name.fullname in
+            let msg = Printf.sprintf "Type %s not found" name.name in
             failwith msg)
   in
   { I.id = fresh_id (); I.ir_type = go cty }
@@ -277,6 +279,9 @@ let rec get_args_ty (ty : C.ty) : C.ty list =
   | CTy_Arrow (arg, ret) -> arg :: get_args_ty ret
   | _ -> []
 
+let rec get_return_ty (ty : C.ty) : C.ty =
+  match ty.ty_desc with CTy_Arrow (_, ret) -> get_return_ty ret | _ -> ty
+
 let lower_closure_apply (ctx : ctx) (closure_var : I.var)
     (closure_fun_ty : C.ty) (concrete_arg_ops : I.operand list) (out_ty : I.ty)
     : ctx * I.operand =
@@ -315,7 +320,7 @@ let collect_toplevel_functions (prog : C.program_core) : int StringMap.t =
       | CStr_Let { name; value; _ } -> (
           match value.node with
           | CExp_Lambda lam ->
-              StringMap.add name.fullname (List.length lam.params) acc
+              StringMap.add name.name (List.length lam.params) acc
           | _ -> acc)
       | _ -> acc)
     StringMap.empty prog.C.structure_items
@@ -329,15 +334,15 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
   match e.node with
   | CExp_Constant c -> (ctx, I.CR_OConstant (ir_const_of_core c, out_ty))
   | CExp_Ident id -> (
-      match StringMap.find_opt id.fullname ctx.env with
-      | Some v when StringMap.mem id.fullname ctx.toplevel_functions ->
+      match StringMap.find_opt id.name ctx.env with
+      | Some v when StringMap.mem id.name ctx.toplevel_functions ->
           let ctx, closure_var = fresh_var ctx out_ty in
           let ctx, _ =
             emit ctx
               (I.CR_Make_closure
                  {
                    dst = closure_var;
-                   fn = id.fullname;
+                   fn = id.name;
                    free_vars = [];
                    captured_args = [];
                  })
@@ -349,8 +354,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           raise
             (Lowering_error
                (Printf.sprintf
-                  "Unbound identifier during Core->SIR lowering: %s" id.fullname))
-      )
+                  "Unbound identifier during Core->SIR lowering: %s" id.name)))
   | CExp_Apply { closure_fun; args } -> (
       let ctx, arg_ops = List.fold_left_map lower_expr ctx args in
       (* Cast each arg operand to the concrete type knowned at apply site.
@@ -374,7 +378,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let concrete_arg_ops = List.rev concrete_arg_ops in
       match closure_fun.node with
       | CExp_Ident id -> (
-          match StringMap.find_opt id.fullname ctx.toplevel_functions with
+          match StringMap.find_opt id.name ctx.toplevel_functions with
           | Some arity when List.length args = arity ->
               (* Known function, fully applied → direct call *)
               let ctx, call_dst, result =
@@ -386,7 +390,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                   (I.CR_Call
                      {
                        dst = call_dst;
-                       target = I.Direct id.fullname;
+                       target = I.Direct id.name;
                        args = concrete_arg_ops;
                      })
                   out_ty
@@ -400,7 +404,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                   (I.CR_Make_closure
                      {
                        dst = fn_var;
-                       fn = id.fullname;
+                       fn = id.name;
                        free_vars =
                          []
                          (* the toplevel functions does not capture free vars
@@ -432,7 +436,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           lower_closure_apply ctx closure_var closure_fun.ty concrete_arg_ops
             out_ty)
   | CExp_Let { rec_flag; name; value } -> (
-      let lambda_name = name.fullname in
+      let lambda_name = name.name in
       match value.node with
       | CExp_Lambda lam ->
           (* Lift function, create closure *)
@@ -450,7 +454,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           in
           let free_vars =
             List.filter_map
-              (fun (id : C.ident) -> StringMap.find_opt id.fullname ctx.env)
+              (fun (id : C.ident) -> StringMap.find_opt id.name ctx.env)
               free_var_idents
           in
           let make_closure =
@@ -458,21 +462,17 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
               { dst = fn_var; fn = lambda_name; free_vars; captured_args = [] }
           in
           let ctx, _ = emit ctx make_closure out_ty in
-          let ctx =
-            { ctx with env = StringMap.add name.fullname fn_var ctx.env }
-          in
+          let ctx = { ctx with env = StringMap.add name.name fn_var ctx.env } in
           (ctx, I.CR_OVar fn_var)
       | _ -> (
           (* Evaluate the value and always bind the let-name in the environment. *)
           let ctx, result = lower_expr ctx value in
           match result with
           | I.CR_OVar v ->
-              let ctx =
-                { ctx with env = StringMap.add name.fullname v ctx.env }
-              in
+              let ctx = { ctx with env = StringMap.add name.name v ctx.env } in
               (ctx, I.CR_OVar v)
           | I.CR_OConstant _ ->
-              let ctx, v = fresh_var_with_name ctx name.fullname out_ty in
+              let ctx, v = fresh_var_with_name ctx name.name out_ty in
               let rv : I.rvalue =
                 {
                   I.id = v.I.id;
@@ -483,9 +483,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
               let ctx, _ =
                 emit ctx (I.CR_Assign { dst = v; rvalue = rv }) out_ty
               in
-              let ctx =
-                { ctx with env = StringMap.add name.fullname v ctx.env }
-              in
+              let ctx = { ctx with env = StringMap.add name.name v ctx.env } in
               (ctx, I.CR_OVar v)))
   | CExp_Seq xs ->
       List.fold_left (fun (ctx, _) x -> lower_expr ctx x) (ctx, void_null) xs
@@ -570,7 +568,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       in
       let free_vars =
         List.filter_map
-          (fun (id : C.ident) -> StringMap.find_opt id.fullname ctx.env)
+          (fun (id : C.ident) -> StringMap.find_opt id.name ctx.env)
           free_var_idents
       in
       let make_closure =
@@ -697,7 +695,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
       List.fold_left2
         (fun (ctx, vars) (p : C.ident) (pty : C.ty) ->
           let ir_pty : I.ty = mk_ir_ty ctx.type_defs pty in
-          let ctx, v = fresh_var_with_name ctx p.fullname ir_pty in
+          let ctx, v = fresh_var_with_name ctx p.name ir_pty in
           let ctx = env_add_var ctx v in
           (ctx, v :: vars))
         (ctx_with_free_vars, free_vars)
@@ -729,33 +727,6 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
     }
   in
   (ctx, fn_sir)
-
-let ffi_of_signature (type_defs : C.ty_decl StringMap.t) (s : C.signature_item)
-    : I.ffi_external_function option =
-  match s.signature_item_desc with
-  | C.CSig_External { fname = name; ty; external_fn = ext } ->
-      let rec arrow_parts (t : C.ty) : C.ty list * C.ty =
-        match t.ty_desc with
-        | CTy_Arrow (arg, ret) ->
-            let args, ret_ty = arrow_parts ret in
-            (arg :: args, ret_ty)
-        | _ -> ([], t)
-      in
-      let params, ret_ty = arrow_parts ty in
-      let params =
-        List.filter
-          (fun (t : C.ty) -> t.ty_desc <> C.CTy_Constant C.CTy_Unit)
-          params
-      in
-      Some
-        {
-          I.name = ext.symbol;
-          syli_name = name.fullname;
-          ret_ty = mk_ir_ty type_defs ret_ty;
-          params = List.map (mk_ir_ty type_defs) params;
-          calling_convention = ext.calling_convention;
-        }
-  | _ -> None
 
 let build_const_init_fn (name : string) (value : I.constant) (ty : I.ty) :
     I.function_cir =
@@ -861,62 +832,40 @@ let lower_program (prog : C.program_core) : I.module_cir =
     List.fold_left
       (fun m (item : C.structure_item) ->
         match item.structure_item_desc with
-        | CStr_Type td -> StringMap.add td.name.fullname td m
+        | CStr_Type td -> StringMap.add td.name.name td m
         | _ -> m)
       StringMap.empty prog.C.structure_items
   in
-  (* Add FFI functions to toplevel_functions *)
-  let ffi_known_fns =
+  let toplevel_functions = collect_toplevel_functions prog in
+  let root_ctx, functions, globals, external_functions =
     List.fold_left
-      (fun acc (s : C.signature_item) ->
-        match s.signature_item_desc with
-        | C.CSig_External { fname = name; ty; _ } ->
-            let rec arity_of_type (t : C.ty) : int =
-              match t.ty_desc with
-              | CTy_Arrow (arg, ret) ->
-                  let arg_count =
-                    if arg.ty_desc = CTy_Constant CTy_Unit then 0 else 1
-                  in
-                  arg_count + arity_of_type ret
-              | _ -> 0
-            in
-            StringMap.add name.fullname (arity_of_type ty) acc
-        | _ -> acc)
-      StringMap.empty prog.signature_items
-  in
-  let toplevel_functions =
-    let base = collect_toplevel_functions prog in
-    StringMap.union (fun _ v _ -> Some v) base ffi_known_fns
-  in
-  let root_ctx, functions, globals =
-    List.fold_left
-      (fun (ctx, fns, globs) (item : C.structure_item) ->
+      (fun (ctx, fns, globs, exts) (item : C.structure_item) ->
         match item.structure_item_desc with
         | CStr_Let { name; value; _ } -> (
             match value.node with
             | CExp_Lambda lam ->
                 let param_tys = get_args_ty value.ty in
                 let ctx, fn =
-                  lower_lambda_function ctx name.fullname lam param_tys value.id
+                  lower_lambda_function ctx name.name lam param_tys value.id
                 in
                 let fn_ty = mk_ir_ty type_defs value.ty in
                 let fn_var : I.var =
-                  { I.id = fresh_id (); I.name = name.fullname; I.ty = fn_ty }
+                  { I.id = fresh_id (); I.name = name.name; I.ty = fn_ty }
                 in
                 let ctx =
                   { ctx with env = StringMap.add fn_var.name fn_var ctx.env }
                 in
-                (ctx, fn :: fns, globs)
+                (ctx, fn :: fns, globs, exts)
             | CExp_Constant c ->
                 let const_value = ir_const_of_core c in
                 let const_ty = mk_ir_ty type_defs value.ty in
-                let init_fn_name = "__init_global." ^ name.fullname in
+                let init_fn_name = "__init_global." ^ name.name in
                 let init_fn =
                   build_const_init_fn init_fn_name const_value const_ty
                 in
                 let gv : I.global_value =
                   {
-                    I.name = name.fullname;
+                    I.name = name.name;
                     init_fn;
                     value = const_value;
                     ty = const_ty;
@@ -924,19 +873,12 @@ let lower_program (prog : C.program_core) : I.module_cir =
                   }
                 in
                 let const_var : I.var =
-                  {
-                    I.id = fresh_id ();
-                    I.name = name.fullname;
-                    I.ty = const_ty;
-                  }
+                  { I.id = fresh_id (); I.name = name.name; I.ty = const_ty }
                 in
                 let ctx =
-                  {
-                    ctx with
-                    env = StringMap.add name.fullname const_var ctx.env;
-                  }
+                  { ctx with env = StringMap.add name.name const_var ctx.env }
                 in
-                (ctx, init_fn :: fns, gv :: globs)
+                (ctx, init_fn :: fns, gv :: globs, exts)
             | _ ->
                 (* Non-constant, non-lambda:
                    create a global with CR_Null and an init function that computes
@@ -959,7 +901,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 let value_ctx =
                   finish_block value_ctx (I.CR_Return (Some result))
                 in
-                let init_fn_name = "__init_global." ^ name.fullname in
+                let init_fn_name = "__init_global." ^ name.name in
                 let blocks = List.rev value_ctx.blocks in
                 let entry_block = List.hd blocks in
                 let init_fn : I.function_cir =
@@ -976,7 +918,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 in
                 let gv : I.global_value =
                   {
-                    I.name = name.fullname;
+                    I.name = name.name;
                     init_fn;
                     value = I.CR_Null;
                     ty = global_ty;
@@ -984,40 +926,45 @@ let lower_program (prog : C.program_core) : I.module_cir =
                   }
                 in
                 let global_var : I.var =
-                  {
-                    I.id = fresh_id ();
-                    I.name = name.fullname;
-                    I.ty = global_ty;
-                  }
+                  { I.id = fresh_id (); I.name = name.name; I.ty = global_ty }
                 in
                 let ctx =
+                  { ctx with env = StringMap.add name.name global_var ctx.env }
+                in
+                (ctx, init_fn :: fns, gv :: globs, exts))
+        | CStr_Type _ -> (ctx, fns, globs, exts)
+        | CStr_External { fname; ty; external_fn } -> (
+            match external_fn.kind with
+            | Foreign ->
+                let ret_ty = get_return_ty ty in
+                let param_tys = get_args_ty ty in
+                let ext_fn : I.ffi_external_function =
                   {
-                    ctx with
-                    env = StringMap.add name.fullname global_var ctx.env;
+                    I.name = external_fn.symbol;
+                    I.syli_name = fname.name;
+                    I.ret_ty = mk_ir_ty type_defs ret_ty;
+                    I.params = List.map (mk_ir_ty type_defs) param_tys;
+                    I.calling_convention = external_fn.calling_convention;
                   }
                 in
-                (ctx, init_fn :: fns, gv :: globs))
-        | CStr_Type _ -> (ctx, fns, globs)
-        | CStr_External _ -> (ctx, fns, globs))
-      ({ empty_ctx with toplevel_functions; analysis; type_defs }, [], [])
+                (ctx, fns, globs, ext_fn :: exts)
+            | Primitive -> (ctx, fns, globs, exts)))
+      ({ empty_ctx with toplevel_functions; analysis; type_defs }, [], [], [])
       prog.C.structure_items
-  in
-  let ffi_external_functions =
-    prog.signature_items |> List.filter_map (ffi_of_signature type_defs)
   in
   let global_values = List.rev globals in
   let module_init_fn =
-    build_module_initializer prog.C.name.fullname global_values
+    build_module_initializer prog.C.name.name global_values
   in
   let functions =
     module_init_fn :: List.rev (root_ctx.lifted_fns @ List.rev functions)
   in
   {
-    I.name = prog.C.name.fullname;
+    I.name = prog.C.name.name;
     type_defs = [];
     functions;
     global_values;
-    ffi_external_functions;
+    ffi_external_functions = List.rev external_functions;
   }
 
 let lower (ctx : Pipeline_types.core_ctx) : Pipeline_types.cir_ctx =

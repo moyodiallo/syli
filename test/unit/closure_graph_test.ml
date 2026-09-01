@@ -3,7 +3,7 @@ open Syli_common
 module CG = Middle_end.Closure_graph
 
 let i64_ty = { id = 1; ir_type = CR_I64 }
-let double_ty = { id = 4; ir_type = CR_Double }
+let double_ty = { id = 4; ir_type = CR_F64 }
 let void_ty = { id = 3; ir_type = CR_Void }
 
 let arrow_ty (param_tys : ty list) (ret_ty : ty) : ty =

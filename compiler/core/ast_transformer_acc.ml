@@ -5,8 +5,6 @@ type 'acc transformer = {
   expr : 'acc transformer -> 'acc -> expr -> 'acc * expr;
   structure_item :
     'acc transformer -> 'acc -> structure_item -> 'acc * structure_item;
-  signature_item :
-    'acc transformer -> 'acc -> signature_item -> 'acc * signature_item;
   type_decl : 'acc transformer -> 'acc -> ty_decl -> 'acc * ty_decl;
 }
 
@@ -189,23 +187,6 @@ let transform_type_decl (t : 'acc transformer) (acc : 'acc) (td : ty_decl) :
       in
       (acc', { td with def = CTydef_Variant constructors' })
 
-let transform_signature_item (t : 'acc transformer) (acc : 'acc)
-    (s : signature_item) : 'acc * signature_item =
-  match s.signature_item_desc with
-  | CSig_Value { name; ty } ->
-      let acc', ty' = t.ty t acc ty in
-      (acc', { s with signature_item_desc = CSig_Value { name; ty = ty' } })
-  | CSig_External { fname; ty; external_fn } ->
-      let acc', ty' = t.ty t acc ty in
-      ( acc',
-        {
-          s with
-          signature_item_desc = CSig_External { fname; ty = ty'; external_fn };
-        } )
-  | CSig_Type type_decl ->
-      let acc', type_decl' = t.type_decl t acc type_decl in
-      (acc', { s with signature_item_desc = CSig_Type type_decl' })
-
 let transform_structure_item (t : 'acc transformer) (acc : 'acc)
     (d : structure_item) : 'acc * structure_item =
   match d.structure_item_desc with
@@ -216,12 +197,13 @@ let transform_structure_item (t : 'acc transformer) (acc : 'acc)
           d with
           structure_item_desc = CStr_External { fname; ty = ty'; external_fn };
         } )
-  | CStr_Let { rec_flag; name; value } ->
+  | CStr_Let { rec_flag; name; value; public } ->
       let a, value' = t.expr t acc value in
       ( a,
         {
           d with
-          structure_item_desc = CStr_Let { rec_flag; name; value = value' };
+          structure_item_desc =
+            CStr_Let { rec_flag; name; value = value'; public };
         } )
   | CStr_Type type_decl ->
       let a, type_decl' = t.type_decl t acc type_decl in
@@ -229,22 +211,12 @@ let transform_structure_item (t : 'acc transformer) (acc : 'acc)
 
 let transform_program (t : 'acc transformer) (acc : 'acc) (p : program_core) :
     'acc * program_core =
-  let acc', signature_items' =
-    List.fold_left_map
-      (fun st s -> t.signature_item t st s)
-      acc p.signature_items
-  in
-  let acc'', structure_items' =
+  let acc', structure_items' =
     List.fold_left_map
       (fun st d -> t.structure_item t st d)
-      acc' p.structure_items
+      acc p.structure_items
   in
-  ( acc'',
-    {
-      p with
-      signature_items = signature_items';
-      structure_items = structure_items';
-    } )
+  (acc', { p with structure_items = structure_items' })
 
 let default_ty (t : 'acc transformer) (acc : 'acc) (ty : ty) : 'acc * ty =
   transform_ty t acc ty
@@ -256,10 +228,6 @@ let default_structure_item (t : 'acc transformer) (acc : 'acc)
     (d : structure_item) : 'acc * structure_item =
   transform_structure_item t acc d
 
-let default_signature_item (t : 'acc transformer) (acc : 'acc)
-    (s : signature_item) : 'acc * signature_item =
-  transform_signature_item t acc s
-
 let default_type_decl (t : 'acc transformer) (acc : 'acc) (td : ty_decl) :
     'acc * ty_decl =
   transform_type_decl t acc td
@@ -269,7 +237,6 @@ let identity_transformer : 'acc transformer =
     ty = default_ty;
     expr = default_expr;
     structure_item = default_structure_item;
-    signature_item = default_signature_item;
     type_decl = default_type_decl;
   }
 
@@ -282,10 +249,6 @@ let apply_expr (t : 'acc transformer) (acc : 'acc) (e : expr) : 'acc * expr =
 let apply_structure_item (t : 'acc transformer) (acc : 'acc)
     (d : structure_item) : 'acc * structure_item =
   t.structure_item t acc d
-
-let apply_signature_item (t : 'acc transformer) (acc : 'acc)
-    (s : signature_item) : 'acc * signature_item =
-  t.signature_item t acc s
 
 let apply_type_decl (t : 'acc transformer) (acc : 'acc) (td : ty_decl) :
     'acc * ty_decl =

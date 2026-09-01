@@ -4,13 +4,7 @@
 type path = string list
 (** A dotted path of module names. *)
 
-type ident = {
-  name : string;
-  fullname : string;
-  path : path;
-  id : int;
-  is_operator : bool;
-}
+type ident = { name : string; path : path; id : int; is_operator : bool }
 (** An identifier with name, full name, path, unique ID, and [is_operator]. *)
 
 (** Mutability flag for core AST bindings. *)
@@ -159,13 +153,6 @@ and pattern_desc =
 (*-------------------------------------*)
 (* Module Core AST (Flattened)        *)
 (*-------------------------------------*)
-
-(** Description of a core signature item. *)
-type signature_item_desc =
-  | CSig_Value of { name : ident; ty : ty }
-  | CSig_External of { fname : ident; ty : ty; external_fn : external_fn }
-  | CSig_Type of ty_decl
-
 and external_fn = {
   symbol : string;
   kind : external_kind;
@@ -175,13 +162,15 @@ and external_fn = {
 
 and external_kind = Foreign | Primitive
 
-and signature_item = { id : int; signature_item_desc : signature_item_desc }
-(** A signature item with ID. *)
-
 (** Description of a core structure item. *)
 and structure_item_desc =
   | CStr_External of { fname : ident; ty : ty; external_fn : external_fn }
-  | CStr_Let of { rec_flag : rec_flag; name : ident; value : expr }
+  | CStr_Let of {
+      rec_flag : rec_flag;
+      name : ident;
+      value : expr;
+      public : bool;
+    }
   | CStr_Type of ty_decl
 
 and structure_item = { id : int; structure_item_desc : structure_item_desc }
@@ -191,7 +180,6 @@ and module_core = {
   id : int;
   name : ident;
   structure_items : structure_item list;
-  signature_items : signature_item list;
 }
 (** A complete core module with structure and signature items. *)
 

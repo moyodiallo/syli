@@ -34,9 +34,9 @@ let rec string_of_ty ty =
   | CTy_Tuple ts ->
       Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty ts))
   | CTy_Array t -> Printf.sprintf "array<%s>" (string_of_ty t)
-  | CTy_Defined { name; args = [] } -> name.fullname
+  | CTy_Defined { name; args = [] } -> name.name
   | CTy_Defined { name; args } ->
-      Printf.sprintf "%s<%s>" name.fullname
+      Printf.sprintf "%s<%s>" name.name
         (String.concat ", " (List.map string_of_ty args))
 
 (* -------------------- *)
@@ -57,7 +57,7 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
   let p = indent_str indent in
   match e.node with
   | CExp_Constant c -> string_of_constant c
-  | CExp_Ident id -> id.fullname
+  | CExp_Ident id -> id.name
   | CExp_Record fields ->
       let fs =
         String.concat "; "
@@ -98,7 +98,7 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
       let rec_str =
         match rec_flag with CRecursive -> "rec " | CNonRecursive -> ""
       in
-      Printf.sprintf "let %s%s = %s" rec_str name.fullname
+      Printf.sprintf "let %s%s = %s" rec_str name.name
         (string_of_expr ~indent:(indent + 1) value)
   | CExp_Loop body ->
       Printf.sprintf "loop {\n%s\n%s}"
@@ -167,7 +167,7 @@ and string_of_pattern ?(indent = 0) (p : pattern) : string =
     | Pat_CharLit s -> Printf.sprintf "'%s'" s
     | Pat_FloatLit s -> s
     | Pat_StringLit s -> Printf.sprintf "%S" s
-    | Pat_Ident id -> id.fullname
+    | Pat_Ident id -> id.name
     | Pat_Any -> "_"
     | Pat_Record fields ->
         let fs =
@@ -175,9 +175,8 @@ and string_of_pattern ?(indent = 0) (p : pattern) : string =
             (List.map
                (fun (f : pattern_record_field) ->
                  match f.pattern with
-                 | None -> f.name.fullname
-                 | Some p' ->
-                     Printf.sprintf "%s = %s" f.name.fullname (inner p'))
+                 | None -> f.name.name
+                 | Some p' -> Printf.sprintf "%s = %s" f.name.name (inner p'))
                fields)
         in
         Printf.sprintf "{ %s }" fs
@@ -197,7 +196,7 @@ and string_of_expr ?(indent = 0) e =
 
 and string_of_lambda ?(indent = 0) lam =
   let params_str =
-    String.concat ", " (List.map (fun id -> id.fullname) lam.params)
+    String.concat ", " (List.map (fun (id : ident) -> id.name) lam.params)
   in
   Printf.sprintf "fun (%s) : %s ->\n%s%s" params_str (string_of_ty lam.ret_ty)
     (indent_str (indent + 1))
@@ -252,24 +251,24 @@ let string_of_ty_decl (td : ty_decl) =
     | [] -> ""
     | ps -> Printf.sprintf "<%s>" (String.concat ", " ps)
   in
-  Printf.sprintf "type %s%s = %s" td.name.fullname params_str
+  Printf.sprintf "type %s%s = %s" td.name.name params_str
     (string_of_ty_decl_desc td.def)
 
 let string_of_structure_item item =
   match item.structure_item_desc with
   | CStr_External { fname; ty; _ } ->
-      Printf.sprintf "extern %s : %s" fname.fullname (string_of_ty ty)
+      Printf.sprintf "extern %s : %s" fname.name (string_of_ty ty)
   | CStr_Let { rec_flag; name; value } ->
       let rec_str =
         match rec_flag with CRecursive -> "rec " | CNonRecursive -> ""
       in
-      Printf.sprintf "let %s%s = %s" rec_str name.fullname
+      Printf.sprintf "let %s%s = %s" rec_str name.name
         (string_of_expr ~indent:1 value)
   | CStr_Type td -> string_of_ty_decl td
 
 let string_of_module m =
   let buf = Buffer.create 256 in
-  Printf.bprintf buf "module %s\n" m.name.fullname;
+  Printf.bprintf buf "module %s\n" m.name.name;
   List.iter
     (fun item -> Printf.bprintf buf "%s\n\n" (string_of_structure_item item))
     m.structure_items;

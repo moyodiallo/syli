@@ -11,10 +11,6 @@
  (libraries syli_core))
 
 (test
- (name normalize_core)
- (libraries syli_core middle_end))
-
-(test
  (name cfg)
  (libraries syli_ir))
 
