@@ -194,9 +194,9 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
     | TExp_Record { fields } ->
         let lowered_fields =
           fields
-          |> List.mapi (fun i (f : Typed_ast.record_field) ->
+          |> List.map (fun (f : Typed_ast.record_field) ->
               {
-                field_idx = i;
+                field_idx = f.field_idx;
                 field_ty = desugar_ty env f.field_value.ty;
                 field_value = fst (desugar_expr env f.field_value);
               })
@@ -269,10 +269,9 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               value = fst (desugar_expr value_env l.value);
             },
           { env with bind_subst = new_bind_subst } )
-    | TExp_FieldSet { record; field_name; value } ->
+    | TExp_FieldSet { record; field_name; field_idx; value } ->
         let record_e = fst (desugar_expr env record) in
         let value_e = fst (desugar_expr env value) in
-        let field_idx = Int.abs field_name.id in
         (CExp_FieldSet { record = record_e; field_idx; value = value_e }, env)
     | TExp_If { condition; then_branch; else_branch } ->
         ( CExp_If
@@ -351,13 +350,8 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
             cases
         in
         (CExp_Match { expr = scrutinee'; cases = cases' }, env)
-    | TExp_Field { record; field_name } ->
-        ( CExp_Field
-            {
-              record = fst (desugar_expr env record);
-              field_idx = Int.abs field_name.id;
-            },
-          env )
+    | TExp_Field { record; field_idx } ->
+        (CExp_Field { record = fst (desugar_expr env record); field_idx }, env)
   in
   ({ id = e.id; node; ty }, env')
 
@@ -378,11 +372,11 @@ let desugar_type_decl (env : env) (td : Typed_ast.ty_decl) : ty_decl =
                       | Typed_ast.Constr_ty t -> Constr_ty (desugar_ty env t)
                       | Typed_ast.Constr_record fields ->
                           Constr_record
-                            (List.mapi
-                               (fun fi (f : Typed_ast.record_field_decl) ->
+                            (List.map
+                               (fun (f : Typed_ast.record_field_decl) ->
                                  {
                                    id = f.id;
-                                   field_idx = fi;
+                                   field_idx = f.field_idx;
                                    field_ty = desugar_ty env f.field_ty;
                                    field_mut =
                                      (match f.field_mut with
@@ -395,10 +389,10 @@ let desugar_type_decl (env : env) (td : Typed_ast.ty_decl) : ty_decl =
     | TTydef_Record fields ->
         CTydef_Record
           (fields
-          |> List.mapi (fun i (f : Typed_ast.record_field_decl) ->
+          |> List.map (fun (f : Typed_ast.record_field_decl) ->
               {
                 id = f.id;
-                field_idx = i;
+                field_idx = f.field_idx;
                 field_ty = desugar_ty env f.field_ty;
                 field_mut =
                   (match f.field_mut with

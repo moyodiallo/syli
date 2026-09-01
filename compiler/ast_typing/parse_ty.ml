@@ -77,19 +77,21 @@ let rec ty_decl_of_parsing (ctx : Env.infer_ctx) (td : Syli_parsing.Ast.ty_decl)
         let ctx, t = ty_of_parsing ctx t in
         (ctx, TTydef_Alias t)
     | Tydef_Record fields ->
-        let ctx, fields =
+        let (ctx, _), fields =
           List.fold_left_map
-            (fun ctx (f : Syli_parsing.Ast.record_field_decl) ->
+            (fun (ctx, i) (f : Syli_parsing.Ast.record_field_decl) ->
               let ctx, field_ty = ty_of_parsing ctx f.field_ty in
-              ( ctx,
-                {
-                  id = f.id;
-                  field_name = ident_of_parsing f.field_name;
-                  field_ty;
-                  field_mut = field_mut_of_parsing f.field_mut;
-                  loc = loc_of_parsing f.loc;
-                } ))
-            ctx fields
+              ( (ctx, i + 1),
+                ({
+                   id = f.id;
+                   field_name = ident_of_parsing f.field_name;
+                   field_idx = i;
+                   field_ty;
+                   field_mut = field_mut_of_parsing f.field_mut;
+                   loc = loc_of_parsing f.loc;
+                 }
+                  : Typed_ast.record_field_decl) ))
+            (ctx, 0) fields
         in
         (ctx, TTydef_Record fields)
     | Tydef_Variant ctors ->
@@ -103,19 +105,22 @@ let rec ty_decl_of_parsing (ctx : Env.infer_ctx) (td : Syli_parsing.Ast.ty_decl)
                     let ctx, t = ty_of_parsing ctx t in
                     (ctx, Some (Constr_ty t))
                 | Some (Syli_parsing.Ast.Constr_record fields) ->
-                    let ctx, fields =
+                    let (ctx, _), fields =
                       List.fold_left_map
-                        (fun ctx (f : Syli_parsing.Ast.record_field_decl) ->
+                        (fun (ctx, i) (f : Syli_parsing.Ast.record_field_decl)
+                           ->
                           let ctx, field_ty = ty_of_parsing ctx f.field_ty in
-                          ( ctx,
-                            {
-                              id = f.id;
-                              field_name = ident_of_parsing f.field_name;
-                              field_ty;
-                              field_mut = field_mut_of_parsing f.field_mut;
-                              loc = loc_of_parsing f.loc;
-                            } ))
-                        ctx fields
+                          ( (ctx, i + 1),
+                            ({
+                               id = f.id;
+                               field_name = ident_of_parsing f.field_name;
+                               field_idx = i;
+                               field_ty;
+                               field_mut = field_mut_of_parsing f.field_mut;
+                               loc = loc_of_parsing f.loc;
+                             }
+                              : Typed_ast.record_field_decl) ))
+                        (ctx, 0) fields
                     in
                     (ctx, Some (Constr_record fields))
               in

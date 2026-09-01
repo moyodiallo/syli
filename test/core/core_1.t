@@ -52,7 +52,7 @@ Use of foreignal function and record creation:
   let syliTest_e2e_print.main = fun () : unit ->
       {
         let sy1_record = { 0 = 10 : i64; 1 = 30 : i64 } : syliTest_e2e_print.person
-        syliTest_e2e_print.syli_print_i64(sy1_record.29 : i64) : unit
+        syliTest_e2e_print.syli_print_i64(sy1_record.1 : i64) : unit
       }
   
 Use of foreignal function and record creation:
@@ -71,7 +71,26 @@ Use of foreignal function and record creation:
   let syliTest_e2e_print.main = fun () : unit ->
       let sy1_record = { 0 = 10 : i64; 1 = 30 : i64 } : syliTest_e2e_print.person
   
-
+Record literal with fields in a different order than the declaration:
+  $ cat >test_e2e_print.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > type person = { name: i64; age: i64 }
+  > let main () =
+  >     let record = { age = 30; name = 10 }
+  >     syli_print_i64(record.name)
+  > EOF
+  $ dune exec sylic -- core test_e2e_print.sy
+  module Test_e2e_print
+  extern syliTest_e2e_print.syli_print_i64 : (i64) -> unit
+  
+  type syliTest_e2e_print.person = { 0 : i64; 1 : i64 }
+  
+  let syliTest_e2e_print.main = fun () : unit ->
+      {
+        let sy1_record = { 1 = 30 : i64; 0 = 10 : i64 } : syliTest_e2e_print.person
+        syliTest_e2e_print.syli_print_i64(sy1_record.0 : i64) : unit
+      }
+  
 
 Closures as an argument:
   $ cat >test_closure.src <<EOF

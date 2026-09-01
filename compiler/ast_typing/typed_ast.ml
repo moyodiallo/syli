@@ -58,6 +58,7 @@ and variant_constructor_arg =
 and record_field_decl = {
   id : int;
   field_name : ident;
+  field_idx : int;
   field_ty : ty;
   field_mut : mut_flag;
   loc : location;
@@ -101,6 +102,7 @@ and letdef = {
 and record_field = {
   id : int;
   field_name : ident;
+  field_idx : int;
   field_value : expr;
   loc : location;
 }
@@ -138,8 +140,13 @@ and expr_desc =
   | TExp_Return of { expr_opt : expr option }
   | TExp_Seq of { exprs : expr list }
   | TExp_Match of { expr : expr; cases : pattern_case list }
-  | TExp_Field of { record : expr; field_name : ident }
-  | TExp_FieldSet of { record : expr; field_name : ident; value : expr }
+  | TExp_Field of { record : expr; field_name : ident; field_idx : int }
+  | TExp_FieldSet of {
+      record : expr;
+      field_name : ident;
+      field_idx : int;
+      value : expr;
+    }
 
 and pattern_case = {
   id : int;

@@ -227,17 +227,22 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
       ( acc'',
         { e with expr_desc = TExp_Match { expr = scrutinee'; cases = cases' } }
       )
-  | TExp_Field { record; field_name } ->
+  | TExp_Field { record; field_name; field_idx } ->
       let acc', record' = t.expr t acc record in
-      (acc', { e with expr_desc = TExp_Field { record = record'; field_name } })
-  | TExp_FieldSet { record; field_name; value } ->
+      ( acc',
+        {
+          e with
+          expr_desc = TExp_Field { record = record'; field_name; field_idx };
+        } )
+  | TExp_FieldSet { record; field_name; field_idx; value } ->
       let acc', record' = t.expr t acc record in
       let acc'', value' = t.expr t acc' value in
       ( acc'',
         {
           e with
           expr_desc =
-            TExp_FieldSet { record = record'; field_name; value = value' };
+            TExp_FieldSet
+              { record = record'; field_name; field_idx; value = value' };
         } )
 
 let transform_pattern_case (t : 'acc transformer) (acc : 'acc)

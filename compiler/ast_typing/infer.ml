@@ -19,22 +19,27 @@ let apply_param_ty (ctx : infer_ctx) (p : param) : param =
 
 let unify_record_expr_fields_with_decl (ctx : infer_ctx)
     (decl_fields : record_field_decl list) (fields : record_field list) :
-    infer_ctx =
+    infer_ctx * record_field list =
   let find_decl_field name =
     List.find_opt
       (fun (decl_field : record_field_decl) ->
         decl_field.field_name.name = name)
       decl_fields
   in
-  List.fold_left
-    (fun ctx (f : record_field) ->
-      match find_decl_field f.field_name.name with
-      | None ->
-          raise
-            (Type_error
-               (Printf.sprintf "unknown record field '%s'" f.field_name.name))
-      | Some decl_field -> unify_into ctx f.field_value.ty decl_field.field_ty)
-    ctx fields
+  let ctx, fields =
+    List.fold_left
+      (fun (ctx, fields) (f : record_field) ->
+        match find_decl_field f.field_name.name with
+        | None ->
+            raise
+              (Type_error
+                 (Printf.sprintf "unknown record field '%s'" f.field_name.name))
+        | Some decl_field ->
+            let ctx = unify_into ctx f.field_value.ty decl_field.field_ty in
+            (ctx, { f with field_idx = decl_field.field_idx } :: fields))
+      (ctx, []) fields
+  in
+  (ctx, List.rev fields)
 
 let unify_record_pattern_fields_with_decl (ctx : infer_ctx)
     (decl_fields : record_field_decl list) (fields : pattern_record_field list)
@@ -207,7 +212,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       let ctx, elems = List.fold_left_map infer_expr ctx elements in
       let ty = mk_ty (TTy_Tuple (List.map (fun (e : expr) -> e.ty) elems)) in
       (ctx, { id = e.id; expr_desc = TExp_Tuple { elements = elems }; loc; ty })
-  | Parsing_ast.Exp_Record { fields } ->
+  | Parsing_ast.Exp_Record { fields } -> (
       let ctx, fields =
         List.fold_left_map
           (fun ctx (f : Parsing_ast.record_field) ->
@@ -218,32 +223,31 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 field_name = ident_of_parsing f.field_name;
                 field_value = tv;
                 loc = loc_of_parsing f.loc;
+                field_idx = 0;
               } ))
           ctx fields
       in
       let field_names = List.map (fun field -> field.field_name.name) fields in
-      let ctx, ty =
-        match find_record_by_field_names ctx field_names with
-        | Some record_info ->
-            let ctx =
-              unify_record_expr_fields_with_decl ctx record_info.record_fields
-                fields
-            in
-            ( ctx,
-              mk_ty (TTy_Defined { name = record_info.ty_decl.name; args = [] })
-            )
-        | None ->
-            raise
-              (Type_error
-                 (Printf.sprintf
-                    "cannot infer record type for fields {%s}: no matching \
-                     record type"
-                    (String.concat ", "
-                       (List.map
-                          (fun (f : record_field) -> f.field_name.name)
-                          fields))))
-      in
-      (ctx, { id = e.id; expr_desc = TExp_Record { fields }; loc; ty })
+      match find_record_by_field_names ctx field_names with
+      | Some record_info ->
+          let ctx, fields =
+            unify_record_expr_fields_with_decl ctx record_info.record_fields
+              fields
+          in
+          let ty =
+            mk_ty (TTy_Defined { name = record_info.ty_decl.name; args = [] })
+          in
+          (ctx, { id = e.id; expr_desc = TExp_Record { fields }; loc; ty })
+      | None ->
+          raise
+            (Type_error
+               (Printf.sprintf
+                  "cannot infer record type for fields {%s}: no matching \
+                   record type"
+                  (String.concat ", "
+                     (List.map
+                        (fun (f : record_field) -> f.field_name.name)
+                        fields)))))
   | Parsing_ast.Exp_VariantConstructor { name; arg } ->
       let name = ident_of_parsing name in
       let ctx, arg_expr, ty =
@@ -284,10 +288,11 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                               field_name = ident_of_parsing f.field_name;
                               field_value = tv;
                               loc = loc_of_parsing f.loc;
+                              field_idx = 0;
                             } ))
                         ctx fields'
                     in
-                    let ctx =
+                    let ctx, typed_fields =
                       unify_record_expr_fields_with_decl ctx fields typed_fields
                     in
                     let record_expr =
@@ -482,7 +487,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
   | Parsing_ast.Exp_FieldSet { record; field_name; value } ->
       let ctx, record = infer_expr ctx record in
       let ctx, value = infer_expr ctx value in
-      let ctx, field_ty =
+      let ctx, expr' =
         match find_record_by_field_names ctx [ field_name.name ] with
         | Some ty_record_info -> (
             let ctx =
@@ -497,7 +502,29 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                   field.field_name.name = field_name.name)
                 ty_record_info.record_fields
             with
-            | Some field -> (ctx, field.field_ty)
+            | Some field -> (
+                match field.field_mut with
+                | TImmutable ->
+                    raise
+                      (Type_error
+                         (Printf.sprintf "field '%s' is immutable"
+                            field_name.name))
+                | TMutable ->
+                    let ctx = unify_into ctx value.ty field.field_ty in
+                    ( ctx,
+                      {
+                        id = e.id;
+                        expr_desc =
+                          TExp_FieldSet
+                            {
+                              record;
+                              field_name = ident_of_parsing field_name;
+                              field_idx = field.field_idx;
+                              value;
+                            };
+                        loc;
+                        ty = mk_ty (TTy_Constant TTy_Unit);
+                      } ))
             | None ->
                 raise
                   (Type_error
@@ -508,16 +535,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
               (Type_error
                  (Printf.sprintf "no record has field_name '%s'" field_name.name))
       in
-      let ctx = unify_into ctx value.ty field_ty in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc =
-            TExp_FieldSet
-              { record; field_name = ident_of_parsing field_name; value };
-          loc;
-          ty = mk_ty (TTy_Constant TTy_Unit);
-        } )
+      (ctx, expr')
   | Parsing_ast.Exp_Break { value } ->
       let ctx, e_opt =
         match value with
@@ -591,7 +609,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         } )
   | Parsing_ast.Exp_Field { record; field_name } ->
       let ctx, record = infer_expr ctx record in
-      let ctx, field_ty =
+      let ctx, field_ty, field_idx =
         match find_record_by_field_names ctx [ field_name.name ] with
         | Some ty_record_info -> (
             let ctx =
@@ -606,7 +624,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                   field.field_name.name = field_name.name)
                 ty_record_info.record_fields
             with
-            | Some field -> (ctx, field.field_ty)
+            | Some field -> (ctx, field.field_ty, field.field_idx)
             | None ->
                 raise
                   (Type_error
@@ -621,7 +639,8 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         {
           id = e.id;
           expr_desc =
-            TExp_Field { record; field_name = ident_of_parsing field_name };
+            TExp_Field
+              { record; field_name = ident_of_parsing field_name; field_idx };
           loc;
           ty = field_ty;
         } )

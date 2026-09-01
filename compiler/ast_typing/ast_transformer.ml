@@ -117,11 +117,16 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
     | TExp_Match { expr; cases } ->
         TExp_Match
           { expr = t.expr t expr; cases = List.map (t.pattern_case t) cases }
-    | TExp_Field { record; field_name } ->
-        TExp_Field { record = t.expr t record; field_name }
-    | TExp_FieldSet { record; field_name; value } ->
+    | TExp_Field { record; field_name; field_idx } ->
+        TExp_Field { record = t.expr t record; field_name; field_idx }
+    | TExp_FieldSet { record; field_name; field_idx; value } ->
         TExp_FieldSet
-          { record = t.expr t record; field_name; value = t.expr t value }
+          {
+            record = t.expr t record;
+            field_name;
+            field_idx;
+            value = t.expr t value;
+          }
   in
   { e with expr_desc; ty = t.ty t e.ty }
 
