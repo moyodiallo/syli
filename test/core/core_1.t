@@ -9,11 +9,11 @@ Integer and boolean literals:
   > EOF
   $ dune exec sylic core test_core_basic.sy
   module Test_core_basic
-  extern syliTest_core_basic.+ : (i64) -> (i64) -> i64
+  extern "syliTest_core_basic.+" : (i64) -> (i64) -> i64
   
   let syliTest_core_basic.x = 42 : i64
   
-  let syliTest_core_basic.y = syliTest_core_basic.+(syliTest_core_basic.x : i64, 10 : i64) : i64
+  let syliTest_core_basic.y = "syliTest_core_basic.+"(syliTest_core_basic.x : i64, 10 : i64) : i64
   
   let syliTest_core_basic.b = true : bool
   
@@ -25,11 +25,11 @@ If expression:
   > EOF
   $ dune exec sylic core test_core_if.sy
   module Test_core_if
-  extern syliTest_core_if.> : (i64) -> (i64) -> bool
+  extern "syliTest_core_if.>" : (i64) -> (i64) -> bool
   
   let syliTest_core_if.x = 10 : i64
   
-  let syliTest_core_if.y = if syliTest_core_if.>(syliTest_core_if.x : i64, 5 : i64) : bool
+  let syliTest_core_if.y = if "syliTest_core_if.>"(syliTest_core_if.x : i64, 5 : i64) : bool
       1 : i64
     else
       0 : i64
@@ -101,13 +101,13 @@ Closures as an argument:
   > EOF
   $ dune exec sylic -- core test_closure.src
   module Test_closure
-  extern syliTest_closure.+ : (i64) -> (i64) -> i64
+  extern "syliTest_closure.+" : (i64) -> (i64) -> i64
   
   let syliTest_closure.apply_twice = fun (f, x) : 'a54 ->
       f(f(x : 'a54) : 'a54) : 'a54
   
   let syliTest_closure.double_x = fun (x) : i64 ->
-      syliTest_closure.+(x : i64, x : i64) : i64
+      "syliTest_closure.+"(x : i64, x : i64) : i64
   
   let syliTest_closure.result = syliTest_closure.apply_twice(syliTest_closure.double_x : (i64) -> i64, 10 : i64) : i64
   
@@ -123,10 +123,10 @@ Closure with multipble chains of captured variables:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.add = fun (x, y, z) : i64 ->
-      syliTest_multi.+(syliTest_multi.+(x : i64, y : i64) : i64, z : i64) : i64
+      "syliTest_multi.+"("syliTest_multi.+"(x : i64, y : i64) : i64, z : i64) : i64
   
   let syliTest_multi.apply = fun () : unit ->
       {
@@ -147,15 +147,15 @@ Overriding same name variable in the top-level scope:
   > EOF
   $ dune exec sylic -- core test_shadow.sy
   module Test_shadow
-  extern syliTest_shadow.+ : (i64) -> (i64) -> i64
+  extern "syliTest_shadow.+" : (i64) -> (i64) -> i64
   
   let syliTest_shadow.x = 5 : i64
   
-  let syliTest_shadow.y = syliTest_shadow.+(syliTest_shadow.x : i64, 1 : i64) : i64
+  let syliTest_shadow.y = "syliTest_shadow.+"(syliTest_shadow.x : i64, 1 : i64) : i64
   
   let syliTest_shadow.x = 10 : i64
   
-  let syliTest_shadow.result = syliTest_shadow.+(syliTest_shadow.x : i64, 1 : i64) : i64
+  let syliTest_shadow.result = "syliTest_shadow.+"(syliTest_shadow.x : i64, 1 : i64) : i64
   
 
 Overriding a param in the function body:
@@ -167,12 +167,12 @@ Overriding a param in the function body:
   > EOF
   $ dune exec sylic -- core test_shadow_nested.sy  
   module Test_shadow_nested
-  extern syliTest_shadow_nested.+ : (i64) -> (i64) -> i64
+  extern "syliTest_shadow_nested.+" : (i64) -> (i64) -> i64
   
   let syliTest_shadow_nested.apply = fun (x) : unit ->
       {
         let sy1_x = 10 : i64
-        let sy2_result = syliTest_shadow_nested.+(sy1_x : i64, 1 : i64) : i64
+        let sy2_result = "syliTest_shadow_nested.+"(sy1_x : i64, 1 : i64) : i64
       }
   
 
@@ -186,14 +186,14 @@ Overriding same name variable in a nested scope:
   > EOF
   $ dune exec sylic -- core test_shadow_nested.sy
   module Test_shadow_nested
-  extern syliTest_shadow_nested.+ : (i64) -> (i64) -> i64
+  extern "syliTest_shadow_nested.+" : (i64) -> (i64) -> i64
   
   let syliTest_shadow_nested.x = 5 : i64
   
   let syliTest_shadow_nested.apply = fun () : unit ->
       {
         let sy1_x = 10 : i64
-        let sy2_result = syliTest_shadow_nested.+(sy1_x : i64, 1 : i64) : i64
+        let sy2_result = "syliTest_shadow_nested.+"(sy1_x : i64, 1 : i64) : i64
       }
   
 
@@ -205,10 +205,10 @@ Function with arguments
   > EOF
   $ dune exec sylic -- core test_args.sy
   module Test_args
-  extern syliTest_args.+ : (i64) -> (i64) -> i64
+  extern "syliTest_args.+" : (i64) -> (i64) -> i64
   
   let syliTest_args.add = fun (x, y) : i64 ->
-      syliTest_args.+(x : i64, y : i64) : i64
+      "syliTest_args.+"(x : i64, y : i64) : i64
   
   let syliTest_args.result = syliTest_args.add(3 : i64, 4 : i64) : i64
   
@@ -225,12 +225,12 @@ Nested functions with captured variables:
   > EOF
   $ dune exec sylic -- core test_nested.sy
   module Test_nested
-  extern syliTest_nested.+ : (i64) -> (i64) -> i64
+  extern "syliTest_nested.+" : (i64) -> (i64) -> i64
   
   let syliTest_nested.outer = fun (x) : (i64) -> i64 ->
       {
         let sy1_inner = fun (y) : i64 ->
-            syliTest_nested.+(x : i64, y : i64) : i64
+            "syliTest_nested.+"(x : i64, y : i64) : i64
         sy1_inner : (i64) -> i64
       }
   
@@ -249,14 +249,14 @@ Simple nested function without captured variables:
   > EOF
   $ dune exec sylic -- core test_nested_simple.sy
   module Test_nested_simple
-  extern syliTest_nested_simple.+ : (i64) -> (i64) -> i64
+  extern "syliTest_nested_simple.+" : (i64) -> (i64) -> i64
   
   let syliTest_nested_simple.y = 10 : i64
   
   let syliTest_nested_simple.outer = fun (x) : i64 ->
       {
         let sy1_inner = fun (y) : i64 ->
-            syliTest_nested_simple.+(syliTest_nested_simple.+(y : i64, x : i64) : i64, 1 : i64) : i64
+            "syliTest_nested_simple.+"("syliTest_nested_simple.+"(y : i64, x : i64) : i64, 1 : i64) : i64
         sy1_inner(2 : i64) : i64
       }
   
@@ -271,12 +271,12 @@ Toplevel free variable capture:
   > EOF
   $ dune exec sylic -- core test_toplevel_capture.sy
   module Test_toplevel_capture
-  extern syliTest_toplevel_capture.+ : (i64) -> (i64) -> i64
+  extern "syliTest_toplevel_capture.+" : (i64) -> (i64) -> i64
   
   let syliTest_toplevel_capture.x = 5 : i64
   
   let syliTest_toplevel_capture.add_to_x = fun (y) : i64 ->
-      syliTest_toplevel_capture.+(syliTest_toplevel_capture.x : i64, y : i64) : i64
+      "syliTest_toplevel_capture.+"(syliTest_toplevel_capture.x : i64, y : i64) : i64
   
   let syliTest_toplevel_capture.result = syliTest_toplevel_capture.add_to_x(10 : i64) : i64
   
@@ -293,20 +293,20 @@ Simple 2 nested functions with the same name:
   > EOF
   $ dune exec sylic -- core test_nested_simple.sy
   module Test_nested_simple
-  extern syliTest_nested_simple.+ : (i64) -> (i64) -> i64
+  extern "syliTest_nested_simple.+" : (i64) -> (i64) -> i64
   
   let syliTest_nested_simple.y = 10 : i64
   
   let syliTest_nested_simple.outer = fun (x) : unit ->
       {
         let sy1_inner = fun (y) : i64 ->
-            syliTest_nested_simple.+(syliTest_nested_simple.+(y : i64, x : i64) : i64, 1 : i64) : i64
+            "syliTest_nested_simple.+"("syliTest_nested_simple.+"(y : i64, x : i64) : i64, 1 : i64) : i64
         let sy2_inner = fun (z) : unit ->
             {
               let sy3_inner = fun (w) : i64 ->
-                  syliTest_nested_simple.+(syliTest_nested_simple.+(w : i64, z : i64) : i64, 2 : i64) : i64
+                  "syliTest_nested_simple.+"("syliTest_nested_simple.+"(w : i64, z : i64) : i64, 2 : i64) : i64
               let sy4_inner = fun (w) : i64 ->
-                  syliTest_nested_simple.+(syliTest_nested_simple.+(w : i64, z : i64) : i64, 3 : i64) : i64
+                  "syliTest_nested_simple.+"("syliTest_nested_simple.+"(w : i64, z : i64) : i64, 3 : i64) : i64
             }
       }
   
@@ -327,21 +327,21 @@ Non-recursive let shadowing a recursive function parameter:
   > EOF
   $ dune exec sylic -- core test_shadow_param.sy
   module Test_shadow_param
-  extern syliTest_shadow_param.- : (i64) -> (i64) -> i64
+  extern "syliTest_shadow_param.-" : (i64) -> (i64) -> i64
   
-  extern syliTest_shadow_param.+ : (i64) -> (i64) -> i64
+  extern "syliTest_shadow_param.+" : (i64) -> (i64) -> i64
   
-  extern syliTest_shadow_param.== : (i64) -> (i64) -> bool
+  extern "syliTest_shadow_param.==" : (i64) -> (i64) -> bool
   
   extern syliTest_shadow_param.syli_print_i64 : (i64) -> unit
   
   let rec syliTest_shadow_param.countdown = fun (n) : i64 ->
-      if syliTest_shadow_param.==(n : i64, 0 : i64) : bool
+      if "syliTest_shadow_param.=="(n : i64, 0 : i64) : bool
         0 : i64
       else
         {
-          let sy1_n = syliTest_shadow_param.countdown(syliTest_shadow_param.-(n : i64, 1 : i64) : i64) : i64
-          syliTest_shadow_param.+(sy1_n : i64, 1 : i64) : i64
+          let sy1_n = syliTest_shadow_param.countdown("syliTest_shadow_param.-"(n : i64, 1 : i64) : i64) : i64
+          "syliTest_shadow_param.+"(sy1_n : i64, 1 : i64) : i64
         }
   
   let syliTest_shadow_param.main = fun () : unit ->
@@ -366,19 +366,19 @@ Non-recursive let shadowing a recursive function parameter:
   module Test_param
   extern syliTest_param.syli_print_i64 : (i64) -> unit
   
-  extern syliTest_param.== : (i64) -> (i64) -> bool
+  extern "syliTest_param.==" : (i64) -> (i64) -> bool
   
-  extern syliTest_param.+ : (i64) -> (i64) -> i64
+  extern "syliTest_param.+" : (i64) -> (i64) -> i64
   
-  extern syliTest_param.- : (i64) -> (i64) -> i64
+  extern "syliTest_param.-" : (i64) -> (i64) -> i64
   
   let rec syliTest_param.countdown = fun (n) : i64 ->
-      if syliTest_param.==(n : i64, 0 : i64) : bool
+      if "syliTest_param.=="(n : i64, 0 : i64) : bool
         0 : i64
       else
         {
-          let sy1_n1 = syliTest_param.countdown(syliTest_param.-(n : i64, 1 : i64) : i64) : i64
-          syliTest_param.+(sy1_n1 : i64, 1 : i64) : i64
+          let sy1_n1 = syliTest_param.countdown("syliTest_param.-"(n : i64, 1 : i64) : i64) : i64
+          "syliTest_param.+"(sy1_n1 : i64, 1 : i64) : i64
         }
   
   let syliTest_param.main = fun () : unit ->
@@ -395,10 +395,10 @@ Closure as an argument:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.add = fun (x, y) : i64 ->
-      syliTest_multi.+(x : i64, y : i64) : i64
+      "syliTest_multi.+"(x : i64, y : i64) : i64
   
   let syliTest_multi.apply = fun (f, x, y) : 'a78 ->
       f(x : 'a72, y : 'a74) : 'a78
@@ -425,10 +425,10 @@ Closure as an argument:
   module Test_multi
   extern syliTest_multi.syli_print_i64 : (i64) -> unit
   
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.add = fun (x, y) : i64 ->
-      syliTest_multi.+(x : i64, y : i64) : i64
+      "syliTest_multi.+"(x : i64, y : i64) : i64
   
   let syliTest_multi.apply = fun (f, x, y) : 'a88 ->
       f(x : 'a82, y : 'a84) : 'a88
@@ -451,13 +451,13 @@ Closure as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.apply = fun (f, x, y) : 'a67 ->
       f(x : 'a61, y : 'a63) : 'a67
   
   let syliTest_multi.add = fun (x, y) : i64 ->
-      syliTest_multi.+(x : i64, y : i64) : i64
+      "syliTest_multi.+"(x : i64, y : i64) : i64
   
   let syliTest_multi.main = fun () : unit ->
       let sy1_result = syliTest_multi.apply(syliTest_multi.add : (i64) -> (i64) -> i64, 3 : i64, 4 : i64) : i64
@@ -473,14 +473,14 @@ Closure Lambda as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.apply = fun (f, x, y) : 'a62 ->
       f(x : 'a56, y : 'a58) : 'a62
   
   let syliTest_multi.main = fun () : unit ->
       let sy1_result = syliTest_multi.apply(fun (a, b) : i64 ->
-          syliTest_multi.+(a : i64, b : i64) : i64, 3 : i64, 4 : i64) : i64
+          "syliTest_multi.+"(a : i64, b : i64) : i64, 3 : i64, 4 : i64) : i64
   
 
 Closure Lambda as an argument with multiple captured variables:
@@ -493,7 +493,7 @@ Closure Lambda as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.apply = fun (f, x, y) : 'a68 ->
       f(x : 'a62, y : 'a64) : 'a68
@@ -501,7 +501,7 @@ Closure Lambda as an argument with multiple captured variables:
   let syliTest_multi.main = fun () : unit ->
       {
         let sy1_add = fun (a, b) : i64 ->
-            syliTest_multi.+(a : i64, b : i64) : i64
+            "syliTest_multi.+"(a : i64, b : i64) : i64
         let sy2_result = syliTest_multi.apply(sy1_add : (i64) -> (i64) -> i64, 3 : i64, 4 : i64) : i64
       }
   
@@ -516,7 +516,7 @@ Closure Lambda as an argument with multiple captured variables:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern syliTest_multi.+ : (i64) -> (i64) -> i64
+  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
   
   let syliTest_multi.apply = fun (f, x, y) : 'a65 ->
       f(x : 'a59, y : 'a61) : 'a65
@@ -524,7 +524,7 @@ Closure Lambda as an argument with multiple captured variables:
   let syliTest_multi.main = fun () : i64 ->
       {
         let sy1_result = syliTest_multi.apply(fun (a, b) : i64 ->
-            syliTest_multi.+(a : i64, b : i64) : i64, 3 : i64, 4 : i64) : i64
+            "syliTest_multi.+"(a : i64, b : i64) : i64, 3 : i64, 4 : i64) : i64
         2 : i64
       }
   

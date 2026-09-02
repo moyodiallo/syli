@@ -3,7 +3,7 @@
 (* ==================================== *)
 
 type path = string list
-type ident = { name : string; path : path; id : int; is_operator : bool }
+type ident = { name : string; path : path; id : int }
 type mut_flag = CMutable | CImmutable
 type rec_flag = CRecursive | CNonRecursive
 
@@ -129,6 +129,7 @@ and external_fn = {
   symbol : string;
   kind : external_kind;
   calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
+  public : bool;
 }
 
 and external_kind = Foreign | Primitive

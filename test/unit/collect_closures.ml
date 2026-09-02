@@ -13,17 +13,12 @@ let mk_structure_item id structure_item_desc : structure_item =
 let mk_toplevel_let id rec_flag name value : structure_item =
   mk_structure_item id
     (CStr_Let
-       {
-         rec_flag;
-         name = { name; path = []; id = 0; is_operator = false };
-         value;
-         public = true;
-       })
+       { rec_flag; name = { name; path = []; id = 0 }; value; public = true })
 
-let ident ?(id = 0) name = { name; path = []; id; is_operator = false }
+let ident ?(id = 0) name = { name; path = []; id }
 
 let mk_ident_expr eid name vid =
-  mk_expr eid (CExp_Ident { name; path = []; id = vid; is_operator = false })
+  mk_expr eid (CExp_Ident { name; path = []; id = vid })
 
 let mk_const_unit id = mk_expr id (CExp_Constant CConst_Unit)
 
@@ -31,11 +26,7 @@ let mk_lambda ?(ty_desc = unit_ty) params body : lambda =
   { params; body; ret_ty = { ty_desc } }
 
 let mk_prog structure_items =
-  {
-    id = 0;
-    name = { name = "Test"; path = []; id = 0; is_operator = false };
-    structure_items;
-  }
+  { id = 0; name = { name = "Test"; path = []; id = 0 }; structure_items }
 
 let pp_var_ids ids =
   "{"

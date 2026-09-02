@@ -45,6 +45,7 @@ let collect_global_names (prog : program_core) : StringSet.t =
       (fun acc (item : structure_item) ->
         match item.structure_item_desc with
         | CStr_Let { name; _ } -> StringSet.add name.name acc
+        | CStr_External { fname; _ } -> StringSet.add fname.name acc
         | _ -> acc)
       StringSet.empty prog.structure_items
   in

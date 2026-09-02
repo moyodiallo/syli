@@ -1,8 +1,10 @@
 Closure fan-out through if-then-else with dispatch:
   $ cat >test_fanout.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > primitive (-)  : i64 -> i64 -> i64 = "sub"
   > let add x y = x + y
   > let sub x y = x - y
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let sub1 = sub 1
   >   let f = if true then add1 else sub1
@@ -41,20 +43,36 @@ Closure fan-out through if-then-else with dispatch:
       return %Sy_var4:i64
   end
   
-  public fn syliTest_fanout.sub__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  public fn syliTest_fanout.sub(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 - %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_fanout.-" (%x:i64, %y:i64)
       return %Sy_var0:i64
   end
   
-  public fn syliTest_fanout.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  public fn syliTest_fanout.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_fanout.+" (%x:i64, %y:i64)
       return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_fanout.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  public fn "syliTest_fanout.-"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 - %y:i64
+      return %Sy_prim_result:i64
   end
   
   end

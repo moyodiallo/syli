@@ -2,6 +2,7 @@ Closure-to-object lowering tests — make_closure/partial_apply transformed to o
 
 Simple closure with one captured variable:
   $ cat >test_simple.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let apply_twice f x = f (f x)
   > let double_x x = x + x
   > let result = apply_twice double_x 10
@@ -29,11 +30,27 @@ Simple closure with one captured variable:
       gc_cycle
       %Sy_var0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_simple.double_x.56_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_simple.double_x.74_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 10:i64)
       return %Sy_var1:i64
+  end
+  
+  public fn syliTest_simple.double_x(%x:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_simple.+" (%x:i64, %x:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_simple.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   public fn syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64(%f:obj_ptr, %x:i64) -> i64:
@@ -49,15 +66,7 @@ Simple closure with one captured variable:
       return %Sy_var1:i64
   end
   
-  public fn syliTest_simple.double_x__i64_ret_i64(%x:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %x:i64
-      return %Sy_var0:i64
-  end
-  
-  private fn __make_closure_accum.syliTest_simple.double_x.56_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_simple.double_x.74_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -71,7 +80,7 @@ Simple closure with one captured variable:
   
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_simple.double_x__i64_ret_i64 (%Sy_s0:i64)
+      %Sy_rst:i64 = #call_direct syliTest_simple.double_x (%Sy_s0:i64)
       return %Sy_rst:i64
   end
   
@@ -80,6 +89,7 @@ Simple closure with one captured variable:
 
 Closure with multiple captured variables:
   $ cat >test_multi.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let apply f x y = f x y
   > let result = apply add 3 4
@@ -107,11 +117,27 @@ Closure with multiple captured variables:
       gc_cycle
       %Sy_var0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.61_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.79_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 3:i64, 4:i64)
       return %Sy_var1:i64
+  end
+  
+  public fn syliTest_multi.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:obj_ptr, %x:i64, %y:i64) -> i64:
@@ -124,15 +150,7 @@ Closure with multiple captured variables:
       return %Sy_var0:i64
   end
   
-  public fn syliTest_multi.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      return %Sy_var0:i64
-  end
-  
-  private fn __make_closure_accum.syliTest_multi.add.61_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_multi.add.79_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -147,7 +165,7 @@ Closure with multiple captured variables:
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_multi.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_multi.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -156,6 +174,7 @@ Closure with multiple captured variables:
 
 Closure with multipble chains of captured variables:
   $ cat >test_multi.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y z = x + y + z
   > let apply () =
   >   let add1 = add 1
@@ -173,14 +192,14 @@ Closure with multipble chains of captured variables:
       return
   end
   
-  public fn syliTest_multi.apply() -> i64:
+  public fn syliTest_multi.apply() -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.40_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.57_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -197,19 +216,27 @@ Closure with multipble chains of captured variables:
       %Sy_accum_ptr_2:fn_ptr = obj_get(%Sy_var1:obj_ptr, 0:i32):fn_ptr
       %Sy_var2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (3:i64, @transfer %Sy_var1:obj_ptr, 0:i64)
       
-      return %Sy_var2:i64
+      return
   end
   
-  public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
+  public fn syliTest_multi.add(%x:i64, %y:i64, %z:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      %Sy_var1:i64 = %Sy_var0:i64 + %z:i64
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      %Sy_var1:i64 = #call_direct "syliTest_multi.+" (%Sy_var0:i64, %z:i64)
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_multi.add.40_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_multi.add.57_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -238,7 +265,7 @@ Closure with multipble chains of captured variables:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
       %Sy_s2:i64 = cast(%Sy_x2:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_multi.add__i64__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64, %Sy_s2:i64)
+      %Sy_rst:i64 = #call_direct syliTest_multi.add (%Sy_s0:i64, %Sy_s1:i64, %Sy_s2:i64)
       return %Sy_rst:i64
   end
   
@@ -247,6 +274,7 @@ Closure with multipble chains of captured variables:
 
 Closure with multipble chains of captured variables:
   $ cat >test_multi.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y z = x + y + z
   > let apply () =
   >   let add1 = add 1
@@ -271,7 +299,7 @@ Closure with multipble chains of captured variables:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.42_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.59_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -288,16 +316,24 @@ Closure with multipble chains of captured variables:
       return @own %Sy_var1:obj_ptr
   end
   
-  public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
+  public fn syliTest_multi.add(%x:i64, %y:i64, %z:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      %Sy_var1:i64 = %Sy_var0:i64 + %z:i64
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      %Sy_var1:i64 = #call_direct "syliTest_multi.+" (%Sy_var0:i64, %z:i64)
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_multi.add.42_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_multi.add.59_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -326,7 +362,7 @@ Closure with multipble chains of captured variables:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
       %Sy_s2:i64 = cast(%Sy_x2:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_multi.add__i64__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64, %Sy_s2:i64)
+      %Sy_rst:i64 = #call_direct syliTest_multi.add (%Sy_s0:i64, %Sy_s1:i64, %Sy_s2:i64)
       return %Sy_rst:i64
   end
   
@@ -334,8 +370,10 @@ Closure with multipble chains of captured variables:
 
 
 Lambda with captured variable (env param):
+TODO: fix the bug
   $ cat >test_env.sy <<EOF
-  > let make_adder x = lambda y -> x + y
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > let make_adder x = fun y -> x + y
   > EOF
   $ dune exec sylic -- oir test_env.sy
   module Test_env :
@@ -348,14 +386,66 @@ Lambda with captured variable (env param):
       return
   end
   
+  public fn syliTest_env.make_adder(%x:i64) -> obj_ptr:
+    entry: bb0
+  
+    bb0:
+      gc_cycle
+      %__lambda_25:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.__lambda_25.39_ret_i64)
+      obj_set(%__lambda_25:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%__lambda_25:obj_ptr, 1:i32, %x:i64):i64
+      
+      return @own %__lambda_25:obj_ptr
+  end
+  
+  public fn __lambda_25(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_env.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_env.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  private fn __make_closure_accum.__lambda_25.39_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
+      %Sy_val1:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
+      release(%Sy_clos:obj_ptr)
+      %Sy_rst:i64 = #call_direct __wrapper.__lambda_25.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_val1:i64, %Sy_x0:i64)
+      return %Sy_rst:i64
+  end
+  
+  private fn __wrapper.__lambda_25.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
+      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
+      %Sy_rst:i64 = #call_direct __lambda_25 (%Sy_s0:i64, %Sy_s1:i64)
+      return %Sy_rst:i64
+  end
+  
   end
 
 
 Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal leaf:
   $ cat >test_chain.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let apply f x = f x
   > let add x y z = x + y + z
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let add2 = add1 10
   >   let result = add2 100
@@ -379,7 +469,7 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_chain.add.65_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_chain.add.82_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -399,16 +489,24 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       return %Sy_var2:i64
   end
   
-  public fn syliTest_chain.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
+  public fn syliTest_chain.add(%x:i64, %y:i64, %z:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      %Sy_var1:i64 = %Sy_var0:i64 + %z:i64
+      %Sy_var0:i64 = #call_direct "syliTest_chain.+" (%x:i64, %y:i64)
+      %Sy_var1:i64 = #call_direct "syliTest_chain.+" (%Sy_var0:i64, %z:i64)
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_chain.add.65_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  public fn "syliTest_chain.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_chain.add.82_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -437,13 +535,14 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
       %Sy_s2:i64 = cast(%Sy_x2:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_chain.add__i64__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64, %Sy_s2:i64)
+      %Sy_rst:i64 = #call_direct syliTest_chain.add (%Sy_s0:i64, %Sy_s1:i64, %Sy_s2:i64)
       return %Sy_rst:i64
   end
   
   end
 No closure (no object_create generated):
   $ cat >test_no_closure.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let x = 42
   > let y = x + 1
   > EOF
@@ -470,7 +569,7 @@ No closure (no object_create generated):
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %syliTest_no_closure.x:i64 + 1:i64
+      %Sy_var0:i64 = #call_direct "syliTest_no_closure.+" (%syliTest_no_closure.x:i64, 1:i64)
       return %Sy_var0:i64
   end
   
@@ -480,6 +579,14 @@ No closure (no object_create generated):
     bb0:
   
       return 42:i64
+  end
+  
+  public fn "syliTest_no_closure.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end

@@ -4,7 +4,7 @@
 type path = string list
 (** A dotted path of module names. *)
 
-type ident = { name : string; path : path; id : int; is_operator : bool }
+type ident = { name : string; path : path; id : int }
 (** An identifier with name, full name, path, unique ID, and [is_operator]. *)
 
 (** Mutability flag for core AST bindings. *)
@@ -157,6 +157,7 @@ and external_fn = {
   symbol : string;
   kind : external_kind;
   calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
+  public : bool;
 }
 (** An FFI external function declaration. *)
 

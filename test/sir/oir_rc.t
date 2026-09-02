@@ -2,11 +2,9 @@ OIR with RC insertion
 
 Record object with ref variable death:
   $ cat >test_rc1.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
-  > type person = { name: int64; age: int64 }
-  > fn main () =
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > type person = { name: i64; age: i64 }
+  > let main () =
   >     let record = { name = 10; age = 30 }
   >     syli_print_i64(record.age)
   > EOF
@@ -30,7 +28,7 @@ Record object with ref variable death:
   
     bb0:
       gc_cycle
-      %Sy_var0:person{{card=2 [0:i64; 1:i64]} tag=- unknow_cyclic} = object_create{size=2:i64}
+      %Sy_var0:syliTest_rc1.person{{card=2 [0:i64; 1:i64]} tag=- unknow_cyclic} = object_create{size=2:i64}
       
       obj_set(%Sy_var0:obj_ptr, 0:i64, 10:i64):i64
       obj_set(%Sy_var0:obj_ptr, 1:i64, 30:i64):i64
@@ -44,8 +42,9 @@ Record object with ref variable death:
 
 Multiple ref variables with independent lifetimes:
   $ cat >test_rc2.sy <<EOF
-  > type box = { value: int64 }
-  > fn main () =
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > type box = { value: i64 }
+  > let main () =
   >     let a = { value = 1 }
   >     let b = { value = 2 }
   >     let r = a.value + b.value
@@ -61,33 +60,42 @@ Multiple ref variables with independent lifetimes:
       return
   end
   
-  public fn syliTest_rc2.main() -> i64:
+  public fn syliTest_rc2.main() -> void:
     entry: bb0
   
     bb0:
       gc_cycle
-      %Sy_var0:box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_var0:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
       
       obj_set(%Sy_var0:obj_ptr, 0:i64, 1:i64):i64
       gc_cycle
-      %Sy_var1:box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_var1:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
       
       obj_set(%Sy_var1:obj_ptr, 0:i64, 2:i64):i64
       %Sy_var2:i64 = obj_get(%Sy_var0:obj_ptr, 0:i64):i64
       release(%Sy_var0:obj_ptr)
       %Sy_var3:i64 = obj_get(%Sy_var1:obj_ptr, 0:i64):i64
       release(%Sy_var1:obj_ptr)
-      %Sy_var4:i64 = %Sy_var2:i64 + %Sy_var3:i64
-      return %Sy_var4:i64
+      %Sy_var4:i64 = #call_direct "syliTest_rc2.+" (%Sy_var2:i64, %Sy_var3:i64)
+      return
+  end
+  
+  public fn "syliTest_rc2.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
 
 Closure with captured variable:
   $ cat >test_rc3.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let apply f x = f x
-  > fn main () =
+  > let main () =
   >     let r = apply (add 10) 20
   > EOF
   $ dune exec sylic -- oir test_rc3.sy
@@ -101,19 +109,35 @@ Closure with captured variable:
       return
   end
   
-  public fn syliTest_rc3.main() -> i64:
+  public fn syliTest_rc3.main() -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc3.add.54_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc3.add.72_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 10:i64):i64
       
       %Sy_var1:i64 = #call_direct syliTest_rc3.apply__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 20:i64)
-      return %Sy_var1:i64
+      return
+  end
+  
+  public fn syliTest_rc3.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_rc3.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_rc3.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   public fn syliTest_rc3.apply__fn_i64_i64__i64_ret_i64(%f:obj_ptr, %x:i64) -> i64:
@@ -126,15 +150,7 @@ Closure with captured variable:
       return %Sy_var0:i64
   end
   
-  public fn syliTest_rc3.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      return %Sy_var0:i64
-  end
-  
-  private fn __make_closure_accum.syliTest_rc3.add.54_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc3.add.72_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -150,7 +166,7 @@ Closure with captured variable:
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc3.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_rc3.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -158,9 +174,10 @@ Closure with captured variable:
 
 Closure returned from function — verifies the returned closure is NOT released before the return:
   $ cat >test_rc_returned.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let make_adder n = add n
-  > fn main () =
+  > let main () =
   >     let f = make_adder 10
   >     let r = f 5
   > EOF
@@ -175,32 +192,48 @@ Closure returned from function — verifies the returned closure is NOT released
       return
   end
   
-  public fn syliTest_rc_returned.main() -> i64:
+  public fn syliTest_rc_returned.main() -> void:
     entry: bb0
   
     bb0:
-      %Sy_var0:obj_ptr = #call_direct syliTest_rc_returned.make_adder__i64_ret_fn_i64_i64 (10:i64)
+      %Sy_var0:obj_ptr = #call_direct syliTest_rc_returned.make_adder (10:i64)
       %Sy_accum_ptr_0:fn_ptr = obj_get(%Sy_var0:obj_ptr, 0:i32):fn_ptr
       %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (5:i64, @transfer %Sy_var0:obj_ptr, 0:i64)
       
-      return %Sy_var1:i64
+      return
   end
   
-  public fn syliTest_rc_returned.make_adder__i64_ret_fn_i64_i64(%n:i64) -> obj_ptr:
+  public fn syliTest_rc_returned.make_adder(%n:i64) -> obj_ptr:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_returned.add.29_ret_i64)
+      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_returned.add.47_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, %n:i64):i64
       
       return @own %Sy_var0:obj_ptr
   end
   
-  private fn __make_closure_accum.syliTest_rc_returned.add.29_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  public fn syliTest_rc_returned.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_rc_returned.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_rc_returned.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_rc_returned.add.47_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -216,7 +249,7 @@ Closure returned from function — verifies the returned closure is NOT released
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc_returned.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_rc_returned.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -224,9 +257,10 @@ Closure returned from function — verifies the returned closure is NOT released
 
 Closure compose — two closures passed as borrowed parameters, released in caller after call:
   $ cat >test_rc_compose.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let compose f g x = f (g x)
-  > fn main () =
+  > let main () =
   >     let r = compose (add 10) (add 20) 5
   > EOF
   $ dune exec sylic -- oir test_rc_compose.sy
@@ -240,26 +274,42 @@ Closure compose — two closures passed as borrowed parameters, released in call
       return
   end
   
-  public fn syliTest_rc_compose.main() -> i64:
+  public fn syliTest_rc_compose.main() -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.68_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.86_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 10:i64):i64
       
       gc_cycle
       %Sy_var1:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.75_ret_i64)
+      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.93_ret_i64)
       obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       obj_set(%Sy_var1:obj_ptr, 1:i32, 20:i64):i64
       
       %Sy_var2:i64 = #call_direct syliTest_rc_compose.compose__fn_i64_i64__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, @transfer %Sy_var1:obj_ptr, 5:i64)
-      return %Sy_var2:i64
+      return
+  end
+  
+  public fn syliTest_rc_compose.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_rc_compose.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_rc_compose.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   public fn syliTest_rc_compose.compose__fn_i64_i64__fn_i64_i64__i64_ret_i64(%f:obj_ptr, %g:obj_ptr, %x:i64) -> i64:
@@ -275,15 +325,7 @@ Closure compose — two closures passed as borrowed parameters, released in call
       return %Sy_var1:i64
   end
   
-  public fn syliTest_rc_compose.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      return %Sy_var0:i64
-  end
-  
-  private fn __make_closure_accum.syliTest_rc_compose.add.68_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_compose.add.86_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -293,7 +335,7 @@ Closure compose — two closures passed as borrowed parameters, released in call
       return %Sy_rst:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_compose.add.75_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_compose.add.93_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -309,7 +351,7 @@ Closure compose — two closures passed as borrowed parameters, released in call
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc_compose.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_rc_compose.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -317,10 +359,11 @@ Closure compose — two closures passed as borrowed parameters, released in call
 
 Closure apply_twice — borrowed closure applied twice, still only released in caller:
   $ cat >test_rc_twice.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let apply f x = f x
   > let apply_twice f x = f (f x)
-  > fn main () =
+  > let main () =
   >     let r = apply_twice (add 1) 10
   > EOF
   $ dune exec sylic -- oir test_rc_twice.sy
@@ -334,19 +377,35 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
       return
   end
   
-  public fn syliTest_rc_twice.main() -> i64:
+  public fn syliTest_rc_twice.main() -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_twice.add.86_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_twice.add.104_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
       %Sy_var1:i64 = #call_direct syliTest_rc_twice.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 10:i64)
-      return %Sy_var1:i64
+      return
+  end
+  
+  public fn syliTest_rc_twice.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_rc_twice.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_rc_twice.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   public fn syliTest_rc_twice.apply_twice__fn_i64_i64__i64_ret_i64(%f:obj_ptr, %x:i64) -> i64:
@@ -362,15 +421,7 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
       return %Sy_var1:i64
   end
   
-  public fn syliTest_rc_twice.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      return %Sy_var0:i64
-  end
-  
-  private fn __make_closure_accum.syliTest_rc_twice.add.86_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_twice.add.104_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -386,7 +437,7 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc_twice.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_rc_twice.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   

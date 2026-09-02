@@ -26,6 +26,7 @@ type ctx = {
   block_counter : int ref;
   pending_merge_id : int option;
   ffi_external_functions : I.ffi_external_function list;
+  primitive_fns : I.function_cir list;
 }
 
 let empty_analysis : CA.core_closure_analysis =
@@ -45,6 +46,7 @@ let empty_ctx =
     block_counter = ref 0;
     pending_merge_id = None;
     ffi_external_functions = [];
+    primitive_fns = [];
   }
 
 let fresh_id = Syli_ir.Cir.fresh_id
@@ -125,93 +127,7 @@ let assign_cast_var new_v src_v to_ty =
 (*  Type / operator helpers                            *)
 (* =================================================== *)
 
-let default_cyclic_prop = I.Unknown_cyclic_prop
-
-let mut_flag_of_core = function
-  | CMutable -> I.Mutable
-  | CImmutable -> I.Immutable
-
-let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
-  let rec go (t : C.ty) : I.ir_type =
-    match t.ty_desc with
-    | CTy_Constant c -> (
-        match c with
-        | CTy_Int64 -> I.CR_I64
-        | CTy_Int32 -> I.CR_I32
-        | CTy_Int16 -> I.CR_I16
-        | CTy_Int8 -> I.CR_I8
-        | CTy_UInt64 -> I.CR_U64
-        | CTy_UInt32 -> I.CR_U32
-        | CTy_UInt16 -> I.CR_U16
-        | CTy_UInt8 -> I.CR_U8
-        | CTy_Unit -> I.CR_Void
-        | CTy_Bool -> I.CR_Bool
-        | CTy_F32 -> I.CR_F32
-        | CTy_F64 -> I.CR_F64
-        | CTy_String -> I.CR_String
-        | CTy_Char -> I.CR_Char)
-    | CTy_Var v -> I.CR_GenericTyp { type_var = v }
-    | CTy_Arrow (arg, ret) ->
-        I.CR_Arrow
-          ( [ { I.id = fresh_id (); I.ir_type = go arg } ],
-            { I.id = fresh_id (); I.ir_type = go ret } )
-    | CTy_Tuple tys ->
-        let fields =
-          List.mapi
-            (fun i t ->
-              {
-                I.field_idx = i;
-                field_ty = { I.id = fresh_id (); I.ir_type = go t };
-                field_mut = I.Mutable;
-              })
-            tys
-        in
-        I.CR_Obj
-          {
-            named = None;
-            obj_kind = I.CR_Record_kind { fields; cardinal = List.length tys };
-            tag_variant = None;
-            cyclic_prop = default_cyclic_prop;
-          }
-    | CTy_Array elem ->
-        I.CR_Obj
-          {
-            named = None;
-            obj_kind =
-              I.CR_Array_kind
-                { element_ty = { I.id = fresh_id (); I.ir_type = go elem } };
-            tag_variant = None;
-            cyclic_prop = default_cyclic_prop;
-          }
-    | CTy_Defined { name; _ } -> (
-        match StringMap.find_opt name.name type_defs with
-        | Some { def = CTydef_Record decl_fields; _ } ->
-            let fields =
-              List.map
-                (fun (f : C.record_field_ty) ->
-                  {
-                    I.field_idx = f.field_idx;
-                    field_ty = { I.id = fresh_id (); I.ir_type = go f.field_ty };
-                    field_mut = mut_flag_of_core f.field_mut;
-                  })
-                decl_fields
-            in
-            I.CR_Obj
-              {
-                named = Some name.name;
-                obj_kind =
-                  I.CR_Record_kind { fields; cardinal = List.length fields };
-                tag_variant = None;
-                cyclic_prop = default_cyclic_prop;
-              }
-        | Some { def = CTydef_Alias t; _ } -> failwith "Not supported yet"
-        | Some { def = CTydef_Variant _ | CTydef_Abstract; _ } ->
-            failwith "Not yet supported"
-        | None ->
-            let msg = Printf.sprintf "Type %s not found" name.name in
-            failwith msg)
-  in
-  { I.id = fresh_id (); I.ir_type = go cty }
+let mk_ir_ty = Gen_primitives.mk_ir_ty
 
 let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
   match (a, b) with
@@ -274,13 +190,8 @@ let arg_ty_of_operand = function
   | I.CR_OConstant (_, ty) -> ty
   | I.CR_OVar v -> v.I.ty
 
-let rec get_args_ty (ty : C.ty) : C.ty list =
-  match ty.ty_desc with
-  | CTy_Arrow (arg, ret) -> arg :: get_args_ty ret
-  | _ -> []
-
-let rec get_return_ty (ty : C.ty) : C.ty =
-  match ty.ty_desc with CTy_Arrow (_, ret) -> get_return_ty ret | _ -> ty
+let get_args_ty = Gen_primitives.get_args_ty
+let get_return_ty = Gen_primitives.get_return_ty
 
 let lower_closure_apply (ctx : ctx) (closure_var : I.var)
     (closure_fun_ty : C.ty) (concrete_arg_ops : I.operand list) (out_ty : I.ty)
@@ -322,6 +233,8 @@ let collect_toplevel_functions (prog : C.program_core) : int StringMap.t =
           | CExp_Lambda lam ->
               StringMap.add name.name (List.length lam.params) acc
           | _ -> acc)
+      | CStr_External { fname; ty; external_fn; _ } ->
+          StringMap.add fname.name (List.length (get_args_ty ty)) acc
       | _ -> acc)
     StringMap.empty prog.C.structure_items
 
@@ -440,9 +353,8 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       match value.node with
       | CExp_Lambda lam ->
           (* Lift function, create closure *)
-          let param_tys = get_args_ty value.ty in
           let ctx, fn_sir =
-            lower_lambda_function ctx lambda_name lam param_tys value.id
+            lower_lambda_function ctx lambda_name lam value.ty value.id
           in
           let fn_sir = { fn_sir with I.visibility = I.CR_Private } in
           let ctx = { ctx with lifted_fns = fn_sir :: ctx.lifted_fns } in
@@ -555,10 +467,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       (ctx, I.CR_OVar result_var)
   | CExp_Lambda lam ->
       let lambda_name = Printf.sprintf "__lambda_%d" (fresh_id ()) in
-      let param_tys = get_args_ty e.ty in
-      let ctx, fn_sir =
-        lower_lambda_function ctx lambda_name lam param_tys e.id
-      in
+      let ctx, fn_sir = lower_lambda_function ctx lambda_name lam e.ty e.id in
       let ctx = { ctx with lifted_fns = fn_sir :: ctx.lifted_fns } in
       let ctx, fn_var = fresh_var_with_name ctx lambda_name out_ty in
       let free_var_idents =
@@ -664,9 +573,16 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       raise (Lowering_error "core form not lowered to SIR yet")
 
 and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
-    (param_tys : C.ty list) (lambda_expr_id : int) : ctx * I.function_cir =
+    (lam_ty : C.ty) (lambda_expr_id : int) : ctx * I.function_cir =
   let param_tys =
-    List.filter (fun ty -> ty.ty_desc <> CTy_Constant CTy_Unit) param_tys
+    (* param should match param_tys *)
+    let rec take n xs =
+      if n <= 0 then []
+      else match xs with x :: rest -> x :: take (n - 1) rest | [] -> []
+    in
+    get_args_ty lam_ty
+    |> List.filter (fun ty -> ty.ty_desc <> CTy_Constant CTy_Unit)
+    |> take (List.length lam.params)
   in
   let free_idents =
     match Hashtbl.find_opt ctx.analysis.CA.closure_infos lambda_expr_id with
@@ -844,9 +760,8 @@ let lower_program (prog : C.program_core) : I.module_cir =
         | CStr_Let { name; value; _ } -> (
             match value.node with
             | CExp_Lambda lam ->
-                let param_tys = get_args_ty value.ty in
                 let ctx, fn =
-                  lower_lambda_function ctx name.name lam param_tys value.id
+                  lower_lambda_function ctx name.name lam value.ty value.id
                 in
                 let fn_ty = mk_ir_ty type_defs value.ty in
                 let fn_var : I.var =
@@ -947,8 +862,30 @@ let lower_program (prog : C.program_core) : I.module_cir =
                     I.calling_convention = external_fn.calling_convention;
                   }
                 in
+                let ext_ty = mk_ir_ty type_defs ty in
+                let ext_var : I.var =
+                  { I.id = fresh_id (); I.name = fname.name; I.ty = ext_ty }
+                in
+                let ctx =
+                  { ctx with env = StringMap.add fname.name ext_var ctx.env }
+                in
                 (ctx, fns, globs, ext_fn :: exts)
-            | Primitive -> (ctx, fns, globs, exts)))
+            | Primitive ->
+                let prim_ty = mk_ir_ty type_defs ty in
+                let prim_var : I.var =
+                  { I.id = fresh_id (); I.name = fname.name; I.ty = prim_ty }
+                in
+                let prim_fn =
+                  Gen_primitives.build type_defs ~fn_name:fname.name
+                    ~symbol:external_fn.symbol ~is_public:external_fn.public ty
+                in
+                let ctx =
+                  { ctx with env = StringMap.add fname.name prim_var ctx.env }
+                in
+                ( { ctx with primitive_fns = prim_fn :: ctx.primitive_fns },
+                  fns,
+                  globs,
+                  exts )))
       ({ empty_ctx with toplevel_functions; analysis; type_defs }, [], [], [])
       prog.C.structure_items
   in
@@ -957,7 +894,8 @@ let lower_program (prog : C.program_core) : I.module_cir =
     build_module_initializer prog.C.name.name global_values
   in
   let functions =
-    module_init_fn :: List.rev (root_ctx.lifted_fns @ List.rev functions)
+    (module_init_fn :: List.rev (root_ctx.lifted_fns @ List.rev functions))
+    @ List.rev root_ctx.primitive_fns
   in
   {
     I.name = prog.C.name.name;

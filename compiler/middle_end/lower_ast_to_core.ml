@@ -40,11 +40,35 @@ let qualify_type_name (env : env) (name : string) : string =
         (Desugar_error
            (Printf.sprintf "Type %s not found in type substitution map" name))
 
-let letbind_rename (env : env) (name : string) (id : int) : string =
-  if not @@ IntSet.mem id env.toplevel_last_ids then
+let toplvel_rename env (ident : Typed_ast.ident) =
+  let rename_possible_public (env : env) (name : string) (id : int) : string =
+    if not @@ IntSet.mem id env.toplevel_last_ids then
+      let _ = incr env.letbind_inc_id in
+      "sy" ^ string_of_int !(env.letbind_inc_id) ^ "_" ^ name
+    else name
+  in
+  let qname =
+    toplevel_name env (rename_possible_public env ident.name ident.id)
+  in
+  if ident.is_operator then
+    (*e.g. [syliTest_file.==] becomes ["syliTest_file.=="]*)
+    Printf.sprintf "\"%s\"" qname
+  else qname
+
+let lebind_expr_rename env (ident : Typed_ast.ident) =
+  let rename (env : env) (name : string) (id : int) : string =
     let _ = incr env.letbind_inc_id in
     "sy" ^ string_of_int !(env.letbind_inc_id) ^ "_" ^ name
-  else name
+  in
+  let qname = rename env ident.name ident.id in
+  if ident.is_operator then
+    (*e.g. [syliTest_file.==] becomes ["syliTest_file.=="]*)
+    Printf.sprintf "\"%s\"" qname
+  else qname
+
+let gen_any_identifier env () =
+  let _ = incr env.letbind_inc_id in
+  "sy_any_" ^ string_of_int !(env.letbind_inc_id)
 
 let rec desugar_ty env (t : Typed_ast.ty) : ty =
   let ty_desc =
@@ -79,7 +103,6 @@ let rec desugar_ty env (t : Typed_ast.ty) : ty =
                 name = qualify_type_name env d.name.name;
                 path = env_path_of_ident d.name;
                 id = d.name.id;
-                is_operator = d.name.is_operator;
               };
             args = List.map (desugar_ty env) d.args;
           }
@@ -101,13 +124,7 @@ let rec desugar_pattern (p : Typed_ast.pattern) : pattern =
     | TPat_CharLit s -> Pat_CharLit s
     | TPat_StringLit s -> Pat_StringLit s
     | TPat_Ident name ->
-        Pat_Ident
-          {
-            name = name.name;
-            path = name.path;
-            id = name.id;
-            is_operator = name.is_operator;
-          }
+        Pat_Ident { name = name.name; path = name.path; id = name.id }
     | TPat_Tuple { elements } ->
         error_at p.loc "tuple pattern is not lowered to core yet"
     | TPat_Record { fields } ->
@@ -116,12 +133,7 @@ let rec desugar_pattern (p : Typed_ast.pattern) : pattern =
              (fun (f : Typed_ast.pattern_record_field) ->
                {
                  name =
-                   {
-                     name = f.name.name;
-                     path = f.name.path;
-                     id = f.name.id;
-                     is_operator = f.name.is_operator;
-                   };
+                   { name = f.name.name; path = f.name.path; id = f.name.id };
                  pattern = Option.map desugar_pattern f.pattern;
                })
              fields)
@@ -144,12 +156,7 @@ let desugar_lambda_params (env : env) (params : Typed_ast.param list) :
            match p.pattern.pattern_desc with
            | TPat_Ident name ->
                Some
-                 ( {
-                     name = name.name;
-                     path = name.path;
-                     id = p.pattern.id;
-                     is_operator = name.is_operator;
-                   },
+                 ( { name = name.name; path = name.path; id = p.pattern.id },
                    (name.name, name.name) )
            | TPat_Unit -> None
            | _ -> error_at p.loc "lambda parameter must desugar to identifier")
@@ -181,13 +188,7 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
             | TConst_StringLit s -> CConst_StringLit s),
           env )
     | TExp_Ident i ->
-        ( CExp_Ident
-            {
-              name = qualify_name env i.name;
-              path = i.path;
-              id = i.id;
-              is_operator = i.is_operator;
-            },
+        ( CExp_Ident { name = qualify_name env i.name; path = i.path; id = i.id },
           env )
     | TExp_Tuple _ ->
         error_at e.loc "tuple expressions are not lowered to Core yet"
@@ -244,7 +245,7 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
           | _ ->
               error_at l.loc "the pattern should be desugared to an identifier"
         in
-        let qualified_name = letbind_rename env name.name name.id in
+        let qualified_name = lebind_expr_rename env name in
         let new_bind_subst =
           StringMap.add name.name qualified_name env.bind_subst
         in
@@ -260,12 +261,7 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
                 | TRecursive -> CRecursive
                 | TNonRecursive -> CNonRecursive);
               name =
-                {
-                  name = qualified_name;
-                  path = name.path;
-                  id = l.pattern.id;
-                  is_operator = name.is_operator;
-                };
+                { name = qualified_name; path = name.path; id = l.pattern.id };
               value = fst (desugar_expr value_env l.value);
             },
           { env with bind_subst = new_bind_subst } )
@@ -408,7 +404,6 @@ let desugar_type_decl (env : env) (td : Typed_ast.ty_decl) : ty_decl =
         name = toplevel_name env td.name.name;
         path = td.name.path;
         id = td.name.id;
-        is_operator = td.name.is_operator;
       };
     params = List.map (fun (p : Typed_ast.ident) -> p.name) td.params;
     def;
@@ -424,13 +419,28 @@ let rec desugarize_structure_items (env : env)
             let name =
               match ldef.pattern.pattern_desc with
               | TPat_Ident n -> n
+              | TPat_Unit ->
+                  {
+                    name = gen_any_identifier env ();
+                    path = [];
+                    id = ldef.pattern.id;
+                    is_operator = false;
+                    loc = ldef.loc;
+                  }
+              | TPat_Any ->
+                  {
+                    name = gen_any_identifier env ();
+                    path = [];
+                    id = ldef.pattern.id;
+                    loc = ldef.loc;
+                    is_operator = false;
+                  }
               | _ ->
                   error_at ldef.loc
-                    "top-level let pattern must desugar to identifier"
+                    "top-level let pattern must be simplified to an \
+                     identifier, unit, or wildcard"
             in
-            let qname =
-              toplevel_name env @@ letbind_rename env name.name name.id
-            in
+            let qname = toplvel_rename env name in
             let new_bind_subst = StringMap.add name.name qname env.bind_subst in
             let body_env =
               match ldef.rec_flag with
@@ -448,12 +458,7 @@ let rec desugarize_structure_items (env : env)
                         | TRecursive -> CRecursive
                         | TNonRecursive -> CNonRecursive);
                       name =
-                        {
-                          name = qname;
-                          path = name.path;
-                          id = ldef.pattern.id;
-                          is_operator = name.is_operator;
-                        };
+                        { name = qname; path = name.path; id = ldef.pattern.id };
                       value = fst (desugar_expr body_env ldef.value);
                       public = true;
                       (*TODO: should check the signature to decide*)
@@ -465,8 +470,7 @@ let rec desugarize_structure_items (env : env)
               {
                 env with
                 bind_subst =
-                  StringMap.add fname.name
-                    (toplevel_name env fname.name)
+                  StringMap.add fname.name (toplvel_rename env fname)
                     env.bind_subst;
               }
             in
@@ -481,7 +485,6 @@ let rec desugarize_structure_items (env : env)
                           name = qualify_name env' fname.name;
                           path = fname.path;
                           id = fname.id;
-                          is_operator = fname.is_operator;
                         };
                       ty = desugar_ty env ty;
                       external_fn =
@@ -492,11 +495,16 @@ let rec desugarize_structure_items (env : env)
                             | Typed_ast.Foreign -> Foreign
                             | Typed_ast.Primitive -> Primitive);
                           calling_convention = external_fn.calling_convention;
+                          public = true;
+                          (*TODO: should check the signature to decide, a function 
+                            is public when it appears into signature*)
                         };
                     };
               }
               :: acc )
         | Typed_ast.TStr_Type td ->
+            (* We don't rename because the type should be uniq in the module:
+              TODO: forbid redefining the type in the same structure and signature *)
             let qname = toplevel_name env td.name.name in
             let env' =
               {
@@ -536,7 +544,6 @@ let desugarize_module_structure (module_structure : Typed_ast.module_structure)
         name = module_structure.name.name;
         path = module_structure.name.path;
         id = module_structure.name.id;
-        is_operator = module_structure.name.is_operator;
       };
     structure_items =
       desugarize_structure_items env module_structure.structure_items;
@@ -555,7 +562,9 @@ let rec compute_toplevel_last_ids (items : Typed_ast.structure_item list) :
           | _ -> acc)
       | Typed_ast.TStr_ModuleStructure ms ->
           IntSet.union acc (compute_toplevel_last_ids ms.structure_items)
-      | _ -> acc)
+      | Typed_ast.TStr_External { fname; _ } -> IntSet.add fname.id acc
+      | Typed_ast.TStr_Type td -> acc
+      | Typed_ast.TStr_ModuleSignature _ -> acc)
     IntSet.empty items
 
 let desugarize_ast (program : Typed_ast.module_structure) : program_core =
@@ -575,7 +584,6 @@ let desugarize_ast (program : Typed_ast.module_structure) : program_core =
         name = program.name.name;
         path = program.name.path;
         id = program.name.id;
-        is_operator = program.name.is_operator;
       };
     structure_items =
       desugarize_structure_items root_env program.structure_items;

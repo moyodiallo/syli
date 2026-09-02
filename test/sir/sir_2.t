@@ -1,6 +1,7 @@
 A function with let bindings:
   $ cat >test_let.sy <<EOF
-  > fn let_bingings () =
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let let_bingings () =
   >   let x = 10
   >   let y = x + 32
   > EOF
@@ -15,13 +16,22 @@ A function with let bindings:
       return
   end
   
-  public fn syliTest_let.let_bingings() -> i64:
+  public fn syliTest_let.let_bingings() -> void:
     entry: bb0
   
     bb0:
-      %syliTest_let.let_bingings__x:i64 = cast(10:i64 as i64)
-      %Sy_var0:i64 = %syliTest_let.let_bingings__x:i64 + 32:i64
-      return %Sy_var0:i64
+      %sy1_x:void = cast(10:i64 as void)
+      %Sy_var0:i64 = cast(%sy1_x:void as i64)
+      %Sy_var1:i64 = #call_direct "syliTest_let.+" (%Sy_var0:i64, 32:i64)
+      return
+  end
+  
+  public fn "syliTest_let.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
@@ -29,7 +39,8 @@ A function with let bindings:
 
 Simple Partial apply (ir_fp — after generate_functions, before monomorphize):
   $ cat >test_partial.sy <<EOF
-  > fn add x y = x + y
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let add x y = x + y
   > let m = add 5
   > EOF
   $ dune exec sylic -- cir_raw test_partial.sy
@@ -56,12 +67,20 @@ Simple Partial apply (ir_fp — after generate_functions, before monomorphize):
       return %Sy_var0:(i64 -> i64)
   end
   
-  public fn syliTest_partial.add(%x:?25, %y:?25) -> ?25:
+  public fn syliTest_partial.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:?25 = %x:?25 + %y:?25
-      return %Sy_var0:?25
+      %Sy_var0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
@@ -69,7 +88,8 @@ Simple Partial apply (ir_fp — after generate_functions, before monomorphize):
 
 Simple Partial apply (ir):
   $ cat >test_partial.sy <<EOF
-  > fn add x y = x + y
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let add x y = x + y
   > let m = add 5
   > EOF
   $ dune exec sylic -- cir_raw test_partial.sy
@@ -96,12 +116,20 @@ Simple Partial apply (ir):
       return %Sy_var0:(i64 -> i64)
   end
   
-  public fn syliTest_partial.add(%x:?25, %y:?25) -> ?25:
+  public fn syliTest_partial.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:?25 = %x:?25 + %y:?25
-      return %Sy_var0:?25
+      %Sy_var0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
@@ -109,7 +137,8 @@ Simple Partial apply (ir):
 
 Simple Partial apply (ir_mono):
   $ cat >test_partial.sy <<EOF
-  > fn add x y = x + y
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let add x y = x + y
   > let m = add 5
   > EOF
   $ dune exec sylic -- cir_mono test_partial.sy | grep "#make_closure"
@@ -118,7 +147,8 @@ Simple Partial apply (ir_mono):
 
 Simple Partial apply (ir_raw):
   $ cat >test_partial.sy <<EOF
-  > fn add x y = x + y
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let add x y = x + y
   > let m = add 5
   > EOF
   $ dune exec sylic -- cir_raw test_partial.sy
@@ -145,12 +175,20 @@ Simple Partial apply (ir_raw):
       return %Sy_var0:(i64 -> i64)
   end
   
-  public fn syliTest_partial.add(%x:?25, %y:?25) -> ?25:
+  public fn syliTest_partial.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:?25 = %x:?25 + %y:?25
-      return %Sy_var0:?25
+      %Sy_var0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
@@ -158,7 +196,8 @@ Simple Partial apply (ir_raw):
 
 Partial apply from a lambda with captured local value:
   $ cat >_tmp_partial2.sy <<EOF
-  > fn make_partial () = (lambda x y -> x + y) 5
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let make_partial () = (fun x y -> x + y) 5
   > EOF
   $ dune exec sylic -- cir_raw _tmp_partial2.sy
   module _tmp_partial2 :
@@ -175,17 +214,25 @@ Partial apply from a lambda with captured local value:
     entry: bb0
   
     bb0:
-      %__lambda_13:(i64, i64 -> i64) = #make_closure {__lambda_13} () ()
-      %Sy_var0:(i64 -> i64) = #partial_apply {%__lambda_13:(i64, i64 -> i64)} (5:i64)
+      %__lambda_29:(i64, i64 -> i64) = #make_closure {__lambda_29} () ()
+      %Sy_var0:(i64 -> i64) = #partial_apply {%__lambda_29:(i64, i64 -> i64)} (5:i64)
       return %Sy_var0:(i64 -> i64)
   end
   
-  public fn __lambda_13(%x:i64, %y:i64) -> i64:
+  public fn __lambda_29(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
+      %Sy_var0:i64 = #call_direct "syli_tmp_partial2.+" (%x:i64, %y:i64)
       return %Sy_var0:i64
+  end
+  
+  public fn "syli_tmp_partial2.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end

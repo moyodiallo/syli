@@ -3,7 +3,7 @@ open Syli_core.Closure_analysis
 
 let unit_ty = { ty_desc = CTy_Constant CTy_Unit }
 let i64_ty = { ty_desc = CTy_Constant CTy_Int64 }
-let ident ?(id = 0) name = { name; path = []; id; is_operator = false }
+let ident ?(id = 0) name = { name; path = []; id }
 let mk_expr ?(ty = unit_ty) id node = { id; node; ty }
 let mk_const_unit id = mk_expr id (CExp_Constant CConst_Unit)
 let mk_const_i64 id n = mk_expr ~ty:i64_ty id (CExp_Constant (CConst_IntLit n))
