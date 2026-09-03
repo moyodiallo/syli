@@ -1,6 +1,9 @@
 (** This module defines the core (normalized) AST types produced after
     type-checking and used by the middle-end passes. *)
 
+val fresh_id : unit -> int
+(** Returns a fresh unique integer ID. *)
+
 type path = string list
 (** A dotted path of module names. *)
 

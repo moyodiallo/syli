@@ -2,6 +2,13 @@
 (* Core AST for Syli                    *)
 (* ==================================== *)
 
+(* Unique expression ID *)
+let expr_id_counter = ref 0
+
+let fresh_id () =
+  incr expr_id_counter;
+  !expr_id_counter
+
 type path = string list
 type ident = { name : string; path : path; id : int }
 type mut_flag = CMutable | CImmutable

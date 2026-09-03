@@ -44,12 +44,66 @@ If-then-else with i64 result:
 
 If-then-else with bool comparison:
   $ cat >test_if_cmp.sy <<EOF
+  > primitive (>)  : i64 -> i64 -> bool = "gt"
   > let x = 10
   > let y = if x > 5 then 1 else 0
   > EOF
   $ dune exec sylic -- cir test_if_cmp.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '>'")
-  [2]
+  module Test_if_cmp :
+  globals:
+  global public syliTest_if_cmp.x : i64 = 10 init=__init_global.syliTest_if_cmp.x
+  global public syliTest_if_cmp.y : i64 = null init=__init_global.syliTest_if_cmp.y
+  
+  
+  functions:
+  public fn __init.Test_if_cmp() -> void:
+    entry: bb0
+  
+    bb0:
+      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_if_cmp.x ()
+      store_global syliTest_if_cmp.x = %__init_tmp_0:i64
+      %__init_tmp_1:i64 = #call_direct __init_global.syliTest_if_cmp.y ()
+      store_global syliTest_if_cmp.y = %__init_tmp_1:i64
+      return
+  end
+  
+  private fn __init_global.syliTest_if_cmp.y() -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:bool = #call_direct "syliTest_if_cmp.>" (%syliTest_if_cmp.x:i64, 5:i64)
+      cond_br %Sy_var0:bool, bb1, bb2
+  
+    bb2:
+      %Sy_var1:i64 = move(0:i64)
+      goto bb3
+  
+    bb1:
+      %Sy_var1:i64 = move(1:i64)
+      goto bb3
+  
+    bb3:
+  
+      return %Sy_var1:i64
+  end
+  
+  private fn __init_global.syliTest_if_cmp.x() -> i64:
+    entry: bb0
+  
+    bb0:
+  
+      return 10:i64
+  end
+  
+  public fn "syliTest_if_cmp.>"(%x:i64, %y:i64) -> bool:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:bool = %x:i64 > %y:i64
+      return %Sy_prim_result:bool
+  end
+  
+  end
 
 If-then-else without else (unit):
   $ cat >test_if_unit.sy <<EOF
@@ -57,17 +111,12 @@ If-then-else without else (unit):
   > EOF
   $ dune exec sylic -- cir test_if_unit.sy
   module Test_if_unit :
-  globals:
-  global public syliTest_if_unit.x : void = null init=__init_global.syliTest_if_unit.x
-  
-  
   functions:
   public fn __init.Test_if_unit() -> void:
     entry: bb0
   
     bb0:
       %__init_tmp_0:void = #call_direct __init_global.syliTest_if_unit.x ()
-      store_global syliTest_if_unit.x = %__init_tmp_0:void
       return
   end
   
@@ -79,16 +128,16 @@ If-then-else without else (unit):
       cond_br %Sy_var0:bool, bb1, bb2
   
     bb2:
-      %Sy_var1:void = move(null:void)
+      nop
       goto bb3
   
     bb1:
-      %Sy_var1:void = move(null:void)
+      nop
       goto bb3
   
     bb3:
   
-      return %Sy_var1:void
+      return
   end
   
   end

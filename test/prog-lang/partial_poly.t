@@ -2,7 +2,7 @@ Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
   > let apply f x y = f x y
   > let add x y z = x
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let result =
   >     if true then
@@ -20,45 +20,45 @@ Closure as an argument with multiple captured variables:
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main() -> void:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?88, ?89 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
       %Sy_var1:bool = cast(true:bool as bool)
       cond_br %Sy_var1:bool, bb1, bb2
   
     bb1:
-      %Sy_var3:(i64, i64 -> i64) = cast(%Sy_var0:(?88, ?89 -> i64) as (i64, i64 -> i64))
+      %Sy_var3:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
       %Sy_var4:i64 = #call_direct syliTest_multi.apply (%Sy_var3:(i64, i64 -> i64), 3:i64, 4:i64)
       %Sy_var2:i64 = move(%Sy_var4:i64)
       goto bb3
   
     bb2:
-      %Sy_var5:(f64, f64 -> i64) = cast(%Sy_var0:(?88, ?89 -> i64) as (f64, f64 -> i64))
+      %Sy_var5:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
       %Sy_var6:i64 = #call_direct syliTest_multi.apply (%Sy_var5:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
       %Sy_var2:i64 = move(%Sy_var6:i64)
       goto bb3
   
     bb3:
   
-      return %Sy_var2:i64
+      return
   end
   
-  public fn syliTest_multi.add(%x:?79, %y:?81, %z:?83) -> ?79:
+  public fn syliTest_multi.add(%x:?80, %y:?82, %z:?84) -> ?80:
     entry: bb0
   
     bb0:
   
-      return %x:?79
+      return %x:?80
   end
   
-  public fn syliTest_multi.apply(%f:(?71, ?73 -> ?77), %x:?71, %y:?73) -> ?77:
+  public fn syliTest_multi.apply(%f:(?72, ?74 -> ?78), %x:?72, %y:?74) -> ?78:
     entry: bb0
   
     bb0:
-      %Sy_var0:?77 = #call_apply {%f:(?71, ?73 -> ?77)}  (%x:?71, %y:?73)
-      return %Sy_var0:?77
+      %Sy_var0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
+      return %Sy_var0:?78
   end
   
   end
@@ -67,9 +67,9 @@ Closure as an argument with multiple captured variables:
   Typed test_multi.sy successfully: module Test_multi with 3 top-level typed items
   Type Environment:
   {
-    add : forall '79 '81 '83. ('79, '81, '83) -> '79
-    apply : forall '71 '73 '77. (('71, '73) -> '77, '71, '73) -> '77
-    main : (unit) -> int64
+    add : forall '80 '82 '84. '80 -> '82 -> '84 -> '80
+    apply : forall '72 '74 '78. '72 -> '74 -> '78 -> '72 -> '74 -> '78
+    main : unit -> unit
   }
 
   $ dune exec sylic -- oir test_multi.sy
@@ -83,14 +83,14 @@ Closure as an argument with multiple captured variables:
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main() -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.65_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.62_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -128,7 +128,7 @@ Closure as an argument with multiple captured variables:
   
     bb3:
   
-      return %Sy_var2:i64
+      return
   end
   
   public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:obj_ptr, %x:i64, %y:i64) -> i64:
@@ -169,7 +169,7 @@ Closure as an argument with multiple captured variables:
       return %x:i64
   end
   
-  private fn __make_closure_accum.dispatch.65_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.62_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:

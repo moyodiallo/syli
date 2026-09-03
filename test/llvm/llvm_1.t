@@ -10,6 +10,18 @@ Integer literal emits an i64 function:
   
   @syliTest_int.x = global i64 42
   
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_int()
+    ret void
+  }
+  
   define void @__init.Test_int() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call i64 @__init_global.syliTest_int.x()
@@ -78,6 +90,18 @@ Boolean literals emit i1 functions:
   
   @syliTest_bool.p = global i1 true
   @syliTest_bool.q = global i1 false
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_bool()
+    ret void
+  }
   
   define void @__init.Test_bool() gc "statepoint-example" {
   bb0:
@@ -154,6 +178,18 @@ String literal emits an i8* return:
   @syliTest_str.s = global { ptr, i64 } zeroinitializer
   @__str.1 = global [5 x i8] c"hello"
   
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_str()
+    ret void
+  }
+  
   define void @__init.Test_str() gc "statepoint-example" {
   bb0:
     %__init_tmp_0 = call { ptr, i64 } @__init_global.syliTest_str.s()
@@ -216,6 +252,10 @@ String literal emits an i8* return:
 
 Arithmetic operations emit the corresponding LLVM instructions:
   $ cat >test_arith.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > primitive (*) : i64 -> i64 -> i64 = "mul"
+  > primitive (-) : i64 -> i64 -> i64 = "sub"
+  > primitive (/) : i64 -> i64 -> i64 = "div"
   > let a = 5 + 3
   > let b = 10 - 2
   > let c = 4 * 6
@@ -229,6 +269,18 @@ Arithmetic operations emit the corresponding LLVM instructions:
   @syliTest_arith.b = global i64 zeroinitializer
   @syliTest_arith.c = global i64 zeroinitializer
   @syliTest_arith.d = global i64 zeroinitializer
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_arith()
+    ret void
+  }
   
   define void @__init.Test_arith() gc "statepoint-example" {
   bb0:
@@ -245,26 +297,50 @@ Arithmetic operations emit the corresponding LLVM instructions:
   
   define i64 @__init_global.syliTest_arith.d() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = sdiv i64 20, 4
+    %Sy_var0 = call i64 @"syliTest_arith./"(i64 20, i64 4)
     ret i64 %Sy_var0
   }
   
   define i64 @__init_global.syliTest_arith.c() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = mul i64 4, 6
+    %Sy_var0 = call i64 @"syliTest_arith.*"(i64 4, i64 6)
     ret i64 %Sy_var0
   }
   
   define i64 @__init_global.syliTest_arith.b() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = sub i64 10, 2
+    %Sy_var0 = call i64 @"syliTest_arith.-"(i64 10, i64 2)
     ret i64 %Sy_var0
   }
   
   define i64 @__init_global.syliTest_arith.a() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = add i64 5, 3
+    %Sy_var0 = call i64 @"syliTest_arith.+"(i64 5, i64 3)
     ret i64 %Sy_var0
+  }
+  
+  define i64 @"syliTest_arith.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = add i64 %x, %y
+    ret i64 %Sy_prim_result
+  }
+  
+  define i64 @"syliTest_arith.*"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = mul i64 %x, %y
+    ret i64 %Sy_prim_result
+  }
+  
+  define i64 @"syliTest_arith.-"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = sub i64 %x, %y
+    ret i64 %Sy_prim_result
+  }
+  
+  define i64 @"syliTest_arith./"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = sdiv i64 %x, %y
+    ret i64 %Sy_prim_result
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {
@@ -315,6 +391,8 @@ Arithmetic operations emit the corresponding LLVM instructions:
 
 Comparison operations emit icmp instructions:
   $ cat >test_cmp.sy <<EOF
+  > primitive (==) : i64 -> i64 -> bool = "eq"
+  > primitive (<) : i64 -> i64 -> bool = "lt"
   > let eq = 5 == 5
   > let lt = 2 < 5
   > EOF
@@ -324,6 +402,18 @@ Comparison operations emit icmp instructions:
   
   @syliTest_cmp.eq = global i1 zeroinitializer
   @syliTest_cmp.lt = global i1 zeroinitializer
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_cmp()
+    ret void
+  }
   
   define void @__init.Test_cmp() gc "statepoint-example" {
   bb0:
@@ -336,14 +426,26 @@ Comparison operations emit icmp instructions:
   
   define i1 @__init_global.syliTest_cmp.lt() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = icmp slt i64 2, 5
+    %Sy_var0 = call i1 @"syliTest_cmp.<"(i64 2, i64 5)
     ret i1 %Sy_var0
   }
   
   define i1 @__init_global.syliTest_cmp.eq() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = icmp eq i64 5, 5
+    %Sy_var0 = call i1 @"syliTest_cmp.=="(i64 5, i64 5)
     ret i1 %Sy_var0
+  }
+  
+  define i1 @"syliTest_cmp.=="(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = icmp eq i64 %x, %y
+    ret i1 %Sy_prim_result
+  }
+  
+  define i1 @"syliTest_cmp.<"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = icmp slt i64 %x, %y
+    ret i1 %Sy_prim_result
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {
@@ -393,11 +495,24 @@ Comparison operations emit icmp instructions:
 
 Simple Function:
   $ cat >test_fn.sy <<EOF
-  > fn add x y = x + 20 + y
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > let add x y = x + 20 + y
   > EOF
   $ dune exec sylic -- llvm test_fn.sy
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_fn()
+    ret void
+  }
   
   define void @__init.Test_fn() gc "statepoint-example" {
   bb0:
@@ -406,9 +521,15 @@ Simple Function:
   
   define i64 @syliTest_fn.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = add i64 %x, 20
-    %Sy_var1 = add i64 %Sy_var0, %y
+    %Sy_var0 = call i64 @"syliTest_fn.+"(i64 %x, i64 20)
+    %Sy_var1 = call i64 @"syliTest_fn.+"(i64 %Sy_var0, i64 %y)
     ret i64 %Sy_var1
+  }
+  
+  define i64 @"syliTest_fn.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = add i64 %x, %y
+    ret i64 %Sy_prim_result
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {

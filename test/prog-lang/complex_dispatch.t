@@ -1,11 +1,9 @@
 Complex test combining closures, dispatch, casts, partial application, and if-then-else:
   $ cat >complex_dispatch.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let add x y z = x
   > let apply f x y = f x y
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let r1 = apply add1 10 20
   >   syli_print_i64 r1
@@ -23,12 +21,15 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   >       apply add1 1.0 2.0
   >   syli_print_i64 r5
   > EOF
+
   $ dune exec sylic -- core complex_dispatch.sy > complex_dispatch.core
   $ dune exec sylic -- cir complex_dispatch.sy > complex_dispatch.cir
   $ dune exec sylic -- oir complex_dispatch.sy > complex_dispatch.oir
   $ dune exec sylic -- llvm complex_dispatch.sy > complex_dispatch.ll
   $ cat complex_dispatch.core
   module Complex_dispatch
+  extern syliComplex_dispatch.syli_print_i64 : (i64) -> unit
+  
   let syliComplex_dispatch.add = fun (x, y, z) : 'a148 ->
       x : 'a148
   
@@ -37,21 +38,21 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   
   let syliComplex_dispatch.main = fun () : unit ->
       {
-        let syliComplex_dispatch.main__add1 = syliComplex_dispatch.add(1 : i64) : ('a167, 'a168) -> i64
-        let syliComplex_dispatch.main__r1 = syliComplex_dispatch.apply(syliComplex_dispatch.main__add1 : (i64, i64) -> i64, 10 : i64, 20 : i64) : i64
-        syliComplex_dispatch.syli_print_i64(syliComplex_dispatch.main__r1 : i64) : unit
-        let syliComplex_dispatch.main__r2 = syliComplex_dispatch.apply(syliComplex_dispatch.main__add1 : (double, double) -> i64, 1.0 : double, 2.0 : double) : i64
-        syliComplex_dispatch.syli_print_i64(syliComplex_dispatch.main__r2 : i64) : unit
-        let syliComplex_dispatch.main__add1and2 = syliComplex_dispatch.main__add1(2 : i64) : ('a183) -> i64
-        let syliComplex_dispatch.main__r3 = syliComplex_dispatch.main__add1and2(30 : i64) : i64
-        syliComplex_dispatch.syli_print_i64(syliComplex_dispatch.main__r3 : i64) : unit
-        let syliComplex_dispatch.main__r4 = syliComplex_dispatch.main__add1and2(3.0 : double) : i64
-        syliComplex_dispatch.syli_print_i64(syliComplex_dispatch.main__r4 : i64) : unit
-        let syliComplex_dispatch.main__r5 = if true : bool
-            syliComplex_dispatch.apply(syliComplex_dispatch.main__add1 : (i64, i64) -> i64, 100 : i64, 200 : i64) : i64
+        let sy1_add1 = syliComplex_dispatch.add(1 : i64) : ('a167) -> ('a168) -> i64
+        let sy2_r1 = syliComplex_dispatch.apply(sy1_add1 : (i64) -> (i64) -> i64, 10 : i64, 20 : i64) : i64
+        syliComplex_dispatch.syli_print_i64(sy2_r1 : i64) : unit
+        let sy3_r2 = syliComplex_dispatch.apply(sy1_add1 : (f64) -> (f64) -> i64, 1.0 : f64, 2.0 : f64) : i64
+        syliComplex_dispatch.syli_print_i64(sy3_r2 : i64) : unit
+        let sy4_add1and2 = sy1_add1(2 : i64) : ('a183) -> i64
+        let sy5_r3 = sy4_add1and2(30 : i64) : i64
+        syliComplex_dispatch.syli_print_i64(sy5_r3 : i64) : unit
+        let sy6_r4 = sy4_add1and2(3.0 : f64) : i64
+        syliComplex_dispatch.syli_print_i64(sy6_r4 : i64) : unit
+        let sy7_r5 = if true : bool
+            syliComplex_dispatch.apply(sy1_add1 : (i64) -> (i64) -> i64, 100 : i64, 200 : i64) : i64
           else
-            syliComplex_dispatch.apply(syliComplex_dispatch.main__add1 : (double, double) -> i64, 1.0 : double, 2.0 : double) : i64
-        syliComplex_dispatch.syli_print_i64(syliComplex_dispatch.main__r5 : i64) : unit
+            syliComplex_dispatch.apply(sy1_add1 : (f64) -> (f64) -> i64, 1.0 : f64, 2.0 : f64) : i64
+        syliComplex_dispatch.syli_print_i64(sy7_r5 : i64) : unit
       }
   
   $ cat complex_dispatch.cir
@@ -146,6 +147,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   end
   
   end
+
   $ cat complex_dispatch.oir
   module Complex_dispatch :
   ffi_external_functions:
@@ -168,7 +170,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.65_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.68_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -299,7 +301,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       return %x:i64
   end
   
-  private fn __make_closure_accum.dispatch.65_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.68_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:

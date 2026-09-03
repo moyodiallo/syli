@@ -2,7 +2,7 @@ Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
   > let apply f x y = f x y
   > let add x y z = x
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let result =
   >     if true then
@@ -18,10 +18,9 @@ Closure as an argument with multiple captured variables:
   declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
   declare ptr addrspace(1) @syli_rt_ownership_share(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
+  define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
-    %__dropped_main_ret = call i64 @syliTest_multi.main()
     ret i32 0
   }
   
@@ -36,13 +35,13 @@ Closure as an argument with multiple captured variables:
     ret void
   }
   
-  define i64 @syliTest_multi.main() gc "statepoint-example" {
+  define void @syliTest_multi.main() gc "statepoint-example" {
   bb0:
     %Sy_var2 = alloca i64
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.65_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.62_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
@@ -97,8 +96,7 @@ Closure as an argument with multiple captured variables:
     store i64 %Sy_var4, ptr %Sy_var2
     br label %bb3
   bb3:
-    %Sy_tmp18 = load i64, ptr %Sy_var2
-    ret i64 %Sy_tmp18
+    ret void
   }
   
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
@@ -133,7 +131,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %x
   }
   
-  define i64 @__make_closure_accum.dispatch.65_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.dispatch.62_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb-1:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1

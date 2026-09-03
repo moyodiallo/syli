@@ -186,6 +186,13 @@ let ir_const_of_core = function
 let void_ir_ty : I.ty = { I.id = 0; I.ir_type = I.CR_Void }
 let void_null = I.CR_OConstant (I.CR_Null, void_ir_ty)
 
+let make_return (return_ty : I.ty) (result : I.operand option) :
+    I.terminator_node =
+  match (return_ty.I.ir_type, result) with
+  | I.CR_Void, _ -> I.CR_Return None
+  | _, Some operand -> I.CR_Return (Some operand)
+  | _, None -> invalid_arg "non-void return requires an operand"
+
 let arg_ty_of_operand = function
   | I.CR_OConstant (_, ty) -> ty
   | I.CR_OVar v -> v.I.ty
@@ -437,9 +444,11 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
         }
       in
       let ctx, _ =
-        emit ctx
-          (I.CR_Assign { dst = result_var; rvalue = then_rv })
-          result_var.I.ty
+        if then_rv.ty.I.ir_type = I.CR_Void then emit ctx I.CR_Nop then_rv.ty
+        else
+          emit ctx
+            (I.CR_Assign { dst = result_var; rvalue = then_rv })
+            result_var.I.ty
       in
       let ctx = finish_block ctx (I.CR_Goto merge_id) in
       let ctx, _ =
@@ -455,9 +464,12 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
               }
             in
             let ctx, _ =
-              emit ctx
-                (I.CR_Assign { dst = result_var; rvalue = else_rv })
-                result_var.I.ty
+              if else_rv.ty.I.ir_type = I.CR_Void then
+                emit ctx I.CR_Nop else_rv.ty
+              else
+                emit ctx
+                  (I.CR_Assign { dst = result_var; rvalue = else_rv })
+                  result_var.I.ty
             in
             let ctx = finish_block ctx (I.CR_Goto merge_id) in
             (ctx, r)
@@ -622,10 +634,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
   let body_ctx, ret_op = lower_expr lambda_body_ctx lam.body in
   let ctx = { ctx with lifted_fns = body_ctx.lifted_fns @ ctx.lifted_fns } in
   let declared_ret_ty = mk_ir_ty ctx.type_defs lam.ret_ty in
-  let ret_term =
-    if declared_ret_ty.I.ir_type = I.CR_Void then I.CR_Return None
-    else I.CR_Return (Some ret_op)
-  in
+  let ret_term = make_return declared_ret_ty (Some ret_op) in
   let body_ctx = finish_block body_ctx ret_term in
   let blocks = List.rev body_ctx.blocks in
   let entry_block = List.hd blocks in
@@ -655,7 +664,7 @@ let build_const_init_fn (name : string) (value : I.constant) (ty : I.ty) :
   in
   let ret_op = I.CR_OConstant (value, ty) in
   let term : I.terminator =
-    { I.id = term_id; node = I.CR_Return (Some ret_op) }
+    { I.id = term_id; node = make_return ty (Some ret_op) }
   in
   let entry_block : I.block =
     {
@@ -704,22 +713,27 @@ let build_module_initializer (module_name : string)
             ty = gv.ty;
           }
         in
-        let store_stmt : I.statement =
-          {
-            I.id = fresh_id ();
-            node =
-              I.CR_Store_global { global = gv.name; value = I.CR_OVar tmp_var };
-            ty = gv.ty;
-          }
-        in
-        (store_stmt :: call_stmt :: stmts_acc, tmp_var :: locals_acc))
+        if gv.ty.I.ir_type = I.CR_Void then (call_stmt :: stmts_acc, locals_acc)
+        else
+          let store_stmt : I.statement =
+            {
+              I.id = fresh_id ();
+              node =
+                I.CR_Store_global
+                  { global = gv.name; value = I.CR_OVar tmp_var };
+              ty = gv.ty;
+            }
+          in
+          (store_stmt :: call_stmt :: stmts_acc, tmp_var :: locals_acc))
       ([], [])
       (List.mapi (fun i gv -> (i, gv)) globals)
   in
   let stmts = List.rev stmts_acc in
   let locals = List.rev locals_acc in
   let term_id = fresh_id () in
-  let term : I.terminator = { I.id = term_id; node = I.CR_Return None } in
+  let term : I.terminator =
+    { I.id = term_id; node = make_return void_ty None }
+  in
   let block_id = fresh_id () in
   let entry_block : I.block =
     {
@@ -757,6 +771,9 @@ let lower_program (prog : C.program_core) : I.module_cir =
     List.fold_left
       (fun (ctx, fns, globs, exts) (item : C.structure_item) ->
         match item.structure_item_desc with
+        | CStr_Let { value = { node = CExp_Constant CConst_Unit; _ }; _ } ->
+            (* Ignore unit constants *)
+            (ctx, fns, globs, exts)
         | CStr_Let { name; value; _ } -> (
             match value.node with
             | CExp_Lambda lam ->
@@ -814,7 +831,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 in
                 let value_ctx, result = lower_expr value_ctx value in
                 let value_ctx =
-                  finish_block value_ctx (I.CR_Return (Some result))
+                  finish_block value_ctx (make_return global_ty (Some result))
                 in
                 let init_fn_name = "__init_global." ^ name.name in
                 let blocks = List.rev value_ctx.blocks in
@@ -901,7 +918,8 @@ let lower_program (prog : C.program_core) : I.module_cir =
     I.name = prog.C.name.name;
     type_defs = [];
     functions;
-    global_values;
+    global_values =
+      List.filter (fun gv -> not (gv.ty.I.ir_type = I.CR_Void)) global_values;
     ffi_external_functions = List.rev external_functions;
   }
 

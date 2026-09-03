@@ -1,7 +1,7 @@
 Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
   > let add x y z = x
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let add2 =
   >     if true then
@@ -25,31 +25,31 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?63, ?64 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_var0:(?64, ?65 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
       %Sy_var1:bool = cast(true:bool as bool)
       cond_br %Sy_var1:bool, bb1, bb2
   
     bb1:
-      %Sy_var3:(?69 -> i64) = #partial_apply {%Sy_var0:(?63, ?64 -> i64)} (3:i64)
-      %Sy_var2:(?69 -> i64) = move(%Sy_var3:(?69 -> i64))
+      %Sy_var3:(?70 -> i64) = #partial_apply {%Sy_var0:(?64, ?65 -> i64)} (3:i64)
+      %Sy_var2:(?70 -> i64) = move(%Sy_var3:(?70 -> i64))
       goto bb3
   
     bb2:
-      %Sy_var4:(?69 -> i64) = #partial_apply {%Sy_var0:(?63, ?64 -> i64)} (1.0f:f64)
-      %Sy_var2:(?69 -> i64) = move(%Sy_var4:(?69 -> i64))
+      %Sy_var4:(?70 -> i64) = #partial_apply {%Sy_var0:(?64, ?65 -> i64)} (1.0f:f64)
+      %Sy_var2:(?70 -> i64) = move(%Sy_var4:(?70 -> i64))
       goto bb3
   
     bb3:
-      %Sy_var5:i64 = #call_apply {%Sy_var2:(?69 -> i64) as (f64 -> i64)}  (1.0f:f64)
+      %Sy_var5:i64 = #call_apply {%Sy_var2:(?70 -> i64) as (f64 -> i64)}  (1.0f:f64)
       return 0:i64
   end
   
-  public fn syliTest_multi.add(%x:?54, %y:?56, %z:?58) -> ?54:
+  public fn syliTest_multi.add(%x:?55, %y:?57, %z:?59) -> ?55:
     entry: bb0
   
     bb0:
   
-      return %x:?54
+      return %x:?55
   end
   
   end
@@ -58,6 +58,6 @@ Closure as an argument with multiple captured variables:
   Typed test_multi.sy successfully: module Test_multi with 2 top-level typed items
   Type Environment:
   {
-    add : forall '54 '56 '58. ('54, '56, '58) -> '54
-    main : (unit) -> int64
+    add : forall '55 '57 '59. '55 -> '57 -> '59 -> '55
+    main : unit -> i64
   }

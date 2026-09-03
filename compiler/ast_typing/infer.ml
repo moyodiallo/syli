@@ -360,8 +360,8 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         {
           ctx with
           env = old_ctx.env;
-          (*  We restore the old scope variables, it avoid local ones escaping,
-            but the substitution stays in order to substitute them later *)
+          (*  We restore the old scope variables, it avoid the local ones escaping,
+              but the substitution stays in order to substitute them later *)
           return_ty = old_ctx.return_ty;
           break_ty = old_ctx.break_ty;
         }

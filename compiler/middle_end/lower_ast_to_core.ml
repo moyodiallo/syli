@@ -3,6 +3,8 @@ open Syli_core.Core_ast
 module Typed_ast = Syli_typing.Typed_ast
 open Syli_common
 
+let fresh_id = Syli_core.Core_ast.fresh_id
+
 exception Desugar_error of string
 
 type env = {
@@ -10,7 +12,6 @@ type env = {
   bind_subst : string StringMap.t;
   type_subst : string StringMap.t;
   toplevel_last_ids : IntSet.t;
-  letbind_inc_id : int ref;
 }
 
 let string_of_loc (loc : Typed_ast.location) : string =
@@ -40,11 +41,10 @@ let qualify_type_name (env : env) (name : string) : string =
         (Desugar_error
            (Printf.sprintf "Type %s not found in type substitution map" name))
 
-let toplvel_rename env (ident : Typed_ast.ident) =
+let toplevel_rename env (ident : Typed_ast.ident) =
   let rename_possible_public (env : env) (name : string) (id : int) : string =
     if not @@ IntSet.mem id env.toplevel_last_ids then
-      let _ = incr env.letbind_inc_id in
-      "sy" ^ string_of_int !(env.letbind_inc_id) ^ "_" ^ name
+      "sy" ^ string_of_int (fresh_id ()) ^ "_" ^ name
     else name
   in
   let qname =
@@ -57,18 +57,13 @@ let toplvel_rename env (ident : Typed_ast.ident) =
 
 let lebind_expr_rename env (ident : Typed_ast.ident) =
   let rename (env : env) (name : string) (id : int) : string =
-    let _ = incr env.letbind_inc_id in
-    "sy" ^ string_of_int !(env.letbind_inc_id) ^ "_" ^ name
+    "sy" ^ string_of_int (fresh_id ()) ^ "_" ^ name
   in
   let qname = rename env ident.name ident.id in
   if ident.is_operator then
     (*e.g. [syliTest_file.==] becomes ["syliTest_file.=="]*)
     Printf.sprintf "\"%s\"" qname
   else qname
-
-let gen_any_identifier env () =
-  let _ = incr env.letbind_inc_id in
-  "sy_any_" ^ string_of_int !(env.letbind_inc_id)
 
 let rec desugar_ty env (t : Typed_ast.ty) : ty =
   let ty_desc =
@@ -188,8 +183,13 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
             | TConst_StringLit s -> CConst_StringLit s),
           env )
     | TExp_Ident i ->
-        ( CExp_Ident { name = qualify_name env i.name; path = i.path; id = i.id },
-          env )
+        if e.ty.ty_desc = TTy_Constant TTy_Unit then
+          (* Any read of a unit-typed variable is the unit value. *)
+          (CExp_Constant CConst_Unit, env)
+        else
+          ( CExp_Ident
+              { name = qualify_name env i.name; path = i.path; id = i.id },
+            env )
     | TExp_Tuple _ ->
         error_at e.loc "tuple expressions are not lowered to Core yet"
     | TExp_Record { fields } ->
@@ -242,8 +242,26 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
         let name =
           match l.pattern.pattern_desc with
           | TPat_Ident name -> name
+          | TPat_Unit ->
+              {
+                name = "unit_pat";
+                path = [];
+                id = l.pattern.id;
+                is_operator = false;
+                loc = l.loc;
+              }
+          | TPat_Any ->
+              {
+                name = "any_pat";
+                path = [];
+                id = l.pattern.id;
+                loc = l.loc;
+                is_operator = false;
+              }
           | _ ->
-              error_at l.loc "the pattern should be desugared to an identifier"
+              error_at l.loc
+                "let pattern must be simplified to an identifier, unit, or \
+                 wildcard"
         in
         let qualified_name = lebind_expr_rename env name in
         let new_bind_subst =
@@ -421,7 +439,7 @@ let rec desugarize_structure_items (env : env)
               | TPat_Ident n -> n
               | TPat_Unit ->
                   {
-                    name = gen_any_identifier env ();
+                    name = "unit_pat";
                     path = [];
                     id = ldef.pattern.id;
                     is_operator = false;
@@ -429,7 +447,7 @@ let rec desugarize_structure_items (env : env)
                   }
               | TPat_Any ->
                   {
-                    name = gen_any_identifier env ();
+                    name = "any_pat";
                     path = [];
                     id = ldef.pattern.id;
                     loc = ldef.loc;
@@ -440,7 +458,7 @@ let rec desugarize_structure_items (env : env)
                     "top-level let pattern must be simplified to an \
                      identifier, unit, or wildcard"
             in
-            let qname = toplvel_rename env name in
+            let qname = toplevel_rename env name in
             let new_bind_subst = StringMap.add name.name qname env.bind_subst in
             let body_env =
               match ldef.rec_flag with
@@ -470,7 +488,8 @@ let rec desugarize_structure_items (env : env)
               {
                 env with
                 bind_subst =
-                  StringMap.add fname.name (toplvel_rename env fname)
+                  StringMap.add fname.name
+                    (toplevel_rename env fname)
                     env.bind_subst;
               }
             in
@@ -523,7 +542,6 @@ let rec desugarize_structure_items (env : env)
               {
                 current_path = env.current_path @ [ ms.name.name ];
                 bind_subst = env.bind_subst;
-                letbind_inc_id = env.letbind_inc_id;
                 toplevel_last_ids = env.toplevel_last_ids;
                 type_subst = env.type_subst;
               }
@@ -573,7 +591,6 @@ let desugarize_ast (program : Typed_ast.module_structure) : program_core =
       current_path = [ prefix_syli ^ program.name.name ];
       bind_subst = StringMap.empty;
       toplevel_last_ids = compute_toplevel_last_ids program.structure_items;
-      letbind_inc_id = ref 0;
       type_subst = StringMap.empty;
     }
   in

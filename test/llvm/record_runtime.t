@@ -1,9 +1,7 @@
   $ cat >test_e2e_print.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
-  > type person = { name: int64; age: int64 }
-  > fn main () =
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > type person = { name: i64; age: i64 }
+  > let main () =
   >     let record = { name = 10; age = 30 }
   >     syli_print_i64(record.age)
   > EOF
@@ -26,7 +24,7 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:person{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
+      %Sy_var0:syliTest_e2e_print.person{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
       obj_set(%Sy_var0:obj_ptr, 0:i64, 10:i64):i64
       obj_set(%Sy_var0:obj_ptr, 1:i64, 30:i64):i64
       %Sy_var1:i64 = obj_get(%Sy_var0:obj_ptr, 1:i64):i64
@@ -35,6 +33,7 @@
   end
   
   end
+
   $ dune exec sylic -- llvm test_e2e_print.sy > test_e2e_print.ll
   $ cat test_e2e_print.ll
   declare void @syli_print_i64(i64)
@@ -43,10 +42,9 @@
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
+  define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
-    call void @syliTest_e2e_print.main()
     ret i32 0
   }
   

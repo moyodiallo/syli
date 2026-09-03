@@ -1,10 +1,8 @@
   $ cat >test_multi.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  >   extern syli_print_f64 : double -> unit = "syli_print_f64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > foreign syli_print_f64 : f64 -> unit = "syli_print_f64"
   > let add x z = z
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let d = add1 1.0
   >   let i = add1 1
@@ -52,13 +50,13 @@
   end
 
   $ dune exec sylic -- typing test_multi.sy
-  Typed test_multi.sy successfully: module Test_multi with 3 top-level typed items
+  Typed test_multi.sy successfully: module Test_multi with 4 top-level typed items
   Type Environment:
   {
-    add : forall '65 '67. ('65, '67) -> '67
-    main : (unit) -> int64
-    syli_print_f64 : (double) -> unit
-    syli_print_i64 : (int64) -> unit
+    add : forall '65 '67. '65 -> '67 -> '67
+    main : unit -> i64
+    syli_print_f64 : f64 -> unit
+    syli_print_i64 : i64 -> unit
   }
 
   $ dune exec sylic -- oir test_multi.sy
@@ -84,7 +82,7 @@
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.27_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.37_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -117,7 +115,7 @@
       return %z:i64
   end
   
-  private fn __make_closure_accum.dispatch.27_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.37_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:

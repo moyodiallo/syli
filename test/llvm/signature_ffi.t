@@ -1,16 +1,27 @@
-Signature with external declaration emits an external declaration in LLVM IR:
+Signature with foreignal declaration emits an foreignal declaration in LLVM IR:
   $ cat >test_int.sy <<EOF
-  > signature:
-  >   extern print_int : int64 -> unit = "print_int"
+  > signature Sig_extern
+  >   foreign print_int : i64 -> unit = "print_int"
   > end
   > let x = 42
   > EOF
   $ dune exec sylic -- llvm test_int.sy
-  declare void @print_int(i64)
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
   @syliTest_int.x = global i64 42
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_int()
+    ret void
+  }
   
   define void @__init.Test_int() gc "statepoint-example" {
   bb0:

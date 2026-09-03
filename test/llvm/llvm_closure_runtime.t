@@ -1,11 +1,10 @@
 Closure with multiple captured variables:
   $ cat >test_multi.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let apply f x y = f x y
-  > fn main () = 
+  > let main () = 
   >   let result = apply add 3 4
   >   syli_print_i64(result)
   > EOF
@@ -32,12 +31,28 @@ Closure with multiple captured variables:
       gc_cycle
       %Sy_var0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.62_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.86_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 3:i64, 4:i64)
       %Sy_var2:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_var1:i64)
       return
+  end
+  
+  public fn syliTest_multi.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:obj_ptr, %x:i64, %y:i64) -> i64:
@@ -50,15 +65,7 @@ Closure with multiple captured variables:
       return %Sy_var0:i64
   end
   
-  public fn syliTest_multi.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      return %Sy_var0:i64
-  end
-  
-  private fn __make_closure_accum.syliTest_multi.add.62_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_multi.add.86_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -73,7 +80,7 @@ Closure with multiple captured variables:
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_multi.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_multi.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -86,10 +93,9 @@ Closure with multiple captured variables:
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
+  define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
-    call void @syliTest_multi.main()
     ret i32 0
   }
   
@@ -109,7 +115,7 @@ Closure with multiple captured variables:
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.62_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.86_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
@@ -117,6 +123,18 @@ Closure with multiple captured variables:
     %Sy_var1 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_var0, i64 3, i64 4)
     call void @syli_print_i64(i64 %Sy_var1)
     ret void
+  }
+  
+  define i64 @syliTest_multi.add(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_var0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
+    ret i64 %Sy_var0
+  }
+  
+  define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = add i64 %x, %y
+    ret i64 %Sy_prim_result
   }
   
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
@@ -129,13 +147,7 @@ Closure with multiple captured variables:
     ret i64 %Sy_var0
   }
   
-  define i64 @syliTest_multi.add__i64__i64_ret_i64(i64 %x, i64 %y) gc "statepoint-example" {
-  bb0:
-    %Sy_var0 = add i64 %x, %y
-    ret i64 %Sy_var0
-  }
-  
-  define i64 @__make_closure_accum.syliTest_multi.add.62_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.syliTest_multi.add.86_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_clos)
     %Sy_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
@@ -144,7 +156,7 @@ Closure with multiple captured variables:
   
   define i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_multi.add__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
+    %Sy_rst = call i64 @syliTest_multi.add(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
   }
   

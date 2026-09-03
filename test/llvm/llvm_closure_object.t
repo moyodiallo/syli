@@ -1,5 +1,6 @@
 Closure with multipble chains of captured variables:
   $ cat >test_multi.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y z = x + y + z
   > let apply () =
   >   let add1 = add 1
@@ -14,6 +15,18 @@ Closure with multipble chains of captured variables:
   declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
   declare ptr addrspace(1) @syli_rt_ownership_share(ptr addrspace(1))
   
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_multi()
+    ret void
+  }
+  
   define void @__init.Test_multi() gc "statepoint-example" {
   bb0:
     ret void
@@ -24,7 +37,7 @@ Closure with multipble chains of captured variables:
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.40_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.57_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
@@ -60,14 +73,20 @@ Closure with multipble chains of captured variables:
     ret i64 %Sy_var2
   }
   
-  define i64 @syliTest_multi.add__i64__i64__i64_ret_i64(i64 %x, i64 %y, i64 %z) gc "statepoint-example" {
+  define i64 @syliTest_multi.add(i64 %x, i64 %y, i64 %z) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = add i64 %x, %y
-    %Sy_var1 = add i64 %Sy_var0, %z
+    %Sy_var0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
+    %Sy_var1 = call i64 @"syliTest_multi.+"(i64 %Sy_var0, i64 %z)
     ret i64 %Sy_var1
   }
   
-  define i64 @__make_closure_accum.syliTest_multi.add.40_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = add i64 %x, %y
+    ret i64 %Sy_prim_result
+  }
+  
+  define i64 @__make_closure_accum.syliTest_multi.add.57_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -96,7 +115,7 @@ Closure with multipble chains of captured variables:
   
   define i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_multi.add__i64__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2)
+    %Sy_rst = call i64 @syliTest_multi.add(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2)
     ret i64 %Sy_rst
   }
   
@@ -146,6 +165,7 @@ Closure with multipble chains of captured variables:
   
 Closure as an argument:
   $ cat >test_multi.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let apply f x y = f x y
   > let result = apply add 3 4
@@ -157,6 +177,18 @@ Closure as an argument:
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
   @syliTest_multi.result = global i64 zeroinitializer
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_multi()
+    ret void
+  }
   
   define void @__init.Test_multi() gc "statepoint-example" {
   bb0:
@@ -170,13 +202,25 @@ Closure as an argument:
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.61_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.79_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
     ; nop
     %Sy_var1 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_var0, i64 3, i64 4)
     ret i64 %Sy_var1
+  }
+  
+  define i64 @syliTest_multi.add(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_var0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
+    ret i64 %Sy_var0
+  }
+  
+  define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = add i64 %x, %y
+    ret i64 %Sy_prim_result
   }
   
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
@@ -189,13 +233,7 @@ Closure as an argument:
     ret i64 %Sy_var0
   }
   
-  define i64 @syliTest_multi.add__i64__i64_ret_i64(i64 %x, i64 %y) gc "statepoint-example" {
-  bb0:
-    %Sy_var0 = add i64 %x, %y
-    ret i64 %Sy_var0
-  }
-  
-  define i64 @__make_closure_accum.syliTest_multi.add.61_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.syliTest_multi.add.79_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_clos)
     %Sy_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
@@ -204,7 +242,7 @@ Closure as an argument:
   
   define i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_multi.add__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
+    %Sy_rst = call i64 @syliTest_multi.add(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
   }
   
