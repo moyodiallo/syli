@@ -91,8 +91,8 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
   | Cir.CR_U32 -> Oir.OR_U32
   | Cir.CR_U16 -> Oir.OR_U16
   | Cir.CR_U8 -> Oir.OR_U8
-  | Cir.CR_Float -> Oir.OR_Float
-  | Cir.CR_Double -> Oir.OR_Double
+  | Cir.CR_F32 -> Oir.OR_F32
+  | Cir.CR_F64 -> Oir.OR_F64
   | Cir.CR_FnPtr -> Oir.OR_FnPtr
   | Cir.CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
       Oir.OR_Obj
@@ -104,7 +104,7 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
         }
   | Cir.CR_Obj_Ptr -> Oir.OR_Obj_Ptr
   | Cir.CR_Char -> Oir.OR_Char
-  | Cir.CR_Str -> Oir.OR_Str
+  | Cir.CR_String -> Oir.OR_String
   | Cir.CR_Void -> Oir.OR_Void
   | Cir.CR_GenericTyp _ ->
       failwith
@@ -279,8 +279,7 @@ let sir_operand_ty (op : Cir.operand) : Cir.ty =
 let is_arrow_ty (t : Cir.ty) : bool =
   match t.ir_type with Cir.CR_Arrow _ -> true | _ -> false
 
-let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
-    ~fn_name =
+let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~fn_name =
   let closure_graph = ctx.closure_graph in
   let gen_functions = ctx.trampolines in
   let make_closure_node = IntMap.find node_id closure_graph.graph.nodes in
@@ -309,8 +308,10 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~free_vars_len
     if IntSet.mem node_id closure_graph.generic_nodes then i64_ty ()
     else base_ret_ty
   in
+  (* node.arg_tys already includes the free-var types (see closure_graph
+     CR_Make_closure), so it is the exact number of stored closure fields. *)
   let arg_tys_len = List.length make_closure_node.arg_tys in
-  let stored_args_size = arg_tys_len + free_vars_len in
+  let stored_args_size = arg_tys_len in
   let is_generic = IntSet.mem node_id closure_graph.generic_nodes in
   let needs_cast spe_ret =
     is_generic && spe_ret.Oir.ir_type <> ret_ty.Oir.ir_type
@@ -446,8 +447,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   let captured_count = List.length captured_args in
   let stored_args_size = free_var_count + captured_count in
   let trampolines, accum_fn_name =
-    make_closure_apply_gen_functions ctx ~node_id:dst.id
-      ~free_vars_len:(List.length free_vars) ~fn_name
+    make_closure_apply_gen_functions ctx ~node_id:dst.id ~fn_name
   in
   let ctx = { ctx with trampolines } in
   let total_fields = 1 + stored_args_size in
@@ -1164,6 +1164,7 @@ let function_of_cir (ctx : ctx) (fn : Cir.function_cir) : ctx * Oir.function_oir
       blocks;
       return_ty = lower_ty fn.return_ty;
       visibility = lower_visibility fn.visibility;
+      unit_param_indices = fn.unit_param_indices;
     } )
 
 let lower_ffi_external_function (ffi : Cir.ffi_external_function) :
@@ -1174,6 +1175,7 @@ let lower_ffi_external_function (ffi : Cir.ffi_external_function) :
     ret_ty = lower_ty ffi.ret_ty;
     params = List.map lower_ty ffi.params;
     calling_convention = ffi.calling_convention;
+    unit_param_indices = ffi.unit_param_indices;
   }
 
 let lower (ctx : Pipeline_types.cir_mono_ctx) : Pipeline_types.oir_ctx =

@@ -2,6 +2,7 @@ Closure lowering tests — fn_ptr generation for closures
 
 Simple closure with one captured variable:
   $ cat >test_simple.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let apply_twice f x = f (f x)
   > let double_x x = x + x
   > let result = apply_twice double_x 10
@@ -31,6 +32,22 @@ Simple closure with one captured variable:
       return %Sy_var1:i64
   end
   
+  public fn syliTest_simple.double_x(%x:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_simple.+" (%x:i64, %x:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_simple.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
   public fn syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64(%f:(i64 -> i64), %x:i64) -> i64:
     entry: bb0
   
@@ -40,18 +57,11 @@ Simple closure with one captured variable:
       return %Sy_var1:i64
   end
   
-  public fn syliTest_simple.double_x__i64_ret_i64(%x:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %x:i64
-      return %Sy_var0:i64
-  end
-  
   end
 
 Closure with multiple captured variables:
   $ cat >test_multi.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
   > let apply f x y = f x y
   > let result = apply add 3 4
@@ -81,6 +91,22 @@ Closure with multiple captured variables:
       return %Sy_var1:i64
   end
   
+  public fn syliTest_multi.add(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
   public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:(i64, i64 -> i64), %x:i64, %y:i64) -> i64:
     entry: bb0
   
@@ -89,18 +115,11 @@ Closure with multiple captured variables:
       return %Sy_var0:i64
   end
   
-  public fn syliTest_multi.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
-      return %Sy_var0:i64
-  end
-  
   end
 
 No closure (no fn_ptr generated):
   $ cat >test_no_closure.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
   > let x = 42
   > let y = x + 1
   > EOF
@@ -127,7 +146,7 @@ No closure (no fn_ptr generated):
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %syliTest_no_closure.x:i64 + 1:i64
+      %Sy_var0:i64 = #call_direct "syliTest_no_closure.+" (%syliTest_no_closure.x:i64, 1:i64)
       return %Sy_var0:i64
   end
   
@@ -137,6 +156,14 @@ No closure (no fn_ptr generated):
     bb0:
   
       return 42:i64
+  end
+  
+  public fn "syliTest_no_closure.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end

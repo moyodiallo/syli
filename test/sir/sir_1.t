@@ -81,7 +81,7 @@ String literal:
   $ dune exec sylic -- cir test_str.sy
   module Test_str :
   globals:
-  global public syliTest_str.s : str = "hello" init=__init_global.syliTest_str.s
+  global public syliTest_str.s : string = "hello" init=__init_global.syliTest_str.s
   
   
   functions:
@@ -89,17 +89,17 @@ String literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:str = #call_direct __init_global.syliTest_str.s ()
-      store_global syliTest_str.s = %__init_tmp_0:str
+      %__init_tmp_0:string = #call_direct __init_global.syliTest_str.s ()
+      store_global syliTest_str.s = %__init_tmp_0:string
       return
   end
   
-  private fn __init_global.syliTest_str.s() -> str:
+  private fn __init_global.syliTest_str.s() -> string:
     entry: bb0
   
     bb0:
   
-      return hello:str
+      return hello:string
   end
   
   end
@@ -111,7 +111,7 @@ Empty string literal:
   $ dune exec sylic -- cir test_empty.sy
   module Test_empty :
   globals:
-  global public syliTest_empty.s : str = "" init=__init_global.syliTest_empty.s
+  global public syliTest_empty.s : string = "" init=__init_global.syliTest_empty.s
   
   
   functions:
@@ -119,23 +119,27 @@ Empty string literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:str = #call_direct __init_global.syliTest_empty.s ()
-      store_global syliTest_empty.s = %__init_tmp_0:str
+      %__init_tmp_0:string = #call_direct __init_global.syliTest_empty.s ()
+      store_global syliTest_empty.s = %__init_tmp_0:string
       return
   end
   
-  private fn __init_global.syliTest_empty.s() -> str:
+  private fn __init_global.syliTest_empty.s() -> string:
     entry: bb0
   
     bb0:
   
-      return :str
+      return :string
   end
   
   end
 
 Arithmetic operations:
   $ cat >test_arith.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
+  > primitive (*) : i64 -> i64 -> i64 = "mul"
+  > primitive (-) : i64 -> i64 -> i64 = "sub"
+  > primitive (/) : i64 -> i64 -> i64 = "div"
   > let a = 5 + 3
   > let b = 10 - 2
   > let c = 4 * 6
@@ -170,7 +174,7 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = 20:i64 / 4:i64
+      %Sy_var0:i64 = #call_direct "syliTest_arith./" (20:i64, 4:i64)
       return %Sy_var0:i64
   end
   
@@ -178,7 +182,7 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = 4:i64 * 6:i64
+      %Sy_var0:i64 = #call_direct "syliTest_arith.*" (4:i64, 6:i64)
       return %Sy_var0:i64
   end
   
@@ -186,7 +190,7 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = 10:i64 - 2:i64
+      %Sy_var0:i64 = #call_direct "syliTest_arith.-" (10:i64, 2:i64)
       return %Sy_var0:i64
   end
   
@@ -194,14 +198,48 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = 5:i64 + 3:i64
+      %Sy_var0:i64 = #call_direct "syliTest_arith.+" (5:i64, 3:i64)
       return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_arith.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  public fn "syliTest_arith.*"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 * %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  public fn "syliTest_arith.-"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 - %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  public fn "syliTest_arith./"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 / %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
 
 Comparison operations produce a temporary variable:
   $ cat >test_cmp.sy <<EOF
+  > primitive (==) : i64 -> i64 -> bool = "eq"
+  > primitive (<) : i64 -> i64 -> bool = "lt"
   > let eq = 5 == 5
   > let lt = 2 < 5
   > EOF
@@ -228,7 +266,7 @@ Comparison operations produce a temporary variable:
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = 2:i64 < 5:i64
+      %Sy_var0:bool = #call_direct "syliTest_cmp.<" (2:i64, 5:i64)
       return %Sy_var0:bool
   end
   
@@ -236,8 +274,24 @@ Comparison operations produce a temporary variable:
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = 5:i64 == 5:i64
+      %Sy_var0:bool = #call_direct "syliTest_cmp.==" (5:i64, 5:i64)
       return %Sy_var0:bool
+  end
+  
+  public fn "syliTest_cmp.=="(%x:i64, %y:i64) -> bool:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:bool = %x:i64 == %y:i64
+      return %Sy_prim_result:bool
+  end
+  
+  public fn "syliTest_cmp.<"(%x:i64, %y:i64) -> bool:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:bool = %x:i64 < %y:i64
+      return %Sy_prim_result:bool
   end
   
   end
@@ -264,7 +318,7 @@ Type error propagates from typing phase:
   > let x = 1 + true
   > EOF
   $ dune exec sylic -- cir test_tyerr.sy 2>&1
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs bool")
+  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
   [2]
 
 Collection literals are no longer supported (moved to traits):
@@ -299,6 +353,7 @@ Missing file produces an error:
 
 Closures as an argument:
   $ cat >test_closure.src <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let f y x = x + y
   > let apply_twice f x = f (f x)
   > let double_x x = x + x
@@ -306,18 +361,20 @@ Closures as an argument:
   > let result = apply_twice double_x 10
   > EOF
   $ dune exec sylic -- typing test_closure.src
-  Typed test_closure.src successfully: module Test_closure with 5 top-level typed items
+  Typed test_closure.src successfully: module Test_closure with 6 top-level typed items
   Type Environment:
   {
-    apply_twice : forall '71. (('71) -> '71, '71) -> '71
-    double_x : forall '73. ('73) -> '73
-    f : forall '61. ('61, '61) -> '61
-    fx : (int64) -> int64
-    result : int64
+    + : i64 -> i64 -> i64
+    apply_twice : forall '82. '82 -> '82 -> '82 -> '82
+    double_x : i64 -> i64
+    f : i64 -> i64 -> i64
+    fx : i64 -> i64
+    result : i64
   }
 
 Closures as an argument:
   $ cat >test_closure.src <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let apply_twice f x = f (f x)
   > let double_x x = x + x
   > let result = apply_twice double_x 10
@@ -348,6 +405,22 @@ Closures as an argument:
       return %Sy_var1:i64
   end
   
+  public fn syliTest_closure.double_x(%x:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:i64 = #call_direct "syliTest_closure.+" (%x:i64, %x:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_closure.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
   public fn syliTest_closure.apply_twice__fn_i64_i64__i64_ret_i64(%f:(i64 -> i64), %x:i64) -> i64:
     entry: bb0
   
@@ -355,14 +428,6 @@ Closures as an argument:
       %Sy_var0:i64 = #call_apply {%f:(i64 -> i64)}  (%x:i64)
       %Sy_var1:i64 = #call_apply {%f:(i64 -> i64)}  (%Sy_var0:i64)
       return %Sy_var1:i64
-  end
-  
-  public fn syliTest_closure.double_x__i64_ret_i64(%x:i64) -> i64:
-    entry: bb0
-  
-    bb0:
-      %Sy_var0:i64 = %x:i64 + %x:i64
-      return %Sy_var0:i64
   end
   
   end

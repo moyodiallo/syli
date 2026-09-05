@@ -35,23 +35,23 @@ let rec bind_pattern (env : RenameEnv.t) (p : pattern) : RenameEnv.t * pattern =
       let env', fields' =
         List.fold_left_map
           (fun e (f : pattern_record_field) ->
-            match f.pattern with
+            match f.value with
             | None -> (e, f)
             | Some p' ->
                 let e', p'' = bind_pattern e p' in
-                (e', { f with pattern = Some p'' }))
+                (e', { f with value = Some p'' }))
           env fields
       in
       (env', { p with node = Pat_Record { fields = fields' } })
-  | Pat_Constructor { name; pattern } ->
+  | Pat_Constructor { name; value } ->
       let env', pattern' =
-        match pattern with
+        match value with
         | None -> (env, None)
         | Some p' ->
             let e', p'' = bind_pattern env p' in
             (e', Some p'')
       in
-      (env', { p with node = Pat_Constructor { name; pattern = pattern' } })
+      (env', { p with node = Pat_Constructor { name; value = pattern' } })
   | Pat_Unit | Pat_BoolLit _ | Pat_IntLit _ | Pat_CharLit _ | Pat_FloatLit _
   | Pat_StringLit _ | Pat_Any ->
       (env, p)
@@ -70,13 +70,13 @@ let rec rename_pattern_uses (env : RenameEnv.t) (p : pattern) : pattern =
                 (fun (f : pattern_record_field) ->
                   {
                     f with
-                    pattern = Option.map (rename_pattern_uses env) f.pattern;
+                    value = Option.map (rename_pattern_uses env) f.value;
                   })
                 fields;
           }
-    | Pat_Constructor { name; pattern } ->
+    | Pat_Constructor { name; value } ->
         Pat_Constructor
-          { name; pattern = Option.map (rename_pattern_uses env) pattern }
+          { name; value = Option.map (rename_pattern_uses env) value }
     | _ -> p.node
   in
   { p with node }
@@ -112,17 +112,6 @@ let rename_transformer : RenameEnv.t transformer =
             let env', pattern' = bind_pattern env ld.pattern in
             let ld' = { ld with pattern = pattern'; value = value' } in
             (env', { e with expr_desc = Exp_Let ld' })
-        | Exp_ForIn { iter_var; iterable; body } ->
-            let _, iterable' = t.expr t env iterable in
-            let env', iter_var' = bind_pattern env iter_var in
-            let _, body' = t.expr t env' body in
-            ( env,
-              {
-                e with
-                expr_desc =
-                  Exp_ForIn
-                    { iter_var = iter_var'; iterable = iterable'; body = body' };
-              } )
         | Exp_Match { expr = scrutinee; cases } ->
             let _, scrutinee' = t.expr t env scrutinee in
             let cases' =
@@ -169,16 +158,6 @@ let rename_transformer : RenameEnv.t transformer =
             let env', pattern' = bind_pattern env ld.pattern in
             let ld' = { ld with pattern = pattern'; value = value' } in
             (env', { s with structure_item_desc = Str_Let ld' })
-        | Str_Fun ({ name; body; _ } as fn) ->
-            let env', name' = RenameEnv.extend name.name env in
-            let _, body' = t.expr t env' body in
-            ( env',
-              {
-                s with
-                structure_item_desc =
-                  Str_Fun
-                    { fn with name = { name with name = name' }; body = body' };
-              } )
         | _ -> default_structure_item t env s);
     signature_item = default_signature_item;
     module_signature = default_module_signature;

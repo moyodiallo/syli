@@ -4,18 +4,16 @@ type 'acc visitor = {
   ty : 'acc visitor -> 'acc -> ty -> 'acc;
   expr : 'acc visitor -> 'acc -> expr -> 'acc;
   structure_item : 'acc visitor -> 'acc -> structure_item -> 'acc;
-  signature_item : 'acc visitor -> 'acc -> signature_item -> 'acc;
   type_decl : 'acc visitor -> 'acc -> ty_decl -> 'acc;
 }
 
 let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   match ty.ty_desc with
   | CTy_Var _ | CTy_Constant _ -> acc
-  | CTy_Arrow (params, ret) ->
-      let acc' = List.fold_left (v.ty v) acc params in
-      v.ty v acc' ret
+  | CTy_Arrow (param, ret) ->
+      let acc = v.ty v acc param in
+      v.ty v acc ret
   | CTy_Array inner -> v.ty v acc inner
-  | CTy_Ref inner -> v.ty v acc inner
   | CTy_Defined { args; _ } -> List.fold_left (v.ty v) acc args
   | CTy_Tuple elements -> List.fold_left (v.ty v) acc elements
 
@@ -27,12 +25,11 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   let acc' = v.ty v acc e.ty in
   match e.node with
   | CExp_Constant _ | CExp_Ident _ | CExp_Continue -> acc'
-  | CExp_UnOp { value; _ } -> v.expr v acc' value
-  | CExp_BinOp { lvalue; rvalue; _ } ->
-      let acc'' = v.expr v acc' lvalue in
-      v.expr v acc'' rvalue
   | CExp_VariantConstructor { arg; _ } ->
       Option.fold ~none:acc' ~some:(v.expr v acc') arg
+  | CExp_Array { elements; size; _ } ->
+      let acc'' = List.fold_left (v.expr v) acc' elements in
+      v.expr v acc'' size
   | CExp_Record fields ->
       List.fold_left
         (fun a (f : record_field) ->
@@ -43,17 +40,6 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_FieldSet { record; value; _ } ->
       let acc'' = v.expr v acc' record in
       v.expr v acc'' value
-  | CExp_ArrayCreate { element_ty; size } ->
-      let acc'' = v.ty v acc' element_ty in
-      v.expr v acc'' size
-  | CExp_ArrayLength inner -> v.expr v acc' inner
-  | CExp_ArrayGet { arr; idx } ->
-      let acc'' = v.expr v acc' arr in
-      v.expr v acc'' idx
-  | CExp_ArraySet { arr; idx; value } ->
-      let acc'' = v.expr v acc' arr in
-      let acc''' = v.expr v acc'' idx in
-      v.expr v acc''' value
   | CExp_Lambda lam -> visit_lambda v acc' lam
   | CExp_Apply { closure_fun; args } ->
       let acc'' = v.expr v acc' closure_fun in
@@ -63,11 +49,11 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_Break e_opt | CExp_Return e_opt ->
       Option.fold ~none:acc' ~some:(v.expr v acc') e_opt
   | CExp_Seq exprs -> List.fold_left (v.expr v) acc' exprs
-  | CExp_If { cond; then_branch; else_branch } ->
-      let acc'' = v.expr v acc' cond in
+  | CExp_If { condition; then_branch; else_branch } ->
+      let acc'' = v.expr v acc' condition in
       let acc''' = v.expr v acc'' then_branch in
       Option.fold ~none:acc''' ~some:(v.expr v acc''') else_branch
-  | Exp_Match { expr = scrutinee; cases } ->
+  | CExp_Match { expr = scrutinee; cases } ->
       let acc'' = v.expr v acc' scrutinee in
       List.fold_left
         (fun a (c : pattern_case) ->
@@ -96,19 +82,12 @@ let visit_type_decl_children (v : 'acc visitor) (acc : 'acc) (td : ty_decl) :
                 a fields)
         acc constructors
 
-let visit_signature_item_children (v : 'acc visitor) (acc : 'acc)
-    (s : signature_item) : 'acc =
-  match s.signature_item_desc with
-  | CSig_Fun { params; ret_ty; _ } ->
-      let acc' = List.fold_left (v.ty v) acc params in
-      v.ty v acc' ret_ty
-  | CSig_Type td -> v.type_decl v acc td
-
 let visit_structure_item_children (v : 'acc visitor) (acc : 'acc)
     (d : structure_item) : 'acc =
   match d.structure_item_desc with
+  | CStr_External { ty; _ } -> v.ty v acc ty
   | CStr_Let { value; _ } -> v.expr v acc value
-  | CStr_TypeDef td -> v.type_decl v acc td
+  | CStr_Type td -> v.type_decl v acc td
 
 let default_ty (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   visit_ty_children v acc ty
@@ -120,10 +99,6 @@ let default_structure_item (v : 'acc visitor) (acc : 'acc) (d : structure_item)
     : 'acc =
   visit_structure_item_children v acc d
 
-let default_signature_item (v : 'acc visitor) (acc : 'acc) (s : signature_item)
-    : 'acc =
-  visit_signature_item_children v acc s
-
 let default_type_decl (v : 'acc visitor) (acc : 'acc) (td : ty_decl) : 'acc =
   visit_type_decl_children v acc td
 
@@ -132,7 +107,6 @@ let identity_visitor : 'acc visitor =
     ty = default_ty;
     expr = default_expr;
     structure_item = default_structure_item;
-    signature_item = default_signature_item;
     type_decl = default_type_decl;
   }
 
@@ -146,16 +120,11 @@ let visit_structure_item (v : 'acc visitor) (acc : 'acc) (d : structure_item) :
     'acc =
   v.structure_item v acc d
 
-let visit_signature_item (v : 'acc visitor) (acc : 'acc) (s : signature_item) :
-    'acc =
-  v.signature_item v acc s
-
 let visit_type_decl (v : 'acc visitor) (acc : 'acc) (td : ty_decl) : 'acc =
   v.type_decl v acc td
 
 let visit_program (v : 'acc visitor) (acc : 'acc) (prog : program_core) : 'acc =
-  let acc' = List.fold_left (v.signature_item v) acc prog.signature_items in
-  List.fold_left (v.structure_item v) acc' prog.structure_items
+  List.fold_left (v.structure_item v) acc prog.structure_items
 
 let collect_idents (prog : program_core) : string list =
   let visitor =
@@ -165,8 +134,8 @@ let collect_idents (prog : program_core) : string list =
         (fun v acc e ->
           let acc' =
             match e.node with
-            | CExp_Ident { fullname; _ } -> fullname :: acc
-            | CExp_Let { name = { fullname; _ }; _ } -> fullname :: acc
+            | CExp_Ident { name; _ } -> name :: acc
+            | CExp_Let { name = { name; _ }; _ } -> name :: acc
             | _ -> acc
           in
           visit_expr_children v acc' e);
@@ -183,12 +152,9 @@ let collect_function_names (prog : program_core) : string list =
           let acc' =
             match d.structure_item_desc with
             | CStr_Let
-                {
-                  name = { fullname; _ };
-                  value = { node = CExp_Lambda _; _ };
-                  _;
-                } ->
-                fullname :: acc
+                { name = { name; _ }; value = { node = CExp_Lambda _; _ }; _ }
+              ->
+                name :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc' d);
@@ -204,7 +170,7 @@ let collect_type_defs (prog : program_core) : (string * ty_decl) list =
         (fun v acc d ->
           let acc' =
             match d.structure_item_desc with
-            | CStr_TypeDef td -> (td.name.fullname, td) :: acc
+            | CStr_Type td -> (td.name.name, td) :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc' d);

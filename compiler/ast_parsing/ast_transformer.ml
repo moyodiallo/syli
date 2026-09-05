@@ -16,9 +16,8 @@ let rec transform_ty (t : transformer) (ty : ty) : ty =
     match ty.ty_desc with
     | Ty_Constant _ | Ty_Var _ | Ty_Any -> ty.ty_desc
     | Ty_Array inner -> Ty_Array (t.ty t inner)
-    | Ty_Ref inner -> Ty_Ref (t.ty t inner)
     | Ty_Tuple tys -> Ty_Tuple (List.map (t.ty t) tys)
-    | Ty_Arrow (params, ret) -> Ty_Arrow (List.map (t.ty t) params, t.ty t ret)
+    | Ty_Arrow (param_ty, ret) -> Ty_Arrow (t.ty t param_ty, t.ty t ret)
     | Ty_Defined ({ args; _ } as defined) ->
         Ty_Defined { defined with args = List.map (t.ty t) args }
   in
@@ -38,11 +37,11 @@ let rec transform_pattern (t : transformer) (p : pattern) : pattern =
             fields =
               List.map
                 (fun (f : pattern_record_field) ->
-                  { f with pattern = Option.map (t.pattern t) f.pattern })
+                  { f with value = Option.map (t.pattern t) f.value })
                 fields;
           }
-    | Pat_Constructor { name; pattern } ->
-        Pat_Constructor { name; pattern = Option.map (t.pattern t) pattern }
+    | Pat_Constructor { name; value } ->
+        Pat_Constructor { name; value = Option.map (t.pattern t) value }
   in
   { p with node }
 
@@ -66,7 +65,7 @@ let transform_letdef (t : transformer) (ld : letdef) : letdef =
     ld with
     pattern = t.pattern t ld.pattern;
     value = t.expr t ld.value;
-    ty_opt = Option.map (t.ty t) ld.ty_opt;
+    ty_annot = Option.map (t.ty t) ld.ty_annot;
   }
 
 let rec transform_expr (t : transformer) (e : expr) : expr =
@@ -85,19 +84,13 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
           }
     | Exp_VariantConstructor { name; arg } ->
         Exp_VariantConstructor { name; arg = Option.map (t.expr t) arg }
-    | Exp_ArrayCreate { element_ty; size } ->
-        Exp_ArrayCreate { element_ty = t.ty t element_ty; size = t.expr t size }
-    | Exp_ArrayLength { arr } -> Exp_ArrayLength { arr = t.expr t arr }
-    | Exp_ArrayGet { arr; idx } ->
-        Exp_ArrayGet { arr = t.expr t arr; idx = t.expr t idx }
-    | Exp_ArraySet { arr; idx; value } ->
-        Exp_ArraySet
-          { arr = t.expr t arr; idx = t.expr t idx; value = t.expr t value }
-    | Exp_UnOp { op; value } -> Exp_UnOp { op; value = t.expr t value }
-    | Exp_BinOp { op; lvalue; rvalue } ->
-        Exp_BinOp { op; lvalue = t.expr t lvalue; rvalue = t.expr t rvalue }
-    | Exp_Ref { value } -> Exp_Ref { value = t.expr t value }
-    | Exp_Deref { value } -> Exp_Deref { value = t.expr t value }
+    | Exp_Array { element_ty; elements; size } ->
+        Exp_Array
+          {
+            element_ty = t.ty t element_ty;
+            elements = List.map (t.expr t) elements;
+            size = t.expr t size;
+          }
     | Exp_Lambda lam -> Exp_Lambda (transform_lambda t lam)
     | Exp_Apply { closure_fun; args } ->
         Exp_Apply
@@ -106,39 +99,27 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
             args = List.map (t.expr t) args;
           }
     | Exp_Let ld -> Exp_Let (transform_letdef t ld)
-    | Exp_Assign { target; value } ->
-        Exp_Assign { target = t.expr t target; value = t.expr t value }
-    | Exp_AssignRef { target; value } ->
-        Exp_AssignRef { target = t.expr t target; value = t.expr t value }
-    | Exp_If { cond; then_branch; else_branch } ->
+    | Exp_If { condition; then_branch; else_branch } ->
         Exp_If
           {
-            cond = t.expr t cond;
+            condition = t.expr t condition;
             then_branch = t.expr t then_branch;
             else_branch = Option.map (t.expr t) else_branch;
           }
-    | Exp_While { cond; body } ->
-        Exp_While { cond = t.expr t cond; body = t.expr t body }
-    | Exp_ForIn { iter_var; iterable; body } ->
-        Exp_ForIn
-          {
-            iter_var = t.pattern t iter_var;
-            iterable = t.expr t iterable;
-            body = t.expr t body;
-          }
-    | Exp_Loop { expr } -> Exp_Loop { expr = t.expr t expr }
-    | Exp_Break { expr_opt } ->
-        Exp_Break { expr_opt = Option.map (t.expr t) expr_opt }
-    | Exp_Return { expr_opt } ->
-        Exp_Return { expr_opt = Option.map (t.expr t) expr_opt }
+    | Exp_While { condition; body } ->
+        Exp_While { condition = t.expr t condition; body = t.expr t body }
+    | Exp_Loop { condition } -> Exp_Loop { condition = t.expr t condition }
+    | Exp_Break { value } -> Exp_Break { value = Option.map (t.expr t) value }
+    | Exp_Return { value } -> Exp_Return { value = Option.map (t.expr t) value }
     | Exp_Seq { exprs } -> Exp_Seq { exprs = List.map (t.expr t) exprs }
     | Exp_Match { expr; cases } ->
         Exp_Match
           { expr = t.expr t expr; cases = List.map (t.pattern_case t) cases }
     | Exp_Field { record; field_name } ->
         Exp_Field { record = t.expr t record; field_name }
-    | Exp_Index { collection; index } ->
-        Exp_Index { collection = t.expr t collection; index = t.expr t index }
+    | Exp_FieldSet { record; field_name; value } ->
+        Exp_FieldSet
+          { record = t.expr t record; field_name; value = t.expr t value }
   in
   { e with expr_desc }
 
@@ -184,16 +165,11 @@ let transform_signature_item (t : transformer) (s : signature_item) :
     signature_item =
   let signature_item_desc =
     match s.signature_item_desc with
-    | Sig_Value { name; params; value_ty; external_fn } ->
-        Sig_Value
-          {
-            name;
-            params = List.map (t.ty t) params;
-            value_ty = t.ty t value_ty;
-            external_fn;
-          }
+    | Sig_Value { name; ty } -> Sig_Value { name; ty = t.ty t ty }
+    | Sig_External { fname; ty; external_fn } ->
+        Sig_External { fname; ty = t.ty t ty; external_fn }
     | Sig_Type td -> Sig_Type (transform_ty_decl t td)
-    | Sig_Module ms -> Sig_Module (t.module_signature t ms)
+    | Sig_ModuleSignature ms -> Sig_ModuleSignature (t.module_signature t ms)
   in
   { s with signature_item_desc }
 
@@ -202,17 +178,11 @@ let transform_structure_item (t : transformer) (s : structure_item) :
   let structure_item_desc =
     match s.structure_item_desc with
     | Str_Let ld -> Str_Let (transform_letdef t ld)
-    | Str_Fun { rec_flag; name; body; ty_opt } ->
-        Str_Fun
-          {
-            rec_flag;
-            name;
-            body = t.expr t body;
-            ty_opt = Option.map (t.ty t) ty_opt;
-          }
-    | Str_TypeDef td -> Str_TypeDef (transform_ty_decl t td)
-    | Str_ModuleStruct ms -> Str_ModuleStruct (t.module_structure t ms)
-    | Str_Signature sigs -> Str_Signature (List.map (t.signature_item t) sigs)
+    | Str_External { fname; ty; external_fn } ->
+        Str_External { fname; ty = t.ty t ty; external_fn }
+    | Str_Type td -> Str_Type (transform_ty_decl t td)
+    | Str_ModuleStructure ms -> Str_ModuleStructure (t.module_structure t ms)
+    | Str_ModuleSignature ms -> Str_ModuleSignature (t.module_signature t ms)
   in
   { s with structure_item_desc }
 

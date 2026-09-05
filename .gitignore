@@ -63,6 +63,7 @@ cmake-*
 build-*
 
 AGENTS.md
+.agents/
 
 # IDE and editor files
 .vscode

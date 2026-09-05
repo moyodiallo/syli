@@ -1,39 +1,49 @@
   $ cat >test_file.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > primitive (-)  : i64 -> i64 -> i64 = "sub"
   > let add x y = x + y
   > let sub x y = x - y
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let sub1 = sub 1
   >   let f = if true then add1 else sub1
   >   let result = f 2
   >   syli_print_i64 result
+  > let _ = main ()
   > EOF
+
   $ dune exec sylic -- core test_file.sy > test_file.core
   $ dune exec sylic -- cir test_file.sy > test_file.ir
   $ dune exec sylic -- oir test_file.sy > test_file.oir
   $ dune exec sylic -- llvm test_file.sy > test_file.ll
   $ cat test_file.core
   module Test_file
-  let syliTest_file.add = fun (x, y) : 'a81 ->
-      (x : 'a81 + y : 'a81) : 'a81
+  extern syliTest_file.syli_print_i64 : (i64) -> unit
   
-  let syliTest_file.sub = fun (x, y) : 'a86 ->
-      (x : 'a86 - y : 'a86) : 'a86
+  extern "syliTest_file.+" : (i64) -> (i64) -> i64
+  
+  extern "syliTest_file.-" : (i64) -> (i64) -> i64
+  
+  let syliTest_file.add = fun (x, y) : i64 ->
+      "syliTest_file.+"(x : i64, y : i64) : i64
+  
+  let syliTest_file.sub = fun (x, y) : i64 ->
+      "syliTest_file.-"(x : i64, y : i64) : i64
   
   let syliTest_file.main = fun () : unit ->
       {
-        let syliTest_file.main__add1 = syliTest_file.add(1 : i64) : (i64) -> i64
-        let syliTest_file.main__sub1 = syliTest_file.sub(1 : i64) : (i64) -> i64
-        let syliTest_file.main__f = if true : bool
-            syliTest_file.main__add1 : (i64) -> i64
+        let sy1_add1 = syliTest_file.add(1 : i64) : (i64) -> i64
+        let sy2_sub1 = syliTest_file.sub(1 : i64) : (i64) -> i64
+        let sy3_f = if true : bool
+            sy1_add1 : (i64) -> i64
           else
-            syliTest_file.main__sub1 : (i64) -> i64
-        let syliTest_file.main__result = syliTest_file.main__f(2 : i64) : i64
-        syliTest_file.syli_print_i64(syliTest_file.main__result : i64) : unit
+            sy2_sub1 : (i64) -> i64
+        let sy4_result = sy3_f(2 : i64) : i64
+        syliTest_file.syli_print_i64(sy4_result : i64) : unit
       }
+  
+  let syliTest_file.sy5_any_pat = syliTest_file.main(() : unit) : unit
   
 
   $ cat test_file.oir
@@ -47,25 +57,33 @@
     entry: bb0
   
     bb0:
-  
+      %__init_tmp_0:void = #call_direct __init_global.syliTest_file.sy5_any_pat ()
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  private fn __init_global.syliTest_file.sy5_any_pat() -> void:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:void = #call_direct syliTest_file.main (0:i64)
+      return
+  end
+  
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.add.49_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.add.91_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
       %Sy_var1:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.sub.59_ret_i64)
+      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.sub.102_ret_i64)
       obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       obj_set(%Sy_var1:obj_ptr, 1:i32, 1:i64):i64
       
@@ -90,23 +108,39 @@
       return
   end
   
-  public fn syliTest_file.sub__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.sub(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 - %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_file.-" (%x:i64, %y:i64)
       return %Sy_var0:i64
   end
   
-  public fn syliTest_file.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_file.+" (%x:i64, %y:i64)
       return %Sy_var0:i64
   end
   
-  private fn __make_closure_accum.syliTest_file.add.49_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  public fn "syliTest_file.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  public fn "syliTest_file.-"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 - %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  private fn __make_closure_accum.syliTest_file.add.91_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -116,7 +150,7 @@
       return %Sy_rst:i64
   end
   
-  private fn __make_closure_accum.syliTest_file.sub.59_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_file.sub.102_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -132,7 +166,7 @@
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_file.add__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_file.add (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -142,7 +176,7 @@
     bb0:
       %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
       %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_file.sub__i64__i64_ret_i64 (%Sy_s0:i64, %Sy_s1:i64)
+      %Sy_rst:i64 = #call_direct syliTest_file.sub (%Sy_s0:i64, %Sy_s1:i64)
       return %Sy_rst:i64
   end
   
@@ -160,11 +194,19 @@
     entry: bb0
   
     bb0:
-  
+      %__init_tmp_0:void = #call_direct __init_global.syliTest_file.sy5_any_pat ()
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  private fn __init_global.syliTest_file.sy5_any_pat() -> void:
+    entry: bb0
+  
+    bb0:
+      %Sy_var0:void = #call_direct syliTest_file.main (0:i64)
+      return
+  end
+  
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -187,20 +229,36 @@
       return
   end
   
-  public fn syliTest_file.sub__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.sub(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 - %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_file.-" (%x:i64, %y:i64)
       return %Sy_var0:i64
   end
   
-  public fn syliTest_file.add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %x:i64 + %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_file.+" (%x:i64, %y:i64)
       return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_file.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
+  public fn "syliTest_file.-"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 - %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
@@ -213,10 +271,9 @@
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
+  define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
-    call void @syliTest_file.main()
     ret i32 0
   }
   
@@ -228,6 +285,13 @@
   
   define void @__init.Test_file() gc "statepoint-example" {
   bb0:
+    call void @__init_global.syliTest_file.sy5_any_pat()
+    ret void
+  }
+  
+  define void @__init_global.syliTest_file.sy5_any_pat() gc "statepoint-example" {
+  bb0:
+    call void @syliTest_file.main()
     ret void
   }
   
@@ -237,7 +301,7 @@
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.49_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.add.91_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
@@ -248,7 +312,7 @@
     call void @syli_rt_gc_cycle()
     %Sy_var1 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.59_ret_i64 to ptr
+    %Sy_accum_fn_1 = bitcast ptr @__make_closure_accum.syliTest_file.sub.102_ret_i64 to ptr
     %Sy_tmp4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
     %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp4, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_1, ptr addrspace(1) %Sy_tmp5
@@ -277,19 +341,31 @@
     ret void
   }
   
-  define i64 @syliTest_file.sub__i64__i64_ret_i64(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @syliTest_file.sub(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = sub i64 %x, %y
+    %Sy_var0 = call i64 @"syliTest_file.-"(i64 %x, i64 %y)
     ret i64 %Sy_var0
   }
   
-  define i64 @syliTest_file.add__i64__i64_ret_i64(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @syliTest_file.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = add i64 %x, %y
+    %Sy_var0 = call i64 @"syliTest_file.+"(i64 %x, i64 %y)
     ret i64 %Sy_var0
   }
   
-  define i64 @__make_closure_accum.syliTest_file.add.49_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @"syliTest_file.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = add i64 %x, %y
+    ret i64 %Sy_prim_result
+  }
+  
+  define i64 @"syliTest_file.-"(i64 %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_prim_result = sub i64 %x, %y
+    ret i64 %Sy_prim_result
+  }
+  
+  define i64 @__make_closure_accum.syliTest_file.add.91_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -299,7 +375,7 @@
     ret i64 %Sy_rst
   }
   
-  define i64 @__make_closure_accum.syliTest_file.sub.59_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.syliTest_file.sub.102_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
@@ -311,13 +387,13 @@
   
   define i64 @__wrapper.syliTest_file.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_file.add__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
+    %Sy_rst = call i64 @syliTest_file.add(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
   }
   
   define i64 @__wrapper.syliTest_file.sub.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_file.sub__i64__i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
+    %Sy_rst = call i64 @syliTest_file.sub(i64 %Sy_x0, i64 %Sy_x1)
     ret i64 %Sy_rst
   }
   

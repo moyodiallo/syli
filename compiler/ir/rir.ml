@@ -101,7 +101,12 @@ and rvalue_node =
   | RR_UnOp of { op : unop; operand : operand }
   | RR_Runtime_call of runtime_call
   | RR_Object_load of { obj : operand; field_idx : operand; value_ty : ty }
-  | RR_Cast of { src : operand; to_ty : ty }
+  | RR_CastBit of { src : operand; to_ty : ty }
+      (** Reinterpret a value of one type as another (LLVM [bitcast]). *)
+  | RR_CastIntToPtr of { src : operand; to_ty : ty }
+      (** Integer to pointer conversion (LLVM [inttoptr]). *)
+  | RR_CastPtrToInt of { src : operand; to_ty : ty }
+      (** Pointer to integer conversion (LLVM [ptrtoint]). *)
   | RR_Addr_fn of { fn : qualified_name }
       (** Materialize the address of a known function as a pointer value *)
 
@@ -149,6 +154,7 @@ type function_rir = {
   blocks : block list;
   return_ty : ty;
   visibility : visibility;
+  unit_param_indices : int list;
 }
 
 (* External function declaration *)
@@ -159,6 +165,7 @@ type ffi_external_function = {
   ret_ty : ty;
   params : ty list;
   calling_convention : string option;
+  unit_param_indices : int list;
 }
 
 type global_value = {

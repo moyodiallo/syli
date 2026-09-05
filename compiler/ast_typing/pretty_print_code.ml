@@ -4,57 +4,29 @@ let indent n = String.make (n * 2) ' '
 
 let rec string_of_ty (t : ty) : string =
   match t.ty_desc with
-  | TTy_Constant TTy_Int64 -> "int64"
-  | TTy_Constant TTy_Int32 -> "int32"
-  | TTy_Constant TTy_Int16 -> "int16"
-  | TTy_Constant TTy_Int8 -> "int8"
-  | TTy_Constant TTy_UInt64 -> "uint64"
-  | TTy_Constant TTy_UInt32 -> "uint32"
-  | TTy_Constant TTy_UInt16 -> "uint16"
-  | TTy_Constant TTy_UInt8 -> "uint8"
+  | TTy_Constant TTy_Int64 -> "i64"
+  | TTy_Constant TTy_Int32 -> "i32"
+  | TTy_Constant TTy_Int16 -> "i16"
+  | TTy_Constant TTy_Int8 -> "i8"
+  | TTy_Constant TTy_UInt64 -> "u64"
+  | TTy_Constant TTy_UInt32 -> "u32"
+  | TTy_Constant TTy_UInt16 -> "u16"
+  | TTy_Constant TTy_UInt8 -> "u8"
   | TTy_Constant TTy_Bool -> "bool"
   | TTy_Constant TTy_Unit -> "unit"
-  | TTy_Constant TTy_Float -> "float"
-  | TTy_Constant TTy_Double -> "double"
-  | TTy_Constant TTy_StringLit -> "str"
-  | TTy_Constant TTy_CharLit -> "char"
+  | TTy_Constant TTy_F32 -> "f32"
+  | TTy_Constant TTy_F64 -> "f64"
+  | TTy_Constant TTy_String -> "string"
+  | TTy_Constant TTy_Char -> "char"
   | TTy_Array ty -> "array[" ^ string_of_ty ty ^ "]"
-  | TTy_Ref ty -> "ref<" ^ string_of_ty ty ^ ">"
   | TTy_Tuple tys -> "(" ^ String.concat " * " (List.map string_of_ty tys) ^ ")"
-  | TTy_Arrow (params, ret) ->
-      let params_str = String.concat " -> " (List.map string_of_ty params) in
-      params_str ^ " -> " ^ string_of_ty ret
+  | TTy_Arrow (arg, ret) -> string_of_ty arg ^ " -> " ^ string_of_ty ret
   | TTy_Var i -> "'" ^ string_of_int i
   | TTy_Defined { name; args } ->
       let base = name.name in
       if args = [] then base
       else base ^ "[" ^ String.concat ", " (List.map string_of_ty args) ^ "]"
   | TTy_Any -> "_"
-
-let string_of_unop : unop -> string = function
-  | TUnop_Logical TNot -> "!"
-  | TUnop_Arithmetic TNeg -> "-"
-  | TUnop_Bitwise TBitNot -> "~"
-
-let string_of_binop : binop -> string = function
-  | TBinop_Arithmetic TAdd -> "+"
-  | TBinop_Arithmetic TSub -> "-"
-  | TBinop_Arithmetic TMul -> "*"
-  | TBinop_Arithmetic TDiv -> "/"
-  | TBinop_Arithmetic TMod -> "%"
-  | TBinop_Logical TAnd -> "&&"
-  | TBinop_Logical TOr -> "||"
-  | TBinop_Bitwise TBitAnd -> "&"
-  | TBinop_Bitwise TBitOr -> "lor"
-  | TBinop_Bitwise TBitXor -> "^"
-  | TBinop_Bitwise TLShift -> "<<"
-  | TBinop_Bitwise TRShift -> ">>"
-  | TBinop_Comparison TEq -> "=="
-  | TBinop_Comparison TNe -> "!="
-  | TBinop_Comparison TLt -> "<"
-  | TBinop_Comparison TLe -> "<="
-  | TBinop_Comparison TGt -> ">"
-  | TBinop_Comparison TGe -> ">="
 
 let rec string_of_pattern (p : pattern) : string =
   match p.pattern_desc with
@@ -105,23 +77,13 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
                f.field_name.name ^ ": " ^ string_of_expr ~ind f.field_value)
              fields)
       ^ " }"
-  | TExp_VariantConstructor { name; args = None } -> name.name
-  | TExp_VariantConstructor { name; args = Some e } ->
+  | TExp_VariantConstructor { name; arg = None } -> name.name
+  | TExp_VariantConstructor { name; arg = Some e } ->
       name.name ^ "(" ^ string_of_expr ~ind e ^ ")"
-  | TExp_ArrayCreate _ -> "array.create(...)"
-  | TExp_ArrayLength { arr } -> "array.length(" ^ string_of_expr ~ind expr ^ ")"
-  | TExp_ArrayGet { arr; idx } ->
-      "array.get(" ^ string_of_expr ~ind expr ^ ", " ^ string_of_expr ~ind idx
-      ^ ")"
-  | TExp_ArraySet { arr; idx; value } ->
-      "array.set(" ^ string_of_expr ~ind expr ^ ", " ^ string_of_expr ~ind idx
-      ^ ", " ^ string_of_expr ~ind value ^ ")"
-  | TExp_UnOp { op; value } -> string_of_unop op ^ string_of_expr ~ind value
-  | TExp_Ref { value } -> "ref " ^ string_of_expr ~ind value
-  | TExp_Deref { value } -> "*" ^ string_of_expr ~ind value
-  | TExp_BinOp { op; lvalue; rvalue } ->
-      "(" ^ string_of_expr ~ind lvalue ^ " " ^ string_of_binop op ^ " "
-      ^ string_of_expr ~ind rvalue ^ ")"
+  | TExp_Array { element_ty = _; elements; size } ->
+      "array["
+      ^ String.concat ", " (List.map (string_of_expr ~ind) elements)
+      ^ "]" ^ " size=" ^ string_of_expr ~ind size
   | TExp_Lambda (lam : lambda) ->
       let params =
         List.map
@@ -143,22 +105,20 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
         match l.pattern.pattern_desc with TPat_Ident s -> s.name | _ -> "_"
       in
       "let " ^ lhs ^ " = " ^ string_of_expr ~ind l.value
-  | TExp_Assign { target; value } ->
-      string_of_expr ~ind target ^ " = " ^ string_of_expr ~ind value
-  | TExp_AssignRef { target; value } ->
-      string_of_expr ~ind target ^ " := " ^ string_of_expr ~ind value
-  | TExp_If { cond; then_branch; else_branch = None } ->
-      "if " ^ string_of_expr ~ind cond ^ " then "
+  | TExp_If { condition; then_branch; else_branch = None } ->
+      "if "
+      ^ string_of_expr ~ind condition
+      ^ " then "
       ^ string_of_expr ~ind then_branch
-  | TExp_If { cond; then_branch; else_branch = Some e } ->
-      "if " ^ string_of_expr ~ind cond ^ " then "
+  | TExp_If { condition; then_branch; else_branch = Some e } ->
+      "if "
+      ^ string_of_expr ~ind condition
+      ^ " then "
       ^ string_of_expr ~ind then_branch
       ^ " else " ^ string_of_expr ~ind e
-  | TExp_While { cond; body } ->
-      "while " ^ string_of_expr ~ind cond ^ " do " ^ string_of_expr ~ind body
-  | TExp_ForIn { iter_var; iterable; body } ->
-      "for " ^ string_of_pattern iter_var ^ " in "
-      ^ string_of_expr ~ind iterable
+  | TExp_While { condition; body } ->
+      "while "
+      ^ string_of_expr ~ind condition
       ^ " do " ^ string_of_expr ~ind body
   | TExp_Loop { expr } -> "loop " ^ string_of_expr ~ind expr
   | TExp_Break { expr_opt = None } -> "break"
@@ -194,7 +154,8 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ " {\n"
       ^ String.concat "\n" cases_str
       ^ "\n" ^ indent ind ^ "}"
-  | TExp_Field { record; field_name; _ } ->
-      string_of_expr ~ind record ^ "." ^ field_name
-  | TExp_Index { collection; index } ->
-      string_of_expr ~ind collection ^ "[" ^ string_of_expr ~ind index ^ "]"
+  | TExp_Field { record; field_name } ->
+      string_of_expr ~ind record ^ "." ^ field_name.name
+  | TExp_FieldSet { record; field_name; value } ->
+      string_of_expr ~ind record ^ "." ^ field_name.name ^ " = "
+      ^ string_of_expr ~ind value

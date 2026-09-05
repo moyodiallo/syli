@@ -1,8 +1,6 @@
   $ cat >test_binary.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
-  > fn main () = syli_print_i64(42)
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let main () = syli_print_i64(42)
   > EOF
   $ dune exec sylic -- core test_binary.sy > test_binary.core
   $ dune exec sylic -- cir_raw test_binary.sy > test_binary.ir
@@ -10,6 +8,8 @@
 
   $ cat test_binary.core
   module Test_binary
+  extern syliTest_binary.syli_print_i64 : (i64) -> unit
+  
   let syliTest_binary.main = fun () : unit ->
       syliTest_binary.syli_print_i64(42 : i64) : unit
   
@@ -29,7 +29,7 @@
       return
   end
   
-  public fn syliTest_binary.main() -> void:
+  public fn syliTest_binary.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -44,10 +44,9 @@
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
+  define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
-    call void @syliTest_binary.main()
     ret i32 0
   }
   

@@ -63,7 +63,7 @@ let collect_paths (prog : program) : path_ctx =
       structure_item =
         (fun v acc s ->
           match s.structure_item_desc with
-          | TStr_ModuleStruct { name; structure_items; _ } ->
+          | TStr_ModuleStructure { name; structure_items; _ } ->
               let path =
                 String.concat "." (List.rev acc.current_path) ^ "." ^ name.name
               in
@@ -75,22 +75,6 @@ let collect_paths (prog : program) : path_ctx =
                 List.map (fun s -> v.structure_item v acc' s) structure_items
               in
               v.structure_item v acc s
-          | TStr_Fun { name; body; rec_flag; _ } ->
-              let path =
-                String.concat "." (List.rev acc.current_path) ^ "." ^ name.name
-              in
-              Hashtbl.add acc.collected_paths s.id path;
-              let acc' =
-                if rec_flag = TRecursive then
-                  {
-                    acc with
-                    renameEnv = IdentEnv.add name.name path acc.renameEnv;
-                    current_path = name.name :: acc.current_path;
-                  }
-                else { acc with current_path = name.name :: acc.current_path }
-              in
-              let _ = v.expr v acc' body in
-              acc
           | TStr_Let { pattern; value; rec_flag; _ } ->
               let acc' =
                 match pattern.pattern_desc with
@@ -135,12 +119,12 @@ let collect_field_indices (prog : program) : field_ctx =
           match ty.ty_desc with
           | TTy_Defined _ -> default_ty t env ty
           | TTy_Constant _ | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _
-          | TTy_Array _ | TTy_Ref _ ->
+          | TTy_Array _ ->
               default_ty t env ty);
       structure_item =
         (fun v env si ->
           match si.structure_item_desc with
-          | TStr_TypeDef td -> (
+          | TStr_Type td -> (
               match td.def with
               | TTydef_Record fields ->
                   let _ =

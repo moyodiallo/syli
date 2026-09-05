@@ -1,45 +1,50 @@
   $ cat >parse0.src <<EOF
-  > type person = { name: str; age: int64 }
-  > fn add x y = x + y
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > type person = { name: str; age: i64 }
+  > let add x y = x + y
   > let add10 = add 10
   > let add20 = add10 20
+  > EOF
+  $ dune exec sylic typing parse0.src
+  Typed parse0.src successfully: module Parse0 with 5 top-level typed items
+  Type Environment:
+  {
+    + : i64 -> i64 -> i64
+    add : i64 -> i64 -> i64
+    add10 : i64 -> i64
+    add20 : i64
+  }
+
+
+  $ cat >parse0.src <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > type person = { name: str; age: i64 }
+  > let add x y = x + y
+  > let z = add 10 20
   > EOF
   $ dune exec sylic typing parse0.src
   Typed parse0.src successfully: module Parse0 with 4 top-level typed items
   Type Environment:
   {
-    add : forall '42. ('42, '42) -> '42
-    add10 : (int64) -> int64
-    add20 : int64
+    + : i64 -> i64 -> i64
+    add : i64 -> i64 -> i64
+    z : i64
   }
 
 
   $ cat >parse0.src <<EOF
-  > type person = { name: str; age: int64 }
-  > fn add x y = x + y
-  > let z = add 10 20
-  > EOF
-  $ dune exec sylic typing parse0.src
-  Typed parse0.src successfully: module Parse0 with 3 top-level typed items
-  Type Environment:
-  {
-    add : forall '36. ('36, '36) -> '36
-    z : int64
-  }
-
-
-  $ cat >parse0.src <<EOF
-  > type person = { name: str; age: int64 }
-  > fn add x y = x + y
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > type person = { name: str; age: i64 }
+  > let add x y = x + y
   > let z = add 10 20.
   > EOF
   $ dune exec sylic typing parse0.src
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: int64 vs double")
+  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: i64 vs f64")
   [2]
 
 
   $ cat >parse0.src <<EOF
-  > fn add x y = (x, y)
+  > let add x y = (x, y)
   > let add10 = add 10
   > let add20 = add10 20
   > EOF
@@ -47,13 +52,13 @@
   Typed parse0.src successfully: module Parse0 with 3 top-level typed items
   Type Environment:
   {
-    add : forall '31 '33. ('31, '33) -> ('31, '33)
-    add10 : forall '36. ('36) -> (int64, '36)
-    add20 : (int64, int64)
+    add : forall '32 '34. '32 -> '34 -> ('32 * '34)
+    add10 : forall '38. '38 -> (i64 * '38)
+    add20 : (i64 * i64)
   }
 
   $ cat >parse0.src <<EOF
-  > fn add x y = (x, y)
+  > let add x y = (x, y)
   > let add10 = add 10
   > let add20 = add10 20
   > let add_float = add 10.0
@@ -62,31 +67,31 @@
   Typed parse0.src successfully: module Parse0 with 4 top-level typed items
   Type Environment:
   {
-    add : forall '39 '41. ('39, '41) -> ('39, '41)
-    add10 : forall '44. ('44) -> (int64, '44)
-    add20 : (int64, int64)
-    add_float : forall '49. ('49) -> (double, '49)
+    add : forall '40 '42. '40 -> '42 -> ('40 * '42)
+    add10 : forall '46. '46 -> (i64 * '46)
+    add20 : (i64 * i64)
+    add_float : forall '51. '51 -> (f64 * '51)
   }
 
 Capturing partial application.
   $ cat >parse0.src <<EOF
-  > fn add x y = (x, y)
+  > let add x y = (x, y)
   > let add10 = add 10
-  > let add_fn () = add10
+  > let add_let () = add10
   > let add20 = add10 20
   > let add_float = add 10.0
-  > let fn_r = add_fn ()
-  > let fn_v = fn_r 20
+  > let let_r = add_let ()
+  > let let_v = let_r 20
   > EOF
   $ dune exec sylic typing parse0.src
   Typed parse0.src successfully: module Parse0 with 7 top-level typed items
   Type Environment:
   {
-    add : forall '62 '64. ('62, '64) -> ('62, '64)
-    add10 : forall '67. ('67) -> (int64, '67)
-    add20 : (int64, int64)
-    add_float : forall '75. ('75) -> (double, '75)
-    add_fn : forall '70. (unit) -> ('70) -> (int64, '70)
-    fn_r : forall '77. ('77) -> (int64, '77)
-    fn_v : (int64, int64)
+    add : forall '63 '65. '63 -> '65 -> ('63 * '65)
+    add10 : forall '69. '69 -> (i64 * '69)
+    add20 : (i64 * i64)
+    add_float : forall '77. '77 -> (f64 * '77)
+    add_let : forall '72. unit -> '72 -> (i64 * '72)
+    let_r : forall '79. '79 -> (i64 * '79)
+    let_v : (i64 * i64)
   }

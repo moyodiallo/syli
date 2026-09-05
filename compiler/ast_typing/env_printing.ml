@@ -1,39 +1,7 @@
 open Typed_ast
 open Env
 open Syli_common
-
-let rec string_of_ty (t : ty) : string =
-  match t.ty_desc with
-  | TTy_Constant TTy_Int64 -> "int64"
-  | TTy_Constant TTy_Int32 -> "int32"
-  | TTy_Constant TTy_Int16 -> "int16"
-  | TTy_Constant TTy_Int8 -> "int8"
-  | TTy_Constant TTy_UInt64 -> "uint64"
-  | TTy_Constant TTy_UInt32 -> "uint32"
-  | TTy_Constant TTy_UInt16 -> "uint16"
-  | TTy_Constant TTy_UInt8 -> "uint8"
-  | TTy_Constant TTy_Float -> "float"
-  | TTy_Constant TTy_Double -> "double"
-  | TTy_Constant TTy_Bool -> "bool"
-  | TTy_Constant TTy_Unit -> "unit"
-  | TTy_Constant TTy_StringLit -> "str"
-  | TTy_Constant TTy_CharLit -> "char"
-  | TTy_Var v -> "'" ^ string_of_int v
-  | TTy_Arrow (args, ret) ->
-      let args_str = String.concat ", " (List.map string_of_ty args) in
-      Printf.sprintf "(%s) -> %s" args_str (string_of_ty ret)
-  | TTy_Array t' -> Printf.sprintf "array[%s]" (string_of_ty t')
-  | TTy_Ref t' -> Printf.sprintf "ref<%s>" (string_of_ty t')
-  | TTy_Tuple ts ->
-      let ts_str = String.concat ", " (List.map string_of_ty ts) in
-      Printf.sprintf "(%s)" ts_str
-  | TTy_Defined { name; args } ->
-      let full_name = name.name in
-      if args = [] then full_name
-      else
-        let args_str = String.concat ", " (List.map string_of_ty args) in
-        Printf.sprintf "%s<%s>" full_name args_str
-  | TTy_Any -> "_"
+open Pretty_print_code
 
 let string_of_scheme (s : scheme) : string =
   match s.vars with

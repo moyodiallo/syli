@@ -6,6 +6,11 @@ open Parse_ty
 open Ty
 module Parsing_ast = Syli_parsing.Ast
 
+let rec arrow_ty_of_params (params : ty list) (ret : ty) : ty =
+  match params with
+  | [] -> ret
+  | param :: params -> mk_ty (TTy_Arrow (param, arrow_ty_of_params params ret))
+
 let apply_expr_ty (ctx : infer_ctx) (e : expr) : expr =
   { e with ty = apply_ty ctx e.ty }
 
@@ -14,22 +19,27 @@ let apply_param_ty (ctx : infer_ctx) (p : param) : param =
 
 let unify_record_expr_fields_with_decl (ctx : infer_ctx)
     (decl_fields : record_field_decl list) (fields : record_field list) :
-    infer_ctx =
+    infer_ctx * record_field list =
   let find_decl_field name =
     List.find_opt
       (fun (decl_field : record_field_decl) ->
         decl_field.field_name.name = name)
       decl_fields
   in
-  List.fold_left
-    (fun ctx (f : record_field) ->
-      match find_decl_field f.field_name.name with
-      | None ->
-          raise
-            (Type_error
-               (Printf.sprintf "unknown record field '%s'" f.field_name.name))
-      | Some decl_field -> unify_into ctx f.field_value.ty decl_field.field_ty)
-    ctx fields
+  let ctx, fields =
+    List.fold_left
+      (fun (ctx, fields) (f : record_field) ->
+        match find_decl_field f.field_name.name with
+        | None ->
+            raise
+              (Type_error
+                 (Printf.sprintf "unknown record field '%s'" f.field_name.name))
+        | Some decl_field ->
+            let ctx = unify_into ctx f.field_value.ty decl_field.field_ty in
+            (ctx, { f with field_idx = decl_field.field_idx } :: fields))
+      (ctx, []) fields
+  in
+  (ctx, List.rev fields)
 
 let unify_record_pattern_fields_with_decl (ctx : infer_ctx)
     (decl_fields : record_field_decl list) (fields : pattern_record_field list)
@@ -66,13 +76,13 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
       let ty = mk_ty (TTy_Constant TTy_Int64) in
       (ctx, { id = p.id; pattern_desc = TPat_IntLit s; loc; ty })
   | Parsing_ast.Pat_CharLit s ->
-      let ty = mk_ty (TTy_Constant TTy_CharLit) in
+      let ty = mk_ty (TTy_Constant TTy_Char) in
       (ctx, { id = p.id; pattern_desc = TPat_CharLit s; loc; ty })
   | Parsing_ast.Pat_StringLit s ->
-      let ty = mk_ty (TTy_Constant TTy_StringLit) in
+      let ty = mk_ty (TTy_Constant TTy_String) in
       (ctx, { id = p.id; pattern_desc = TPat_StringLit s; loc; ty })
   | Parsing_ast.Pat_FloatLit s ->
-      let ty = mk_ty (TTy_Constant TTy_Double) in
+      let ty = mk_ty (TTy_Constant TTy_F64) in
       (ctx, { id = p.id; pattern_desc = TPat_FloatLit s; loc; ty })
   | Parsing_ast.Pat_Ident name ->
       if name.name = "_" then
@@ -103,7 +113,7 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
       let ctx, typed_fields =
         List.fold_left_map
           (fun ctx (f : Parsing_ast.pattern_record_field) ->
-            match f.pattern with
+            match f.value with
             | None ->
                 (ctx, { name = ident_of_parsing f.name; pattern = None; loc })
             | Some p ->
@@ -119,9 +129,9 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
           loc;
           ty;
         } )
-  | Parsing_ast.Pat_Constructor { name; pattern } ->
+  | Parsing_ast.Pat_Constructor { name; value } ->
       let ctx, arg_opt =
-        match pattern with
+        match value with
         | None -> (ctx, None)
         | Some p ->
             let ctx, tp = infer_pattern ctx p in
@@ -194,21 +204,15 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
           match TyEnv.lookup_opt i.name ctx.env with
           | Some s -> instantiate_scheme ctx s
           | None ->
-              let ctx, t = fresh_ty ctx in
-              (ctx, t)
+              raise
+                (Type_error (Printf.sprintf "Unbound identifier '%s'" i.name))
       in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc = TExp_Ident { name = i.name; id = i.id; path = []; loc };
-          loc;
-          ty;
-        } )
+      (ctx, { id = e.id; expr_desc = TExp_Ident (ident_of_parsing i); loc; ty })
   | Parsing_ast.Exp_Tuple { elements } ->
       let ctx, elems = List.fold_left_map infer_expr ctx elements in
       let ty = mk_ty (TTy_Tuple (List.map (fun (e : expr) -> e.ty) elems)) in
       (ctx, { id = e.id; expr_desc = TExp_Tuple { elements = elems }; loc; ty })
-  | Parsing_ast.Exp_Record { fields } ->
+  | Parsing_ast.Exp_Record { fields } -> (
       let ctx, fields =
         List.fold_left_map
           (fun ctx (f : Parsing_ast.record_field) ->
@@ -216,51 +220,37 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             ( ctx,
               {
                 id = f.id;
-                field_name =
-                  {
-                    name = f.field_name.name;
-                    id = f.field_name.id;
-                    path = [];
-                    loc = loc_of_parsing f.field_name.loc;
-                  };
+                field_name = ident_of_parsing f.field_name;
                 field_value = tv;
                 loc = loc_of_parsing f.loc;
+                field_idx = 0;
               } ))
           ctx fields
       in
       let field_names = List.map (fun field -> field.field_name.name) fields in
-      let ctx, ty =
-        match find_record_by_field_names ctx field_names with
-        | Some record_info ->
-            let ctx =
-              unify_record_expr_fields_with_decl ctx record_info.record_fields
-                fields
-            in
-            ( ctx,
-              mk_ty (TTy_Defined { name = record_info.ty_decl.name; args = [] })
-            )
-        | None ->
-            raise
-              (Type_error
-                 (Printf.sprintf
-                    "cannot infer record type for fields {%s}: no matching \
-                     record type"
-                    (String.concat ", "
-                       (List.map
-                          (fun (f : record_field) -> f.field_name.name)
-                          fields))))
-      in
-      (ctx, { id = e.id; expr_desc = TExp_Record { fields }; loc; ty })
+      match find_record_by_field_names ctx field_names with
+      | Some record_info ->
+          let ctx, fields =
+            unify_record_expr_fields_with_decl ctx record_info.record_fields
+              fields
+          in
+          let ty =
+            mk_ty (TTy_Defined { name = record_info.ty_decl.name; args = [] })
+          in
+          (ctx, { id = e.id; expr_desc = TExp_Record { fields }; loc; ty })
+      | None ->
+          raise
+            (Type_error
+               (Printf.sprintf
+                  "cannot infer record type for fields {%s}: no matching \
+                   record type"
+                  (String.concat ", "
+                     (List.map
+                        (fun (f : record_field) -> f.field_name.name)
+                        fields)))))
   | Parsing_ast.Exp_VariantConstructor { name; arg } ->
-      let name =
-        {
-          name = name.name;
-          id = name.id;
-          path = [];
-          loc = loc_of_parsing name.loc;
-        }
-      in
-      let ctx, args, ty =
+      let name = ident_of_parsing name in
+      let ctx, arg_expr, ty =
         match find_constructor_by_name ctx name.name with
         | None ->
             raise
@@ -273,9 +263,9 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             match (ctor.arg, arg) with
             | None, None -> (ctx, None, variant_ty)
             | Some (Constr_ty t), None ->
-                (ctx, None, mk_ty (TTy_Arrow ([ t ], variant_ty)))
+                (ctx, None, mk_ty (TTy_Arrow (t, variant_ty)))
             | Some (Constr_record _), None ->
-                (ctx, None, mk_ty (TTy_Arrow ([ variant_ty ], variant_ty)))
+                (ctx, None, mk_ty (TTy_Arrow (variant_ty, variant_ty)))
             | None, Some _ ->
                 raise
                   (Type_error
@@ -295,19 +285,14 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                           ( ctx,
                             {
                               id = f.id;
-                              field_name =
-                                {
-                                  name = f.field_name.name;
-                                  id = f.field_name.id;
-                                  path = [];
-                                  loc = loc_of_parsing f.field_name.loc;
-                                };
+                              field_name = ident_of_parsing f.field_name;
                               field_value = tv;
                               loc = loc_of_parsing f.loc;
+                              field_idx = 0;
                             } ))
                         ctx fields'
                     in
-                    let ctx =
+                    let ctx, typed_fields =
                       unify_record_expr_fields_with_decl ctx fields typed_fields
                     in
                     let record_expr =
@@ -329,112 +314,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       ( ctx,
         {
           id = e.id;
-          expr_desc = TExp_VariantConstructor { name; args };
-          loc;
-          ty;
-        } )
-  | Parsing_ast.Exp_ArrayCreate { element_ty; size } ->
-      let ctx, element_ty = ty_of_parsing ctx element_ty in
-      let ctx, size = infer_expr ctx size in
-      let ty = { ty_desc = TTy_Array element_ty } in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc = TExp_ArrayCreate { element_ty; size };
-          loc;
-          ty;
-        } )
-  | Parsing_ast.Exp_ArrayLength { arr } ->
-      let ctx, arr' = infer_expr ctx arr in
-      let ty = { ty_desc = TTy_Constant TTy_Int64 } in
-      (ctx, { id = e.id; expr_desc = TExp_ArrayLength { arr = arr' }; loc; ty })
-  | Parsing_ast.Exp_ArrayGet { arr; idx } ->
-      let ctx, arr' = infer_expr ctx arr in
-      let ctx, idx = infer_expr ctx idx in
-      let ctx, ty = fresh_ty ctx in
-      ( ctx,
-        { id = e.id; expr_desc = TExp_ArrayGet { arr = arr'; idx }; loc; ty } )
-  | Parsing_ast.Exp_ArraySet { arr; idx; value } ->
-      let ctx, arr' = infer_expr ctx arr in
-      let ctx, idx = infer_expr ctx idx in
-      let ctx, value = infer_expr ctx value in
-      let ty = { ty_desc = TTy_Constant TTy_Unit } in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc = TExp_ArraySet { arr = arr'; idx; value };
-          loc;
-          ty;
-        } )
-  | Parsing_ast.Exp_UnOp { op; value } ->
-      let ctx, inner = infer_expr ctx value in
-      let top = unop_of_parsing op in
-      let ty =
-        match op with
-        | Parsing_ast.Unop_Logical _ -> { ty_desc = TTy_Constant TTy_Bool }
-        | Parsing_ast.Unop_Arithmetic _ | Parsing_ast.Unop_Bitwise _ -> inner.ty
-      in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc = TExp_UnOp { op = top; value = inner };
-          loc;
-          ty;
-        } )
-  | Parsing_ast.Exp_Ref { value } ->
-      let ctx, inner = infer_expr ctx value in
-      let ty = mk_ty (TTy_Ref inner.ty) in
-      (ctx, { id = e.id; expr_desc = TExp_Ref { value = inner }; loc; ty })
-  | Parsing_ast.Exp_Deref { value } ->
-      let ctx, inner = infer_expr ctx value in
-      let ctx, elem_ty = fresh_ty ctx in
-      let ref_ty = mk_ty (TTy_Ref elem_ty) in
-      let ctx = unify_into ctx inner.ty ref_ty in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc = TExp_Deref { value = inner };
-          loc;
-          ty = apply_ty ctx elem_ty;
-        } )
-  | Parsing_ast.Exp_BinOp { op; lvalue; rvalue } ->
-      let ctx, lhs = infer_expr ctx lvalue in
-      let ctx, rhs = infer_expr ctx rvalue in
-      let top = binop_of_parsing op in
-      let ctx, ty =
-        match op with
-        | Parsing_ast.Binop_Logical _ ->
-            let bool_ty = mk_ty (TTy_Constant TTy_Bool) in
-            let ctx = unify_into ctx lhs.ty bool_ty in
-            let ctx = unify_into ctx rhs.ty bool_ty in
-            (ctx, bool_ty)
-        | Parsing_ast.Binop_Arithmetic _ ->
-            let ctx = unify_into ctx lhs.ty rhs.ty in
-            let lhs_ty = apply_ty ctx lhs.ty in
-            ensure_numeric_ty lhs_ty;
-            (ctx, lhs_ty)
-        | Parsing_ast.Binop_Bitwise _ ->
-            let ctx = unify_into ctx lhs.ty rhs.ty in
-            let lhs_ty = apply_ty ctx lhs.ty in
-            ensure_integer_ty lhs_ty;
-            (ctx, lhs_ty)
-        | Parsing_ast.Binop_Comparison _ ->
-            let ctx = unify_into ctx lhs.ty rhs.ty in
-            let unified = apply_ty ctx lhs.ty in
-            (match unified.ty_desc with
-            | TTy_Constant _ | TTy_Var _ | TTy_Any -> ()
-            | _ ->
-                raise
-                  (Type_error
-                     (Printf.sprintf
-                        "comparison expects scalar/primitive operands, got %s"
-                        (string_of_ty unified))));
-            (ctx, mk_ty (TTy_Constant TTy_Bool))
-      in
-      ( ctx,
-        {
-          id = e.id;
-          expr_desc = TExp_BinOp { op = top; lvalue = lhs; rvalue = rhs };
+          expr_desc = TExp_VariantConstructor { name; arg = arg_expr };
           loc;
           ty;
         } )
@@ -452,17 +332,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             let ctx, pp = infer_pattern ctx p.pattern in
             let ctx = unify_into ctx pp.ty pty in
             let pty = apply_ty ctx pty in
-            let tp =
-              {
-                pattern = pp;
-                mut_flag =
-                  (match p.mut_flag with
-                  | Parsing_ast.Mutable -> TMutable
-                  | Parsing_ast.Immutable -> TImmutable);
-                param_ty = Some pty;
-                loc = param_loc;
-              }
-            in
+            let tp = { pattern = pp; param_ty = Some pty; loc = param_loc } in
             (ctx, (tp, pty)))
           ctx l.params
       in
@@ -485,19 +355,19 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
           loc;
         }
       in
-      let ty = mk_ty @@ TTy_Arrow (List.map (apply_ty ctx) arg_tys, ret_ty) in
+      let ty = arrow_ty_of_params (List.map (apply_ty ctx) arg_tys) ret_ty in
       let new_ctx =
         {
           ctx with
           env = old_ctx.env;
-          (*  We restore the old scope variables, it avoid local ones escaping,
-            but the substitution stays in order to substitute them later *)
+          (*  We restore the old scope variables, it avoid the local ones escaping,
+              but the substitution stays in order to substitute them later *)
           return_ty = old_ctx.return_ty;
           break_ty = old_ctx.break_ty;
         }
       in
       (new_ctx, { id = e.id; expr_desc = TExp_Lambda lambda; loc; ty })
-  | Parsing_ast.Exp_Apply { closure_fun; args } -> (
+  | Parsing_ast.Exp_Apply { closure_fun; args } ->
       let ctx, fn = infer_expr ctx closure_fun in
       let ctx, args = List.fold_left_map infer_expr ctx args in
       let ctx, fn_ty =
@@ -512,7 +382,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 ctx args
             in
             let ctx, ret_ty = fresh_ty ctx in
-            let fn_ty = mk_ty (TTy_Arrow (params, ret_ty)) in
+            let fn_ty = arrow_ty_of_params params ret_ty in
             let ctx = unify_into ctx fn.ty fn_ty in
             (ctx, apply_ty ctx fn_ty)
         | _ -> (
@@ -526,78 +396,45 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 raise
                   (Type_error
                      (Printf.sprintf "expected function type, got %s"
-                        (string_of_ty (apply_ty ctx fn.ty)))))
+                        (Pretty_print_code.string_of_ty (apply_ty ctx fn.ty)))))
       in
       let fn = { fn with ty = fn_ty } in
-      let fn_params, fn_ret =
-        match fn_ty.ty_desc with
-        | TTy_Arrow (params, ret) -> (params, ret)
-        | _ ->
+      let rec infer_arguments (ctx : infer_ctx) (remaining_ty : ty)
+          (args : expr list) (consumed : int) : infer_ctx * ty =
+        match (remaining_ty.ty_desc, args) with
+        | TTy_Arrow (param, ret), arg :: rest_args ->
+            let ctx = unify_into ctx param arg.ty in
+            infer_arguments ctx ret rest_args (consumed + 1)
+        | _, [] -> (ctx, apply_ty ctx remaining_ty)
+        | _, _ ->
+            (* remaining_ty is not an arrow here, so all arrows are consumed *)
             raise
-              (Type_error "internal error: unification didn't produce arrow")
+              (Type_error
+                 (Printf.sprintf "function expects %d argument(s), got %d"
+                    consumed
+                    (consumed + List.length args)))
       in
-      let matched_fn, matched_arg, rest_fn, rest_arg =
-        matching_param_to_arg fn_params args
-      in
-      match (rest_fn, rest_arg) with
-      | [], [] ->
-          let ctx =
-            List.fold_left2
-              (fun ctx param (arg : Typed_ast.expr) ->
-                unify_into ctx param arg.ty)
-              ctx matched_fn matched_arg
-          in
-          ( ctx,
-            {
-              id = e.id;
-              loc = loc_of_parsing e.loc;
-              expr_desc =
-                TExp_Apply
-                  { closure_fun = fn; args = List.map (apply_expr_ty ctx) args };
-              ty = apply_ty ctx fn_ret;
-            } )
-      | _, [] ->
-          let ctx =
-            List.fold_left2
-              (fun ctx param (arg : Typed_ast.expr) ->
-                unify_into ctx param arg.ty)
-              ctx matched_fn matched_arg
-          in
-          let remaining_fn = List.map (apply_ty ctx) rest_fn in
-          let substituted_ret = apply_ty ctx fn_ret in
-          let partial_ty = mk_ty (TTy_Arrow (remaining_fn, substituted_ret)) in
-          ( ctx,
-            {
-              id = e.id;
-              loc = loc_of_parsing e.loc;
-              expr_desc =
-                TExp_Apply
-                  { closure_fun = fn; args = List.map (apply_expr_ty ctx) args };
-              ty = apply_ty ctx partial_ty;
-            } )
-      | _, _ ->
-          raise
-            (Type_error
-               (Printf.sprintf "function expects %d argument(s), got %d"
-                  (List.length fn_params) (List.length args))))
+      let ctx, ty = infer_arguments ctx fn_ty args 0 in
+      ( ctx,
+        {
+          id = e.id;
+          loc = loc_of_parsing e.loc;
+          expr_desc =
+            TExp_Apply
+              { closure_fun = fn; args = List.map (apply_expr_ty ctx) args };
+          ty;
+        } )
   | Parsing_ast.Exp_Let ldef ->
       let ctx, tdef = infer_letdef ctx ldef in
-      (ctx, { id = e.id; expr_desc = TExp_Let tdef; loc; ty = tdef.value.ty })
-  | Parsing_ast.Exp_Assign { target; value } ->
-      let ctx, target = infer_expr ctx target in
-      let ctx, value = infer_expr ctx value in
-      let ctx = unify_into ctx target.ty value.ty in
-      let ty = mk_ty (TTy_Constant TTy_Unit) in
-      (ctx, { id = e.id; expr_desc = TExp_Assign { target; value }; loc; ty })
-  | Parsing_ast.Exp_AssignRef { target; value } ->
-      let ctx, target = infer_expr ctx target in
-      let ctx, value = infer_expr ctx value in
-      let ref_ty = mk_ty (TTy_Ref value.ty) in
-      let ctx = unify_into ctx target.ty ref_ty in
-      let ty = mk_ty (TTy_Constant TTy_Unit) in
-      (ctx, { id = e.id; expr_desc = TExp_AssignRef { target; value }; loc; ty })
-  | Parsing_ast.Exp_If { cond; then_branch; else_branch } ->
-      let ctx, cond = infer_expr ctx cond in
+      ( ctx,
+        {
+          id = e.id;
+          expr_desc = TExp_Let tdef;
+          loc;
+          ty = mk_ty (TTy_Constant TTy_Unit);
+        } )
+  | Parsing_ast.Exp_If { condition; then_branch; else_branch } ->
+      let ctx, cond = infer_expr ctx condition in
       let ctx = unify_into ctx cond.ty (mk_ty (TTy_Constant TTy_Bool)) in
       let ctx, then_branch = infer_expr ctx then_branch in
       let ctx, else_branch, out_ty =
@@ -614,35 +451,94 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       ( ctx,
         {
           id = e.id;
-          expr_desc = TExp_If { cond; then_branch; else_branch };
+          expr_desc = TExp_If { condition = cond; then_branch; else_branch };
           loc;
           ty = out_ty;
         } )
-  | Parsing_ast.Exp_While { cond; body } ->
-      let ctx, cond = infer_expr ctx cond in
+  | Parsing_ast.Exp_While { condition; body } ->
+      let ctx, cond = infer_expr ctx condition in
       let ctx = unify_into ctx cond.ty (mk_ty (TTy_Constant TTy_Bool)) in
-      let ctx, body = infer_expr ctx body in
-      let ty = mk_ty (TTy_Constant TTy_Unit) in
-      (ctx, { id = e.id; expr_desc = TExp_While { cond; body }; loc; ty })
-  | Parsing_ast.Exp_ForIn { iter_var; iterable; body } ->
-      let ctx, iter_var = infer_pattern ctx iter_var in
-      let ctx, iterable = infer_expr ctx iterable in
       let ctx, body = infer_expr ctx body in
       let ty = mk_ty (TTy_Constant TTy_Unit) in
       ( ctx,
         {
           id = e.id;
-          expr_desc = TExp_ForIn { iter_var; iterable; body };
+          expr_desc = TExp_While { condition = cond; body };
           loc;
           ty;
         } )
-  | Parsing_ast.Exp_Loop { expr } ->
-      let ctx, body = infer_expr ctx expr in
+  | Parsing_ast.Exp_Loop { condition } ->
+      let ctx, body = infer_expr ctx condition in
       let ctx, ty = fresh_ty ctx in
       (ctx, { id = e.id; expr_desc = TExp_Loop { expr = body }; loc; ty })
-  | Parsing_ast.Exp_Break { expr_opt } ->
+  | Parsing_ast.Exp_Array { element_ty; elements; size } ->
+      let ctx, element_ty = ty_of_parsing ctx element_ty in
+      let ctx, elements = List.fold_left_map infer_expr ctx elements in
+      let ctx, size = infer_expr ctx size in
+      let ctx = unify_into ctx size.ty (mk_ty (TTy_Constant TTy_Int64)) in
+      let ty = mk_ty (TTy_Array element_ty) in
+      ( ctx,
+        {
+          id = e.id;
+          expr_desc = TExp_Array { element_ty; elements; size };
+          loc;
+          ty;
+        } )
+  | Parsing_ast.Exp_FieldSet { record; field_name; value } ->
+      let ctx, record = infer_expr ctx record in
+      let ctx, value = infer_expr ctx value in
+      let ctx, expr' =
+        match find_record_by_field_names ctx [ field_name.name ] with
+        | Some ty_record_info -> (
+            let ctx =
+              unify_into ctx record.ty
+                (mk_ty
+                   (TTy_Defined
+                      { name = ty_record_info.ty_decl.name; args = [] }))
+            in
+            match
+              List.find_opt
+                (fun (field : record_field_decl) ->
+                  field.field_name.name = field_name.name)
+                ty_record_info.record_fields
+            with
+            | Some field -> (
+                match field.field_mut with
+                | TImmutable ->
+                    raise
+                      (Type_error
+                         (Printf.sprintf "field '%s' is immutable"
+                            field_name.name))
+                | TMutable ->
+                    let ctx = unify_into ctx value.ty field.field_ty in
+                    ( ctx,
+                      {
+                        id = e.id;
+                        expr_desc =
+                          TExp_FieldSet
+                            {
+                              record;
+                              field_name = ident_of_parsing field_name;
+                              field_idx = field.field_idx;
+                              value;
+                            };
+                        loc;
+                        ty = mk_ty (TTy_Constant TTy_Unit);
+                      } ))
+            | None ->
+                raise
+                  (Type_error
+                     (Printf.sprintf "field '%s' is not found" field_name.name))
+            )
+        | None ->
+            raise
+              (Type_error
+                 (Printf.sprintf "no record has field_name '%s'" field_name.name))
+      in
+      (ctx, expr')
+  | Parsing_ast.Exp_Break { value } ->
       let ctx, e_opt =
-        match expr_opt with
+        match value with
         | None -> (ctx, None)
         | Some e ->
             let ctx, e = infer_expr ctx e in
@@ -653,9 +549,9 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
   | Parsing_ast.Exp_Continue ->
       let ty = mk_ty (TTy_Constant TTy_Unit) in
       (ctx, { id = e.id; expr_desc = TExp_Continue; loc; ty })
-  | Parsing_ast.Exp_Return { expr_opt } ->
+  | Parsing_ast.Exp_Return { value } ->
       let ctx, e_opt =
-        match expr_opt with
+        match value with
         | None -> (ctx, None)
         | Some e ->
             let ctx, e = infer_expr ctx e in
@@ -713,7 +609,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         } )
   | Parsing_ast.Exp_Field { record; field_name } ->
       let ctx, record = infer_expr ctx record in
-      let ctx, idx, field_ty =
+      let ctx, field_ty, field_idx =
         match find_record_by_field_names ctx [ field_name.name ] with
         | Some ty_record_info -> (
             let ctx =
@@ -723,14 +619,12 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                       { name = ty_record_info.ty_decl.name; args = [] }))
             in
             match
-              List.find_mapi
-                (fun idx (field : record_field_decl) ->
-                  if field.field_name.name = field_name.name then
-                    Some (idx, field.field_ty)
-                  else None)
+              List.find_opt
+                (fun (field : record_field_decl) ->
+                  field.field_name.name = field_name.name)
                 ty_record_info.record_fields
             with
-            | Some (idx, field_ty) -> (ctx, idx, field_ty)
+            | Some field -> (ctx, field.field_ty, field.field_idx)
             | None ->
                 raise
                   (Type_error
@@ -744,16 +638,12 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       ( ctx,
         {
           id = e.id;
-          expr_desc = TExp_Field { record; field_name = field_name.name; idx };
+          expr_desc =
+            TExp_Field
+              { record; field_name = ident_of_parsing field_name; field_idx };
           loc;
           ty = field_ty;
         } )
-  | Parsing_ast.Exp_Index { collection; index } ->
-      let ctx, collection = infer_expr ctx collection in
-      let ctx, index = infer_expr ctx index in
-      let _ctx = unify_into ctx index.ty (mk_ty (TTy_Constant TTy_Int64)) in
-      let ctx, ty = fresh_ty ctx in
-      (ctx, { id = e.id; expr_desc = TExp_Index { collection; index }; loc; ty })
 
 and infer_letdef (ctx : infer_ctx) (ldef : Parsing_ast.letdef) :
     infer_ctx * letdef =
@@ -783,7 +673,7 @@ and infer_letdef (ctx : infer_ctx) (ldef : Parsing_ast.letdef) :
   let ctx, pattern = infer_pattern ctx ldef.pattern in
   let ctx = unify_into ctx pattern.ty value.ty in
   let ctx, ty_opt =
-    match ldef.ty_opt with
+    match ldef.ty_annot with
     | None -> (ctx, None)
     | Some t ->
         let ctx, expected = ty_of_parsing ctx t in
@@ -817,50 +707,15 @@ let rec infer_structure_item (ctx : infer_ctx) (si : Parsing_ast.structure_item)
     : infer_ctx * structure_item =
   let loc = loc_of_parsing si.loc in
   match si.structure_item_desc with
-  | Parsing_ast.Str_Let ldef ->
-      let ctx, ldef = infer_letdef ctx ldef in
-      (ctx, { id = si.id; structure_item_desc = TStr_Let ldef; loc })
-  | Parsing_ast.Str_Fun { rec_flag; name; body; ty_opt } ->
-      let rec_flag =
-        match rec_flag with
-        | Parsing_ast.Recursive -> TRecursive
-        | Parsing_ast.NonRecursive -> TNonRecursive
-      in
-      let ctx, body =
-        match rec_flag with
-        | TRecursive ->
-            let ctx, fn_ty = fresh_ty ctx in
-            let ctx =
-              {
-                ctx with
-                env = TyEnv.extend name.name { vars = []; body = fn_ty } ctx.env;
-              }
-              (* vars is empty because function will be monomorphic inside its own body.
-            TODO: polymorphic recursive function *)
-            in
-            let ctx, body = infer_expr ctx body in
-            let ctx = unify_into ctx fn_ty body.ty in
-            (ctx, body)
-        | TNonRecursive -> infer_expr ctx body
-      in
-      let ctx, ty_opt =
-        match ty_opt with
-        | None -> (ctx, None)
-        | Some t ->
-            let ctx, t = ty_of_parsing ctx t in
-            let ctx = unify_into ctx body.ty t in
-            (ctx, Some (apply_ty ctx t))
-      in
+  | Parsing_ast.Str_External { fname; ty; external_fn } ->
+      let ctx, ty = ty_of_parsing ctx ty in
+      let external_fn = external_fn_of_parsing external_fn in
       let ctx =
-        let body_ty = apply_ty ctx body.ty in
         {
           ctx with
           env =
-            TyEnv.extend name.name
-              {
-                vars = ty_vars body_ty |> List.sort_uniq Int.compare;
-                body = body_ty;
-              }
+            TyEnv.extend fname.name
+              { vars = ty_vars ty |> List.sort_uniq Int.compare; body = ty }
               ctx.env;
         }
       in
@@ -868,41 +723,22 @@ let rec infer_structure_item (ctx : infer_ctx) (si : Parsing_ast.structure_item)
         {
           id = si.id;
           structure_item_desc =
-            TStr_Fun { rec_flag; name = ident_of_parsing name; body; ty_opt };
+            TStr_External { fname = ident_of_parsing fname; ty; external_fn };
           loc;
         } )
-  | Parsing_ast.Str_TypeDef td ->
+  | Parsing_ast.Str_Let ldef ->
+      let ctx, ldef = infer_letdef ctx ldef in
+      (ctx, { id = si.id; structure_item_desc = TStr_Let ldef; loc })
+  | Parsing_ast.Str_Type td ->
       let ctx, td = ty_decl_of_parsing ctx td in
       let ctx = register_ty_decl ctx td in
-      (ctx, { id = si.id; structure_item_desc = TStr_TypeDef td; loc })
-  | Parsing_ast.Str_ModuleStruct ms ->
+      (ctx, { id = si.id; structure_item_desc = TStr_Type td; loc })
+  | Parsing_ast.Str_ModuleStructure ms ->
       let ctx, ms = infer_module_structure ctx ms in
-      (ctx, { id = si.id; structure_item_desc = TStr_ModuleStruct ms; loc })
-  | Parsing_ast.Str_Signature sigs ->
-      let ctx, sigs =
-        List.fold_left_map
-          (fun ctx si ->
-            let ctx, si = signature_item_of_parsing ctx si in
-            let ctx =
-              match si.signature_item_desc with
-              | TSig_Fun { name; params; ret_ty; _ } ->
-                  let sig_ty =
-                    if params = [] then ret_ty
-                    else mk_ty (TTy_Arrow (params, ret_ty))
-                  in
-                  {
-                    ctx with
-                    env =
-                      TyEnv.extend name.name
-                        { vars = []; body = sig_ty }
-                        ctx.env;
-                  }
-              | _ -> ctx
-            in
-            (ctx, si))
-          ctx sigs
-      in
-      (ctx, { id = si.id; structure_item_desc = TStr_Signature sigs; loc })
+      (ctx, { id = si.id; structure_item_desc = TStr_ModuleStructure ms; loc })
+  | Parsing_ast.Str_ModuleSignature ms ->
+      let ctx, ms = module_signature_of_parsing ctx ms in
+      (ctx, { id = si.id; structure_item_desc = TStr_ModuleSignature ms; loc })
 
 and infer_module_structure (ctx : infer_ctx) (ms : Parsing_ast.module_structure)
     : infer_ctx * module_structure =
@@ -911,23 +747,6 @@ and infer_module_structure (ctx : infer_ctx) (ms : Parsing_ast.module_structure)
     List.fold_left_map infer_structure_item ctx ms.structure_items
   in
   (ctx, { id = ms.id; name = ident_of_parsing ms.name; structure_items; loc })
-
-let validate_main (ms : module_structure) : unit =
-  let check_main (si : structure_item) =
-    match si.structure_item_desc with
-    | TStr_Fun { name = { name = "main"; _ }; body; _ } -> (
-        let err msg = raise (Type_error msg) in
-        match body.ty.ty_desc with
-        | TTy_Arrow ([ arg_ty ], ret_ty) -> (
-            if arg_ty.ty_desc <> TTy_Constant TTy_Unit then
-              err "main must take unit as its parameter";
-            match ret_ty.ty_desc with
-            | TTy_Constant (TTy_Unit | TTy_Int64) -> ()
-            | _ -> err "main must return unit or int64")
-        | _ -> err "main must have type (unit) -> unit or (unit) -> int64")
-    | _ -> ()
-  in
-  List.iter check_main ms.structure_items
 
 let infer_program (program : Parsing_ast.module_structure) :
     infer_ctx * module_structure =
@@ -940,5 +759,4 @@ let infer_program (program : Parsing_ast.module_structure) :
   in
   let t = Ast_transformer.{ identity_transformer with ty = resolve } in
   let ms = t.module_structure t ms in
-  validate_main ms;
   (ctx, ms)

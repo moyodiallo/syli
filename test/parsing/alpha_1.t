@@ -65,105 +65,49 @@
   
   [1]
 
-
-  $ cat >parse0.src <<EOF 
-  > local
-  >    print_int_f(2)
-  > end
-  > print_int_s(3)
-  > EOF
-  $ cat parse0.src
-  local
-     print_int_f(2)
-  end
-  print_int_s(3)
-  $ dune exec sylic alpha parse0.src
-  
-  Parse error in parse0.src at line 1, column 0
-  
-    1 | local
-         ^^^^^
-  
-  Unexpected token: 'LOCAL'
-  
-  [1]
-
   $ cat >parse0.src <<EOF
   > let x = 10
-  > if x == 10 then
-  >   print_int(1)
-  > else 
-  >   print_int(0)
+  > let _ =
+  >   if x == 10 then
+  >     print_int(1)
+  >   else 
+  >     print_int(0)
   > end
   > EOF
   $ cat parse0.src
   let x = 10
-  if x == 10 then
-    print_int(1)
-  else 
-    print_int(0)
+  let _ =
+    if x == 10 then
+      print_int(1)
+    else 
+      print_int(0)
   end
   $ dune exec sylic alpha parse0.src
-  
-  Parse error in parse0.src at line 2, column 0
-  
-    2 | if x == 10 then
-         ^^
-  
-  Unexpected token: 'IF'
-  
-  [1]
-
-  $ cat >parse0.src <<EOF
-  > local
-  >     local
-  >       let x = 10
-  >       x + 5
-  >     end
-  > end
-  > print_int(2)
-  > EOF
-  $ cat parse0.src
-  local
-      local
-        let x = 10
-        x + 5
-      end
-  end
-  print_int(2)
-  $ dune exec sylic alpha parse0.src
-  
-  Parse error in parse0.src at line 1, column 0
-  
-    1 | local
-         ^^^^^
-  
-  Unexpected token: 'LOCAL'
-  
-  [1]
+  let x#1 = 10
+  let _#2 = if (==) x#1 10 {
+    print_int 1
+  } else {
+    print_int 0
+  }
 
   $ cat >parse0.src <<EOF
   > let x =
-  >     local
   >       let x = 10
   >       x + 5
-  >     end
   > end
   > print_int(x)
   > EOF
   $ cat parse0.src
   let x =
-      local
         let x = 10
         x + 5
-      end
   end
   print_int(x)
   $ dune exec sylic alpha parse0.src
   
-  Parse error in parse0.src at line 7, column 0
+  Parse error in parse0.src at line 5, column 0
   
-    7 | print_int(x)
+    5 | print_int(x)
          ^^^^^^^^^^^^^^^^
   
   Unexpected token: 'IDENT(print_int)'
@@ -224,7 +168,6 @@
   >     x + 5
   >     x + 5
   > end
-  > print_int(x)
   > EOF
   $ cat parse0.src
   let x =
@@ -232,20 +175,15 @@
       x + 5
       x + 5
   end
-  print_int(x)
   $ dune exec sylic alpha parse0.src
-  
-  Parse error in parse0.src at line 6, column 0
-  
-    6 | print_int(x)
-         ^^^^^^^^^^^^^^^^
-  
-  Unexpected token: 'IDENT(print_int)'
-  
-  [1]
+  let x#2 = {
+    let x#1 = 10;
+    (+) x#1 5;
+    (+) x#1 5
+  }
 
   $ cat >parse0.src <<EOF
-  > fn add(a, b) =
+  > let add (a, b) =
   >   let d = 0
   >   let c = 0
   >   let a = 0
@@ -254,7 +192,7 @@
   > end
   > EOF
   $ cat parse0.src
-  fn add(a, b) =
+  let add (a, b) =
     let d = 0
     let c = 0
     let a = 0
@@ -262,30 +200,27 @@
     a + b
   end
   $ dune exec sylic alpha parse0.src
-  fn add#1 = lambda((a#2, b#3)) {
+  let add#6 = lambda((a#1, b#2)) {
     {
-      let d#4 = 0;
-      let c#5 = 0;
-      let a#6 = 0;
-      (d#4 + c#5);
-      (a#6 + b#3)
+      let d#3 = 0;
+      let c#4 = 0;
+      let a#5 = 0;
+      (+) d#3 c#4;
+      (+) a#5 b#2
     }
   }
 
   $ cat >parse0.src <<EOF
-  > fn add (a) = a + 5
-  > print_int (add(10))
+  > let add (a) = a + 5
+  > let _ =
+  >   print_int (add(10))
   > EOF
   $ cat parse0.src
-  fn add (a) = a + 5
-  print_int (add(10))
+  let add (a) = a + 5
+  let _ =
+    print_int (add(10))
   $ dune exec sylic alpha parse0.src
-  
-  Parse error in parse0.src at line 2, column 0
-  
-    2 | print_int (add(10))
-         ^^^^^^^^^^^^^^^^
-  
-  Unexpected token: 'IDENT(print_int)'
-  
-  [1]
+  let add#2 = lambda((a#1)) {
+    (+) a#1 5
+  }
+  let _#3 = print_int (add#2 10)

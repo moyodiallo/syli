@@ -1,10 +1,10 @@
 type variant
   $ cat >test_variant.sy <<'EOF'
-  > type option = None | Some of int64
+  > type option = None | Some of i64
   > EOF
   $ dune exec sylic parse test_variant.sy
   Parsed test_variant.sy
-  type option = None | Some of int64
+  type option = None | Some of i64
 
 pattern match
   $ cat >test_pattern.sy <<'EOF'
@@ -77,8 +77,8 @@ variant constructors and pattern match and when condition
   Parse error in test_variant_match.sy at line 7, column 26
   
     7 |   | Circle { radius = x } when s == 0 -> x
-                                   ^^^^^^^^^^^
+                                   ^^^^
   
-  Unexpected token: 'IDENT(when)'
+  Unexpected token: 'WHEN'
   
   [1]

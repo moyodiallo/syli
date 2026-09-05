@@ -3,19 +3,11 @@ open Syli_core.Closure_analysis
 
 let unit_ty = { ty_desc = CTy_Constant CTy_Unit }
 let i64_ty = { ty_desc = CTy_Constant CTy_Int64 }
-let ident ?(id = 0) name = { name; fullname = name; path = []; id }
+let ident ?(id = 0) name = { name; path = []; id }
 let mk_expr ?(ty = unit_ty) id node = { id; node; ty }
 let mk_const_unit id = mk_expr id (CExp_Constant CConst_Unit)
 let mk_const_i64 id n = mk_expr ~ty:i64_ty id (CExp_Constant (CConst_IntLit n))
-
-let mk_prog ?(signature_items = []) structure_items =
-  {
-    id = 0;
-    name = ident "Test";
-    structure_items;
-    signature_items;
-    has_main_function = false;
-  }
+let mk_prog structure_items = { id = 0; name = ident "Test"; structure_items }
 
 let mk_lambda_expr ?(ret_ty = unit_ty) id params body =
   mk_expr id (CExp_Lambda { params; body; ret_ty })
@@ -24,7 +16,8 @@ let mk_toplevel_let id name value =
   {
     id;
     structure_item_desc =
-      CStr_Let { rec_flag = CNonRecursive; name = ident name; value };
+      CStr_Let
+        { rec_flag = CNonRecursive; name = ident name; value; public = true };
   }
 
 let print_result result =
@@ -36,7 +29,7 @@ let print_result result =
     (fun (id, info) ->
       let var_strs =
         List.map
-          (fun v -> Printf.sprintf "%s#%d" v.fullname v.id)
+          (fun (v : ident) -> Printf.sprintf "%s#%d" v.name v.id)
           (VarIdSet.elements info.free_vars)
       in
       Printf.printf "  lambda#%d: free_vars={%s}\n" id

@@ -118,8 +118,8 @@ and ir_type =
   | CR_U32
   | CR_U16
   | CR_U8
-  | CR_Float (* 32-bit float *)
-  | CR_Double (* 64-bit float *)
+  | CR_F32
+  | CR_F64
   | CR_FnPtr
   | CR_Obj of {
       named : string option;
@@ -129,7 +129,7 @@ and ir_type =
     }
   | CR_Obj_Ptr
   | CR_Char
-  | CR_Str
+  | CR_String
   | CR_Void
   | CR_GenericTyp of { type_var : int }
   | CR_Arrow of ty list * ty (* (T, T, ...) -> T *)
@@ -228,6 +228,9 @@ type function_cir = {
   blocks : block list;
   return_ty : ty;
   visibility : visibility;
+  unit_param_indices : int list;
+      (** Indices, within [params], of `unit` slots. Kept uniform in the IR;
+          LLVM lowering drops them from signatures and from Direct calls. *)
 }
 
 (* External function declaration *)
@@ -238,6 +241,9 @@ type ffi_external_function = {
   ret_ty : ty;
   params : ty list;
   calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
+  unit_param_indices : int list;
+      (** Indices, within [params], of `unit` slots (uniform). LLVM lowering
+          drops them from FFI declarations and calls. *)
 }
 
 type global_value = {

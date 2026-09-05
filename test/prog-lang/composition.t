@@ -1,10 +1,8 @@
   $ cat >test_file.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let id x = x
   > let apply_twice f x = f (f x)
-  > fn main () =
+  > let main () =
   >   let result_1 = apply_twice id 10
   >   syli_print_i64 result_1
   > EOF
@@ -14,6 +12,8 @@
 
   $ cat test_file.core
   module Test_file
+  extern syliTest_file.syli_print_i64 : (i64) -> unit
+  
   let syliTest_file.id = fun (x) : 'a53 ->
       x : 'a53
   
@@ -22,8 +22,8 @@
   
   let syliTest_file.main = fun () : unit ->
       {
-        let syliTest_file.main__result_1 = syliTest_file.apply_twice(syliTest_file.id : (i64) -> i64, 10 : i64) : i64
-        syliTest_file.syli_print_i64(syliTest_file.main__result_1 : i64) : unit
+        let sy1_result_1 = syliTest_file.apply_twice(syliTest_file.id : (i64) -> i64, 10 : i64) : i64
+        syliTest_file.syli_print_i64(sy1_result_1 : i64) : unit
       }
   
 
@@ -42,7 +42,7 @@
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -86,14 +86,14 @@
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.id.53_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.id.65_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_var1:i64 = #call_direct syliTest_file.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 10:i64)
@@ -122,7 +122,7 @@
       return %x:i64
   end
   
-  private fn __make_closure_accum.syliTest_file.id.53_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_file.id.65_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -149,10 +149,9 @@
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  define i32 @syli_startup_program(i32 %argc, ptr %argv) gc "statepoint-example" {
+  define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
     call void @syli_modules_init()
-    call void @syliTest_file.main()
     ret i32 0
   }
   
@@ -172,7 +171,7 @@
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.id.53_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_file.id.65_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
@@ -203,7 +202,7 @@
     ret i64 %x
   }
   
-  define i64 @__make_closure_accum.syliTest_file.id.53_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.syliTest_file.id.65_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_clos)
     %Sy_rst = call i64 @__wrapper.syliTest_file.id.i64_ret_i64(i64 %Sy_x0)

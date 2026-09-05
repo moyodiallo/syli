@@ -4,10 +4,8 @@ type t = Core | Cir_raw | Cir_mono | Cir | Oir | Rir | Llvm | Exec
 
 let run (fmt : t) (filename : string) : string =
   let parsed = Syli_parsing.Utils.parse_file filename in
-  let parsed = Syli_parsing.Builtins.inject parsed in
   let _infer_state, typed_items = Syli_typing.Infer.infer_program parsed in
-  let desugared = Lower_ast_to_core.lower typed_items in
-  let normalized () = Syli_core.Normalize.run desugared in
+  let core_ast = Lower_ast_to_core.lower typed_items in
   let core_to_cir (core : Syli_core.Core_ast.program_core) =
     Lower_core_to_cir.lower { Pipeline_types.program = core }
   in
@@ -35,28 +33,28 @@ let run (fmt : t) (filename : string) : string =
     |> Syli_target_llvm.Gen_llvm.lower_program |> Llvm_lir.module_to_string
   in
   match fmt with
-  | Core -> normalized () |> Syli_core__Pp.string_of_program
+  | Core -> core_ast |> Syli_core__Pp.string_of_program
   | Cir_raw ->
-      normalized () |> core_to_cir |> fun ctx ->
+      core_ast |> core_to_cir |> fun ctx ->
       ctx.module_cir |> Syli_ir.Cir_pretty_print.string_of_program
   | Cir_mono ->
-      normalized () |> core_to_cir |> mono |> fun ctx ->
+      core_ast |> core_to_cir |> mono |> fun ctx ->
       ctx.module_cir |> Syli_ir.Cir_pretty_print.string_of_program
   | Cir ->
-      normalized () |> core_to_cir |> mono |> fun ctx ->
+      core_ast |> core_to_cir |> mono |> fun ctx ->
       ctx.module_cir |> Syli_ir.Cir_pretty_print.string_of_program
   | Oir ->
-      normalized () |> core_to_cir |> mono |> cir_to_oir
+      core_ast |> core_to_cir |> mono |> cir_to_oir
       |> Pass_gc_cycle_insertion.run |> Pass_ownership.run |> pp_oir
   | Rir ->
-      normalized () |> core_to_cir |> mono |> cir_to_oir
+      core_ast |> core_to_cir |> mono |> cir_to_oir
       |> Pass_gc_cycle_insertion.run |> Pass_ownership.run |> oir_to_rir
       |> pp_rir
   | Llvm ->
-      normalized () |> core_to_cir |> mono |> cir_to_oir
+      core_ast |> core_to_cir |> mono |> cir_to_oir
       |> Pass_gc_cycle_insertion.run |> Pass_ownership.run |> oir_to_rir
       |> prepared |> rir_and_llvm
   | Exec ->
-      normalized () |> core_to_cir |> mono |> cir_to_oir
+      core_ast |> core_to_cir |> mono |> cir_to_oir
       |> Pass_gc_cycle_insertion.run |> Pass_ownership.run |> oir_to_rir
       |> prepared |> rir_and_llvm

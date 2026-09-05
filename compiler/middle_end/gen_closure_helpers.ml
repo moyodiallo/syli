@@ -29,11 +29,11 @@ let rec type_key_of_ty (t : ty) : string =
   | OR_U32 -> "u32"
   | OR_U16 -> "u16"
   | OR_U8 -> "u8"
-  | OR_Float -> "f32"
-  | OR_Double -> "f64"
+  | OR_F32 -> "f32"
+  | OR_F64 -> "f64"
   | OR_FnPtr -> "fn_ptr"
   | OR_Char -> "char"
-  | OR_Str -> "str"
+  | OR_String -> "str"
   | OR_Void -> "void"
   | OR_Obj_Ptr -> "obj_ptr"
   | OR_Obj { named; obj_kind; _ } -> (
@@ -242,6 +242,7 @@ let build_partial_closure_accum_dispatch ~(stored_args_size : int)
     blocks = [ entry_block ];
     return_ty = result_ty;
     visibility = OR_Private;
+    unit_param_indices = [];
   }
 
 (* Partial closure accum name: shared per (closure_size, args_count) *)
@@ -387,6 +388,7 @@ let build_partial_closure_accum ~(stored_args_size : int) ~(args_size : int)
     blocks = [ entry_block ];
     return_ty = result_ty;
     visibility = OR_Private;
+    unit_param_indices = [];
   }
 
 (* Helper: build a block with a Return terminator *)
@@ -475,6 +477,7 @@ let build_apply_wrapper ~(fn_name : string) ~(param_tys : ty list)
     blocks = [ entry_block ];
     return_ty = ret_ty;
     visibility = OR_Private;
+    unit_param_indices = [];
   }
 
 let apply_wrapper_name_cast ~(fn_name : string) ~(param_tys : ty list)
@@ -528,6 +531,7 @@ let build_apply_wrapper_cast ~(fn_name : string) ~(param_tys : ty list)
     blocks = [ entry_block ];
     return_ty = i64_ty;
     visibility = OR_Private;
+    unit_param_indices = [];
   }
 
 let make_closure_accum_dispatch_name (id : int) ~(ret_ty : ty) : qualified_name
@@ -643,6 +647,7 @@ let build_make_closure_accum_dispatch ~stored_args_size ~args_size
     blocks = all_blocks;
     return_ty = ret_ty;
     visibility = OR_Private;
+    unit_param_indices = [];
   }
 
 let make_closure_accum_name ~(fn_name : string) (id : int) ~(ret_ty : ty) :
@@ -735,4 +740,5 @@ let build_make_closure_accum ~(fn_name : string) ~stored_args_size ~args_size
     blocks = [ entry_block ];
     return_ty = ret_ty;
     visibility = OR_Private;
+    unit_param_indices = [];
   }

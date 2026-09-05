@@ -12,33 +12,41 @@ let mk_expr startpos endpos expr_desc : expr =
 let mk_ty startpos endpos ty_desc : ty =
   { id = fresh_id (); ty_desc; loc = mk_loc startpos endpos }
 
-let mk_ident startpos endpos name : ident =
-  { name; path = []; id = fresh_id (); loc = mk_loc startpos endpos }
+let mk_ident ?(is_operator = false) startpos endpos name : ident =
+  {
+    name;
+    path = [];
+    id = fresh_id ();
+    loc = mk_loc startpos endpos;
+    is_operator;
+  }
 
 let mk_structure_item startpos endpos structure_item_desc : structure_item =
   { id = fresh_id (); structure_item_desc; loc = mk_loc startpos endpos }
 
-let mk_signature_item startpos endpos name value_ty : signature_item =
-  let signature_item_desc =
-    Sig_Value { name; params = []; value_ty; external_fn = None }
-  in
-  { id = fresh_id (); signature_item_desc; loc = mk_loc startpos endpos }
+let mk_external_fn symbol ty kind : external_fn =
+  { symbol; kind; calling_convention = None }
 
-let mk_signature_external_value startpos endpos name ret_ty ext_fn :
-    signature_item =
-  let mk_external_fn c_name : external_fn =
-    { c_name; calling_convention = None }
+let check_operator (s : string) : bool =
+  let is_op_char c =
+    match c with
+    | '=' | ':' | '!' | '&' | '|' | '>' | '<' | '+' | '-' | '*' | '%' | '/'
+    | '^' | '~' ->
+        true
+    | _ -> false
   in
-  let signature_item_desc =
-    Sig_Value
-      {
-        name;
-        params = [];
-        value_ty = ret_ty;
-        external_fn = Some (mk_external_fn ext_fn);
-      }
-  in
-  { id = fresh_id (); signature_item_desc; loc = mk_loc startpos endpos }
+  s <> "" && String.for_all is_op_char s
+
+let mk_signature_value startpos endpos name ty : signature_item_desc =
+  Sig_Value { name; ty }
+
+let mk_signature_external_value startpos endpos fname ty ext_ident :
+    signature_item_desc =
+  Sig_External { fname; ty; external_fn = ext_ident }
+
+let mk_structure_external_value startpos endpos fname ty ext_ident :
+    structure_item_desc =
+  Str_External { fname; ty; external_fn = ext_ident }
 
 let mk_module_signature startpos endpos name signature_items : module_signature
     =
@@ -59,8 +67,8 @@ let mk_pattern_case startpos endpos pattern body when_opt : pattern_case =
 let mk_lambda startpos endpos params body ret_ty_opt : lambda =
   { params; body; ret_ty = ret_ty_opt; loc = mk_loc startpos endpos }
 
-let mk_param startpos endpos pattern mut_flag param_ty_opt : param =
-  { pattern; mut_flag; param_ty = param_ty_opt; loc = mk_loc startpos endpos }
+let mk_param startpos endpos pattern param_ty_opt : param =
+  { pattern; param_ty = param_ty_opt; loc = mk_loc startpos endpos }
 
 let mk_record_field_expr startpos endpos field_name field_value : record_field =
   { id = fresh_id (); field_name; field_value; loc = mk_loc startpos endpos }
@@ -75,8 +83,9 @@ let mk_record_field_decl startpos endpos field_name field_ty field_mut :
     loc = mk_loc startpos endpos;
   }
 
-let mk_letdef startpos endpos let_kind pattern rec_flag value ty_opt : letdef =
-  { let_kind; pattern; rec_flag; value; ty_opt; loc = mk_loc startpos endpos }
+let mk_letdef startpos endpos let_kind pattern rec_flag value ty_annot : letdef
+    =
+  { let_kind; pattern; rec_flag; value; ty_annot; loc = mk_loc startpos endpos }
 
 let mk_module_struct startpos endpos name structure_items : module_structure =
   { id = fresh_id (); name; structure_items; loc = mk_loc startpos endpos }

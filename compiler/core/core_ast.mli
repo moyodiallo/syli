@@ -1,11 +1,14 @@
 (** This module defines the core (normalized) AST types produced after
     type-checking and used by the middle-end passes. *)
 
+val fresh_id : unit -> int
+(** Returns a fresh unique integer ID. *)
+
 type path = string list
 (** A dotted path of module names. *)
 
-type ident = { name : string; fullname : string; path : path; id : int }
-(** An identifier with name, full name, path, and unique ID. *)
+type ident = { name : string; path : path; id : int }
+(** An identifier with name, full name, path, unique ID, and [is_operator]. *)
 
 (** Mutability flag for core AST bindings. *)
 type mut_flag = CMutable | CImmutable
@@ -25,10 +28,10 @@ type constant_ty =
   | CTy_UInt8
   | CTy_Unit
   | CTy_Bool
-  | CTy_Float
-  | CTy_Double
-  | CTy_StringLit
-  | CTy_CharLit
+  | CTy_F32
+  | CTy_F64
+  | CTy_String
+  | CTy_Char
 
 type ty = { ty_desc : ty_desc }
 (** A type in the core AST. *)
@@ -37,10 +40,9 @@ type ty = { ty_desc : ty_desc }
 and ty_desc =
   | CTy_Var of int
   | CTy_Constant of constant_ty
-  | CTy_Arrow of ty list * ty
+  | CTy_Arrow of ty * ty
   | CTy_Tuple of ty list
   | CTy_Array of ty
-  | CTy_Ref of ty
   | CTy_Defined of { name : ident; args : ty list }
 
 and constructor_decl = {
@@ -50,7 +52,10 @@ and constructor_decl = {
 }
 (** A variant constructor declaration with tag number. *)
 
-and constructor_arg = Constr_ty of ty | Constr_record of record_field_ty list
+and constructor_arg =
+  | Constr_ty of ty
+  | Constr_record of record_field_ty list
+      (** Argument of a variant constructor. *)
 
 and record_field_ty = {
   id : int;
@@ -75,42 +80,12 @@ and ty_decl_desc =
   | CTydef_Record of record_field_ty list
   | CTydef_Abstract
 
-(** Logical negation unary operator. *)
-type unop_logical = CNot
-
-(** Arithmetic negation unary operator. *)
-type unop_arithmetic = CNeg
-
-(** Bitwise negation unary operator. *)
-type unop_bitwise = CBitNot
-
-(** Unary operator (logical, arithmetic, or bitwise). *)
-type unop =
-  | CUnop_Logical of unop_logical
-  | CUnop_Arithmetic of unop_arithmetic
-  | CUnop_Bitwise of unop_bitwise
-
-(** Comparison binary operators. *)
-type binop_comparison = CEq | CNe | CLt | CLe | CGt | CGe
-
-(** Arithmetic binary operators. *)
-type binop_arithmetic = CAdd | CSub | CMul | CDiv | CMod
-
-(** Logical binary operators. *)
-type binop_logical = CAnd | COr
-
-(** Bitwise binary operators. *)
-type binop_bitwise = CBitAnd | CBitOr | CBitXor | CLShift | CRShift
-
-(** Binary operator (arithmetic, logical, bitwise, or comparison). *)
-type binop =
-  | CBinop_Arithmetic of binop_arithmetic
-  | CBinop_Logical of binop_logical
-  | CBinop_Bitwise of binop_bitwise
-  | CBinop_Comparison of binop_comparison
+(* -------------------- *)
+(* Expression AST       *)
+(* -------------------- *)
 
 type expr = { id : int; node : expr_node; ty : ty }
-(** A core expression node with ID, node kind, and type. *)
+(** A core expression node. *)
 
 and lambda = { params : ident list; body : expr; ret_ty : ty }
 (** A lambda expression in the core AST. *)
@@ -131,16 +106,9 @@ and constant =
 and expr_node =
   | CExp_Constant of constant
   | CExp_Ident of ident
-  | CExp_UnOp of { op : unop; value : expr }
-  | CExp_BinOp of { op : binop; lvalue : expr; rvalue : expr }
   | CExp_Record of record_field list
   | CExp_VariantConstructor of { tag : int; arg : expr option }
-  | CExp_Field of { record : expr; field_idx : int }
-  | CExp_FieldSet of { record : expr; field_idx : int; value : expr }
-  | CExp_ArrayCreate of { element_ty : ty; size : expr }
-  | CExp_ArrayLength of expr
-  | CExp_ArrayGet of { arr : expr; idx : expr }
-  | CExp_ArraySet of { arr : expr; idx : expr; value : expr }
+  | CExp_Array of { element_ty : ty; elements : expr list; size : expr }
   | CExp_Lambda of lambda
   | CExp_Apply of { closure_fun : expr; args : expr list }
   | CExp_Let of { rec_flag : rec_flag; name : ident; value : expr }
@@ -149,8 +117,14 @@ and expr_node =
   | CExp_Continue
   | CExp_Return of expr option
   | CExp_Seq of expr list
-  | CExp_If of { cond : expr; then_branch : expr; else_branch : expr option }
-  | Exp_Match of { expr : expr; cases : pattern_case list }
+  | CExp_If of {
+      condition : expr;
+      then_branch : expr;
+      else_branch : expr option;
+    }
+  | CExp_Match of { expr : expr; cases : pattern_case list }
+  | CExp_Field of { record : expr; field_idx : int }
+  | CExp_FieldSet of { record : expr; field_idx : int; value : expr }
 
 and pattern_case = {
   id : int;
@@ -158,10 +132,15 @@ and pattern_case = {
   when_condition : expr option;
   body : expr;
 }
+(** A pattern-matching case in the core AST. *)
 
 and pattern = { id : int; node : pattern_desc }
-and pattern_record_field = { name : ident; pattern : pattern option }
+(** A core pattern node. *)
 
+and pattern_record_field = { name : ident; pattern : pattern option }
+(** A single field in a core record pattern. *)
+
+(** The description of a core pattern. *)
 and pattern_desc =
   | Pat_Unit
   | Pat_BoolLit of string
@@ -174,26 +153,29 @@ and pattern_desc =
   | Pat_Constructor of { tag : int; pattern : pattern option }
   | Pat_Any
 
-(** Description of a core signature item. *)
-type signature_item_desc =
-  | CSig_Fun of {
-      name : ident;
-      params : ty list;
-      ret_ty : ty;
-      external_fn : external_fn option;
-    }
-  | CSig_Type of ty_decl
-
-and external_fn = { c_name : string; calling_convention : string option }
+(*-------------------------------------*)
+(* Module Core AST (Flattened)        *)
+(*-------------------------------------*)
+and external_fn = {
+  symbol : string;
+  kind : external_kind;
+  calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
+  public : bool;
+}
 (** An FFI external function declaration. *)
 
-and signature_item = { id : int; signature_item_desc : signature_item_desc }
-(** A signature item with ID. *)
+and external_kind = Foreign | Primitive
 
 (** Description of a core structure item. *)
 and structure_item_desc =
-  | CStr_Let of { rec_flag : rec_flag; name : ident; value : expr }
-  | CStr_TypeDef of ty_decl
+  | CStr_External of { fname : ident; ty : ty; external_fn : external_fn }
+  | CStr_Let of {
+      rec_flag : rec_flag;
+      name : ident;
+      value : expr;
+      public : bool;
+    }
+  | CStr_Type of ty_decl
 
 and structure_item = { id : int; structure_item_desc : structure_item_desc }
 (** A structure item with ID. *)
@@ -202,8 +184,6 @@ and module_core = {
   id : int;
   name : ident;
   structure_items : structure_item list;
-  signature_items : signature_item list;
-  has_main_function : bool;
 }
 (** A complete core module with structure and signature items. *)
 

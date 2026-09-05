@@ -32,6 +32,7 @@ let print_cfg_blocks label blocks =
       blocks;
       return_ty = void_ty;
       visibility = CR_Public;
+      unit_param_indices = [];
     }
   in
   let prog : module_cir =

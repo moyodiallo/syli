@@ -20,8 +20,8 @@ let rec string_of_ir_type = function
   | CR_U16 -> "u16"
   | CR_U8 -> "u8"
   | CR_Bool -> "bool"
-  | CR_Float -> "f32"
-  | CR_Double -> "f64"
+  | CR_F32 -> "f32"
+  | CR_F64 -> "f64"
   | CR_FnPtr -> "fn_ptr"
   | CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
       let name = match named with Some n -> n | None -> "obj" in
@@ -31,7 +31,7 @@ let rec string_of_ir_type = function
         (string_of_cyclic_prop cyclic_prop)
   | CR_Obj_Ptr -> "obj_ptr"
   | CR_Char -> "char"
-  | CR_Str -> "str"
+  | CR_String -> "string"
   | CR_Void -> "void"
   | CR_GenericTyp { type_var } -> Printf.sprintf "?%d" type_var
   | CR_Arrow (param_tys, ret_ty) ->

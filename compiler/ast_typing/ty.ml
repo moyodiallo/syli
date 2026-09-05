@@ -1,78 +1,20 @@
 open Typed_ast
 open Env
+open Pretty_print_code
 
 let mk_ty ty_desc = { ty_desc }
 
-let string_of_const_ty = function
-  | TTy_Int8 -> "int8"
-  | TTy_Int16 -> "int16"
-  | TTy_Int32 -> "int32"
-  | TTy_Int64 -> "int64"
-  | TTy_UInt8 -> "uint8"
-  | TTy_UInt16 -> "uint16"
-  | TTy_UInt32 -> "uint32"
-  | TTy_UInt64 -> "uint64"
-  | TTy_Bool -> "bool"
-  | TTy_Unit -> "unit"
-  | TTy_Float -> "float"
-  | TTy_Double -> "double"
-  | TTy_StringLit -> "str"
-  | TTy_CharLit -> "char"
-
-let rec string_of_ty (t : ty) : string =
-  match t.ty_desc with
-  | TTy_Var v -> Printf.sprintf "'%d" v
-  | TTy_Any -> "_"
-  | TTy_Constant c -> string_of_const_ty c
-  | TTy_Arrow (args, ret) ->
-      Printf.sprintf "(%s) -> %s"
-        (String.concat ", " (List.map string_of_ty args))
-        (string_of_ty ret)
-  | TTy_Tuple elems ->
-      Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty elems))
-  | TTy_Array elem -> Printf.sprintf "array<%s>" (string_of_ty elem)
-  | TTy_Ref elem -> Printf.sprintf "ref<%s>" (string_of_ty elem)
-  | TTy_Defined { name; args } ->
-      let base = name.name in
-      if args = [] then base
-      else
-        Printf.sprintf "%s<%s>" base
-          (String.concat ", " (List.map string_of_ty args))
-
 let is_numeric_const_ty = function
   | TTy_Int8 | TTy_Int16 | TTy_Int32 | TTy_Int64 | TTy_UInt8 | TTy_UInt16
-  | TTy_UInt32 | TTy_UInt64 | TTy_Float | TTy_Double ->
+  | TTy_UInt32 | TTy_UInt64 | TTy_F32 | TTy_F64 ->
       true
-  | TTy_Bool | TTy_Unit | TTy_StringLit | TTy_CharLit -> false
+  | TTy_Bool | TTy_Unit | TTy_String | TTy_Char -> false
 
 let is_integer_const_ty = function
   | TTy_Int8 | TTy_Int16 | TTy_Int32 | TTy_Int64 | TTy_UInt8 | TTy_UInt16
   | TTy_UInt32 | TTy_UInt64 ->
       true
-  | TTy_Bool | TTy_Unit | TTy_Float | TTy_Double | TTy_StringLit | TTy_CharLit
-    ->
-      false
-
-let normalized_builtin_ty_name (ty : ty) : string option =
-  match ty.ty_desc with
-  | TTy_Constant TTy_Int8 -> Some "int8"
-  | TTy_Constant TTy_Int16 -> Some "int16"
-  | TTy_Constant TTy_Int32 -> Some "int32"
-  | TTy_Constant TTy_Int64 -> Some "int64"
-  | TTy_Constant TTy_UInt8 -> Some "uint8"
-  | TTy_Constant TTy_UInt16 -> Some "uint16"
-  | TTy_Constant TTy_UInt32 -> Some "uint32"
-  | TTy_Constant TTy_UInt64 -> Some "uint64"
-  | TTy_Constant TTy_Bool -> Some "bool"
-  | TTy_Constant TTy_Unit -> Some "unit"
-  | TTy_Constant TTy_Float -> Some "float"
-  | TTy_Constant TTy_Double -> Some "double"
-  | TTy_Constant TTy_StringLit -> Some "str"
-  | TTy_Constant TTy_CharLit -> Some "char"
-  | TTy_Defined { name; args = [] } -> Some name.name
-  | TTy_Var _ | TTy_Any | TTy_Arrow _ | TTy_Tuple _ | TTy_Array _ | TTy_Ref _
-  | TTy_Defined _ ->
-      None
+  | TTy_Bool | TTy_Unit | TTy_F32 | TTy_F64 | TTy_String | TTy_Char -> false
 
 let ensure_numeric_ty (t : ty) : unit =
   match t.ty_desc with
@@ -103,33 +45,24 @@ let rec equal_ty (left : ty) (right : ty) : bool =
   | TTy_Any, _ | _, TTy_Any -> true
   | TTy_Var a, TTy_Var b -> a = b
   | TTy_Constant a, TTy_Constant b -> a = b
-  | TTy_Arrow (a_args, a_ret), TTy_Arrow (b_args, b_ret) ->
-      List.length a_args = List.length b_args
-      && List.for_all2 equal_ty a_args b_args
-      && equal_ty a_ret b_ret
+  | TTy_Arrow (a_arg, a_ret), TTy_Arrow (b_arg, b_ret) ->
+      equal_ty a_arg b_arg && equal_ty a_ret b_ret
   | TTy_Tuple a_elems, TTy_Tuple b_elems ->
       List.length a_elems = List.length b_elems
       && List.for_all2 equal_ty a_elems b_elems
   | TTy_Array a_elem, TTy_Array b_elem -> equal_ty a_elem b_elem
-  | TTy_Ref a_elem, TTy_Ref b_elem -> equal_ty a_elem b_elem
   | TTy_Defined a_def, TTy_Defined b_def ->
       String.equal a_def.name.name b_def.name.name
       && List.length a_def.args = List.length b_def.args
       && List.for_all2 equal_ty a_def.args b_def.args
-  | _ -> (
-      match
-        (normalized_builtin_ty_name left, normalized_builtin_ty_name right)
-      with
-      | Some l, Some r -> String.equal l r
-      | _ -> false)
+  | _ -> false
 
 let rec occurs (v : int) (t : ty) : bool =
   match t.ty_desc with
   | TTy_Var v' -> v = v'
-  | TTy_Arrow (args, ret) -> List.exists (occurs v) args || occurs v ret
+  | TTy_Arrow (arg, ret) -> occurs v arg || occurs v ret
   | TTy_Tuple elems -> List.exists (occurs v) elems
   | TTy_Array elem -> occurs v elem
-  | TTy_Ref elem -> occurs v elem
   | TTy_Defined d -> List.exists (occurs v) d.args
   | TTy_Constant _ | TTy_Any -> false
 
@@ -160,17 +93,8 @@ let rec unify (s : Subst.t) (a : ty) (b : ty) : Subst.t =
       else Subst.bind v a s
   | TTy_Constant ca, TTy_Constant cb when ca = cb -> s
   | TTy_Arrow (a1, r1), TTy_Arrow (a2, r2) ->
-      if List.length a1 <> List.length a2 then
-        raise
-          (Type_error
-             (Printf.sprintf
-                "function arity mismatch: left has %d args, right has %d args \
-                 (%s vs %s)"
-                (List.length a1) (List.length a2) (string_of_ty a)
-                (string_of_ty b)))
-      else
-        let s = List.fold_left2 (fun s x y -> unify s x y) s a1 a2 in
-        unify s r1 r2
+      let s = unify s a1 a2 in
+      unify s r1 r2
   | TTy_Tuple a1, TTy_Tuple a2 ->
       if List.length a1 <> List.length a2 then
         raise
@@ -182,7 +106,6 @@ let rec unify (s : Subst.t) (a : ty) (b : ty) : Subst.t =
                 (string_of_ty b)))
       else List.fold_left2 (fun s x y -> unify s x y) s a1 a2
   | TTy_Array x, TTy_Array y -> unify s x y
-  | TTy_Ref x, TTy_Ref y -> unify s x y
   | TTy_Defined da, TTy_Defined db
     when da.name.name = db.name.name
          && List.length da.args = List.length db.args ->
@@ -209,17 +132,8 @@ let unify_into (ctx : Env.infer_ctx) (a : ty) (b : ty) : Env.infer_ctx =
 let rec ty_vars (t : ty) : int list =
   match t.ty_desc with
   | TTy_Var v -> [ v ]
-  | TTy_Arrow (args, ret) -> List.concat_map ty_vars args @ ty_vars ret
+  | TTy_Arrow (arg, ret) -> ty_vars arg @ ty_vars ret
   | TTy_Tuple elems -> List.concat_map ty_vars elems
   | TTy_Array elem -> ty_vars elem
-  | TTy_Ref elem -> ty_vars elem
   | TTy_Defined d -> List.concat_map ty_vars d.args
   | TTy_Constant _ | TTy_Any -> []
-
-let get_fn_args_ty (fn_ty : ty) : ty list * ty =
-  match fn_ty.ty_desc with
-  | TTy_Arrow (args, ret) -> (args, ret)
-  | _ ->
-      raise
-        (Type_error
-           (Printf.sprintf "expected function type, got %s" (string_of_ty fn_ty)))

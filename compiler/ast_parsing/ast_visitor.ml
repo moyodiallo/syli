@@ -15,10 +15,9 @@ let rec visit_ty_children (v : 'acc visitor) (acc : 'acc) (ty : ty) : 'acc =
   match ty.ty_desc with
   | Ty_Constant _ | Ty_Var _ | Ty_Any -> acc
   | Ty_Array inner -> v.ty v acc inner
-  | Ty_Ref inner -> v.ty v acc inner
   | Ty_Tuple tys -> List.fold_left (v.ty v) acc tys
-  | Ty_Arrow (params, ret) ->
-      let acc = List.fold_left (v.ty v) acc params in
+  | Ty_Arrow (param_ty, ret) ->
+      let acc = v.ty v acc param_ty in
       v.ty v acc ret
   | Ty_Defined { args; _ } -> List.fold_left (v.ty v) acc args
 
@@ -32,10 +31,10 @@ let rec visit_pattern_children (v : 'acc visitor) (acc : 'acc) (p : pattern) :
   | Pat_Record { fields } ->
       List.fold_left
         (fun a (f : pattern_record_field) ->
-          Option.fold ~none:a ~some:(v.pattern v a) f.pattern)
+          Option.fold ~none:a ~some:(v.pattern v a) f.value)
         acc fields
-  | Pat_Constructor { pattern; _ } ->
-      Option.fold ~none:acc ~some:(v.pattern v acc) pattern
+  | Pat_Constructor { value; _ } ->
+      Option.fold ~none:acc ~some:(v.pattern v acc) value
 
 let visit_param (v : 'acc visitor) (acc : 'acc) (p : param) : 'acc =
   let acc = v.pattern v acc p.pattern in
@@ -49,7 +48,7 @@ let visit_lambda (v : 'acc visitor) (acc : 'acc) (lam : lambda) : 'acc =
 let visit_letdef (v : 'acc visitor) (acc : 'acc) (ld : letdef) : 'acc =
   let acc = v.pattern v acc ld.pattern in
   let acc = v.expr v acc ld.value in
-  Option.fold ~none:acc ~some:(v.ty v acc) ld.ty_opt
+  Option.fold ~none:acc ~some:(v.ty v acc) ld.ty_annot
 
 let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   match e.expr_desc with
@@ -59,52 +58,32 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
       List.fold_left (fun a f -> v.expr v a f.field_value) acc fields
   | Exp_VariantConstructor { arg; _ } ->
       Option.fold ~none:acc ~some:(v.expr v acc) arg
-  | Exp_ArrayCreate { element_ty; size } ->
-      let acc = v.ty v acc element_ty in
+  | Exp_Array { elements; size; _ } ->
+      let acc = List.fold_left (v.expr v) acc elements in
       v.expr v acc size
-  | Exp_ArrayLength { arr } -> v.expr v acc arr
-  | Exp_ArrayGet { arr; idx } ->
-      let acc = v.expr v acc arr in
-      v.expr v acc idx
-  | Exp_ArraySet { arr; idx; value } ->
-      let acc = v.expr v acc arr in
-      let acc = v.expr v acc idx in
-      v.expr v acc value
-  | Exp_UnOp { value; _ } -> v.expr v acc value
-  | Exp_BinOp { lvalue; rvalue; _ } ->
-      let acc = v.expr v acc lvalue in
-      v.expr v acc rvalue
-  | Exp_Ref { value } | Exp_Deref { value } -> v.expr v acc value
   | Exp_Lambda lam -> visit_lambda v acc lam
   | Exp_Apply { closure_fun; args } ->
       let acc = v.expr v acc closure_fun in
       List.fold_left (v.expr v) acc args
   | Exp_Let ld -> visit_letdef v acc ld
-  | Exp_Assign { target; value } | Exp_AssignRef { target; value } ->
-      let acc = v.expr v acc target in
-      v.expr v acc value
-  | Exp_If { cond; then_branch; else_branch } ->
-      let acc = v.expr v acc cond in
+  | Exp_If { condition; then_branch; else_branch } ->
+      let acc = v.expr v acc condition in
       let acc = v.expr v acc then_branch in
       Option.fold ~none:acc ~some:(v.expr v acc) else_branch
-  | Exp_While { cond; body } ->
-      let acc = v.expr v acc cond in
+  | Exp_While { condition; body } ->
+      let acc = v.expr v acc condition in
       v.expr v acc body
-  | Exp_ForIn { iter_var; iterable; body } ->
-      let acc = v.pattern v acc iter_var in
-      let acc = v.expr v acc iterable in
-      v.expr v acc body
-  | Exp_Loop { expr } -> v.expr v acc expr
-  | Exp_Break { expr_opt } | Exp_Return { expr_opt } ->
-      Option.fold ~none:acc ~some:(v.expr v acc) expr_opt
+  | Exp_Loop { condition } -> v.expr v acc condition
+  | Exp_Break { value } | Exp_Return { value } ->
+      Option.fold ~none:acc ~some:(v.expr v acc) value
   | Exp_Seq { exprs } -> List.fold_left (v.expr v) acc exprs
   | Exp_Match { expr = scrutinee; cases } ->
       let acc = v.expr v acc scrutinee in
       List.fold_left (v.pattern_case v) acc cases
   | Exp_Field { record; _ } -> v.expr v acc record
-  | Exp_Index { collection; index } ->
-      let acc = v.expr v acc collection in
-      v.expr v acc index
+  | Exp_FieldSet { record; value; _ } ->
+      let acc = v.expr v acc record in
+      v.expr v acc value
 
 let visit_pattern_case_children (v : 'acc visitor) (acc : 'acc)
     (c : pattern_case) : 'acc =
@@ -131,11 +110,10 @@ let visit_ty_decl (v : 'acc visitor) (acc : 'acc) (td : ty_decl) : 'acc =
 let visit_signature_item_children (v : 'acc visitor) (acc : 'acc)
     (s : signature_item) : 'acc =
   match s.signature_item_desc with
-  | Sig_Value { params; value_ty; _ } ->
-      let acc = List.fold_left (v.ty v) acc params in
-      v.ty v acc value_ty
+  | Sig_Value { ty; _ } -> v.ty v acc ty
+  | Sig_External { ty; _ } -> v.ty v acc ty
   | Sig_Type td -> visit_ty_decl v acc td
-  | Sig_Module ms -> v.module_signature v acc ms
+  | Sig_ModuleSignature ms -> v.module_signature v acc ms
 
 let visit_module_signature_children (v : 'acc visitor) (acc : 'acc)
     (ms : module_signature) : 'acc =
@@ -145,12 +123,10 @@ let visit_structure_item_children (v : 'acc visitor) (acc : 'acc)
     (s : structure_item) : 'acc =
   match s.structure_item_desc with
   | Str_Let ld -> visit_letdef v acc ld
-  | Str_Fun { body; ty_opt; _ } ->
-      let acc = v.expr v acc body in
-      Option.fold ~none:acc ~some:(v.ty v acc) ty_opt
-  | Str_TypeDef td -> visit_ty_decl v acc td
-  | Str_ModuleStruct ms -> v.module_structure v acc ms
-  | Str_Signature sigs -> List.fold_left (v.signature_item v) acc sigs
+  | Str_External { ty; _ } -> v.ty v acc ty
+  | Str_Type td -> visit_ty_decl v acc td
+  | Str_ModuleStructure ms -> v.module_structure v acc ms
+  | Str_ModuleSignature ms -> v.module_signature v acc ms
 
 let visit_module_structure_children (v : 'acc visitor) (acc : 'acc)
     (ms : module_structure) : 'acc =
@@ -243,7 +219,10 @@ let collect_function_names (prog : structure_item list) : string list =
         (fun v acc s ->
           let acc =
             match s.structure_item_desc with
-            | Str_Fun { name; _ } -> name.name :: acc
+            | Str_Let
+                { let_kind = LetFun; pattern = { node = Pat_Ident id; _ }; _ }
+              ->
+                id.name :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc s);
@@ -259,7 +238,7 @@ let collect_type_defs (prog : structure_item list) : (string * ty_decl) list =
         (fun v acc s ->
           let acc =
             match s.structure_item_desc with
-            | Str_TypeDef td -> (td.name.name, td) :: acc
+            | Str_Type td -> (td.name.name, td) :: acc
             | _ -> acc
           in
           visit_structure_item_children v acc s);

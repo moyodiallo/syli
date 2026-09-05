@@ -1,3 +1,7 @@
+(* ============================================*)
+(*         Syli Surface AST Definitions        *)
+(* ============================================*)
+
 (* Unique expression ID *)
 let expr_id_counter = ref 0
 
@@ -9,13 +13,17 @@ type path = string list (* ["Std"; "List"] *)
 
 (* Source location *)
 type location = { start_pos : int; end_pos : int; filename : string }
-type ident = { name : string; path : path; id : int; loc : location }
+
+type ident = {
+  name : string;
+  path : path;
+  id : int;
+  loc : location;
+  is_operator : bool;
+}
+
 type mut_flag = Mutable | Immutable
 type rec_flag = Recursive | NonRecursive
-
-(* ============================================*)
-(*         Syli Surface AST Definitions        *)
-(* ============================================*)
 
 (* ========================= *)
 (* Constants *)
@@ -32,10 +40,10 @@ type constant_ty =
   | Ty_UInt8
   | Ty_Bool
   | Ty_Unit
-  | Ty_Float (* 32 bit *)
-  | Ty_Double (* 64 bit *)
-  | Ty_StringLit
-  | Ty_CharLit
+  | Ty_F32
+  | Ty_F64
+  | Ty_String
+  | Ty_Char
 
 (* ========================= *)
 (* Types *)
@@ -44,14 +52,16 @@ type constant_ty =
 type ty = { id : int; ty_desc : ty_desc; loc : location }
 
 and ty_desc =
-  | Ty_Var of string (* 'a *)
-  | Ty_Any (* _ *)
+  | Ty_Var of string  (** 'a *)
+  | Ty_Any  (** _ *)
   | Ty_Constant of constant_ty
-  | Ty_Arrow of ty list * ty (* (T1, T2, ...) -> T *)
-  | Ty_Tuple of ty list (* (T1 * T2 * ... * Tn) *)
-  | Ty_Array of ty (* array<T> *)
-  | Ty_Ref of ty (* ref<T> *)
-  | Ty_Defined of { name : ident; (* ref, option, list, etc. *) args : ty list }
+  | Ty_Arrow of ty * ty  (** T1 -> T2 *)
+  | Ty_Tuple of ty list  (** (T1 * T2 * ... * Tn) *)
+  | Ty_Array of ty  (** array[T] *)
+  | Ty_Defined of {
+      name : ident;  (** ref, option, list, etc. *)
+      args : ty list;
+    }
 
 (*===========================*)
 (* Record Fields *)
@@ -100,74 +110,11 @@ type ty_decl = {
   annotations : ident list;
   loc : location;
 }
-(** Source code: [type option<T> = None | Some(T)]
-
-    Corresponding AST node:
-    {[
-      type_declaration {
-        name = {
-          name = "option";
-          id = 0; loc = { start_pos = 0; end_pos = 0; filename = "" }
-        };
-        params = ["T"];
-        def = Tydef_Variant [
-          {
-            name = {
-              name = "None"; id = 0;
-              loc = { start_pos = 0; end_pos = 0; filename = "" } };
-              arg = None
-          };
-          {
-            name = {
-              name = "Some"; id = 0;
-              loc = { start_pos = 0; end_pos = 0; filename = "" } };
-              arg = Some (Ty_Var "T")
-            }
-        ]
-
-        annotations = [];
-        loc = { start_pos = 0; end_pos = 0; filename = "" }
-      }
-    ]} *)
 
 (* ======================= *)
 (* Surface AST Expressions *)
 (* ======================= *)
-
-(* Unary and binary operators *)
-type unop_logical = Not
-type unop_arithmetic = Neg
-type unop_bitwise = BitNot
-
-type unop =
-  | Unop_Logical of unop_logical
-  | Unop_Arithmetic of unop_arithmetic
-  | Unop_Bitwise of unop_bitwise
-
-(* Comparison operators *)
-type binop_comparison = Eq | Ne | Lt | Le | Gt | Ge
-
-(* Arithmetic operators *)
-type binop_arithmetic = Add | Sub | Mul | Div | Mod
-
-(* Logical operators *)
-type binop_logical = And | Or
-
-(* Bitwise operators *)
-type binop_bitwise = BitAnd | BitOr | BitXor | LShift | RShift
-
-type binop =
-  | Binop_Arithmetic of binop_arithmetic
-  | Binop_Logical of binop_logical
-  | Binop_Bitwise of binop_bitwise
-  | Binop_Comparison of binop_comparison
-
-and param = {
-  pattern : pattern;
-  mut_flag : mut_flag;
-  param_ty : ty option;
-  loc : location;
-}
+and param = { pattern : pattern; param_ty : ty option; loc : location }
 
 and lambda = {
   params : param list;
@@ -183,7 +130,7 @@ and letdef = {
   rec_flag : rec_flag;
   pattern : pattern;
   value : expr;
-  ty_opt : ty option;
+  ty_annot : ty option;
   loc : location;
 }
 
@@ -213,34 +160,24 @@ and expr_desc =
   | Exp_Tuple of { elements : expr list }
   | Exp_Record of { fields : record_field list }
   | Exp_VariantConstructor of { name : ident; arg : expr option }
-  | Exp_ArrayCreate of { element_ty : ty; size : expr }
-  | Exp_ArrayLength of { arr : expr }
-  | Exp_ArrayGet of { arr : expr; idx : expr }
-  | Exp_ArraySet of { arr : expr; idx : expr; value : expr }
-  | Exp_UnOp of { op : unop; value : expr }
-  | Exp_BinOp of { op : binop; lvalue : expr; rvalue : expr }
-  | Exp_Ref of { value : expr }
-  | Exp_Deref of { value : expr }
+  | Exp_Array of { element_ty : ty; elements : expr list; size : expr }
   | Exp_Lambda of lambda
   | Exp_Apply of { closure_fun : expr; args : expr list }
   | Exp_Let of letdef
-  | Exp_Assign of {
-      target : expr;
-          (* must be an l-value: variable, field access, ref, or index *)
-      value : expr;
+  | Exp_If of {
+      condition : expr;
+      then_branch : expr;
+      else_branch : expr option;
     }
-  | Exp_AssignRef of { target : expr; value : expr }
-  | Exp_If of { cond : expr; then_branch : expr; else_branch : expr option }
-  | Exp_While of { cond : expr; body : expr }
-  | Exp_ForIn of { iter_var : pattern; iterable : expr; body : expr }
-  | Exp_Loop of { expr : expr }
-  | Exp_Break of { expr_opt : expr option }
+  | Exp_While of { condition : expr; body : expr }
+  | Exp_Loop of { condition : expr }
+  | Exp_Break of { value : expr option }
   | Exp_Continue
-  | Exp_Return of { expr_opt : expr option }
+  | Exp_Return of { value : expr option }
   | Exp_Seq of { exprs : expr list }
   | Exp_Match of { expr : expr; cases : pattern_case list }
   | Exp_Field of { record : expr; field_name : ident }
-  | Exp_Index of { collection : expr; index : expr }
+  | Exp_FieldSet of { record : expr; field_name : ident; value : expr }
 
 and pattern_case = {
   id : int;
@@ -256,8 +193,9 @@ and pattern_case = {
 and pattern = { id : int; node : pattern_desc; loc : location }
 
 and pattern_record_field = {
+  id : int;
   name : ident;
-  pattern : pattern option;
+  value : pattern option;
   loc : location;
 }
 
@@ -271,7 +209,7 @@ and pattern_desc =
   | Pat_Ident of ident
   | Pat_Tuple of { elements : pattern list }
   | Pat_Record of { fields : pattern_record_field list }
-  | Pat_Constructor of { name : ident; pattern : pattern option }
+  | Pat_Constructor of { name : ident; value : pattern option }
   | Pat_Any
 
 (*============================*)
@@ -279,20 +217,19 @@ and pattern_desc =
 (*============================*)
 
 type signature_item_desc =
-  | Sig_Value of {
-      name : ident;
-      (*TODO: param and value_ty need to be one entity which is value_ty*)
-      params : ty list;
-      value_ty : ty;
-      external_fn : external_fn option;
-    }
+  | Sig_Value of { name : ident; ty : ty }
+  | Sig_External of { fname : ident; ty : ty; external_fn : external_fn }
   | Sig_Type of ty_decl (* type exposed *)
-  | Sig_Module of module_signature
+  | Sig_ModuleSignature of module_signature
 
 and external_fn = {
-  c_name : string; (* Actual C symbol name *)
+  symbol : symbol;
+  kind : external_kind;
   calling_convention : string option (* e.g., "ccc", "fastcc", etc. *);
 }
+
+and external_kind = Foreign | Primitive
+and symbol = { name : string; loc : location }
 
 and signature_item = {
   id : int;
@@ -301,16 +238,11 @@ and signature_item = {
 }
 
 and structure_item_desc =
+  | Str_External of { fname : ident; ty : ty; external_fn : external_fn }
   | Str_Let of letdef
-  | Str_Fun of {
-      rec_flag : rec_flag;
-      name : ident;
-      body : expr; (* should be a lambda expression *)
-      ty_opt : ty option;
-    }
-  | Str_TypeDef of ty_decl (* type definition: type Foo = ... *)
-  | Str_ModuleStruct of module_structure
-  | Str_Signature of signature_item list
+  | Str_Type of ty_decl (* type definition: type foo = ... *)
+  | Str_ModuleStructure of module_structure
+  | Str_ModuleSignature of module_signature
 
 and structure_item = {
   id : int;
@@ -324,20 +256,6 @@ and module_signature = {
   signature_items : signature_item list;
   loc : location;
 }
-(*
-  {[
-    module Helpers = sig
-      val double : int -> int
-    end
-  ]}
-
-  could also be a file signature "file.syi"
-  > file.syi:
-    val double: int -> int
-    module Nested = sig
-      val triple: int -> int
-    end
-*)
 
 and module_structure = {
   id : int;
@@ -345,25 +263,3 @@ and module_structure = {
   structure_items : structure_item list;
   loc : location;
 }
-(*
-    {[
-      module Helpers = struct
-          let double = lambda x -> x * 2
-      end
-    ]}
-
-  could also be a file structure "file.sy"
-  > file.sy:
-  {[
-    signature: // self signature and could be inside file.syi
-      val double: int -> int
-      module Nested = sig
-        val triple: int -> int
-      end
-
-    let double = lambda x -> x * 2
-    module Nested = struct
-      let triple = lambda x -> x * 3
-    end
-  ]}
-*)

@@ -58,7 +58,7 @@ dune runtest
 let add x y = x + y
 let apply f x = f x
 let compose f g x = f (g x)
-fn main () =
+let _ =
     let r = compose (add 10) (add 20) 5
     syli_print_i64 r
 ```
@@ -78,7 +78,7 @@ let rec stress n acc =
     let f = add_n n
     let r = apply_n f 0 100
     stress (n - 1) (acc + r)
-fn main () = syli_print_i64 (stress 1000 0)
+let _ = syli_print_i64 (stress 1000 0)
 ```
 
 

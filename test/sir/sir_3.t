@@ -1,5 +1,6 @@
 Overriding same name variable in the top-level scope:
   $ cat >test_shadow.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let x = 5
   > let y = x + 1
   > let x = 10
@@ -8,7 +9,7 @@ Overriding same name variable in the top-level scope:
   $ dune exec sylic -- cir_raw test_shadow.sy
   module Test_shadow :
   globals:
-  global public syliTest_shadow.x#1 : i64 = 5 init=__init_global.syliTest_shadow.x#1
+  global public syliTest_shadow.x : i64 = 5 init=__init_global.syliTest_shadow.x
   global public syliTest_shadow.y : i64 = null init=__init_global.syliTest_shadow.y
   global public syliTest_shadow.x : i64 = 10 init=__init_global.syliTest_shadow.x
   global public syliTest_shadow.result : i64 = null init=__init_global.syliTest_shadow.result
@@ -19,8 +20,8 @@ Overriding same name variable in the top-level scope:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_shadow.x#1 ()
-      store_global syliTest_shadow.x#1 = %__init_tmp_0:i64
+      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_shadow.x ()
+      store_global syliTest_shadow.x = %__init_tmp_0:i64
       %__init_tmp_1:i64 = #call_direct __init_global.syliTest_shadow.y ()
       store_global syliTest_shadow.y = %__init_tmp_1:i64
       %__init_tmp_2:i64 = #call_direct __init_global.syliTest_shadow.x ()
@@ -34,7 +35,7 @@ Overriding same name variable in the top-level scope:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %syliTest_shadow.x:i64 + 1:i64
+      %Sy_var0:i64 = #call_direct "syliTest_shadow.+" (%syliTest_shadow.x:i64, 1:i64)
       return %Sy_var0:i64
   end
   
@@ -50,11 +51,11 @@ Overriding same name variable in the top-level scope:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %syliTest_shadow.x#1:i64 + 1:i64
+      %Sy_var0:i64 = #call_direct "syliTest_shadow.+" (%syliTest_shadow.x:i64, 1:i64)
       return %Sy_var0:i64
   end
   
-  private fn __init_global.syliTest_shadow.x#1() -> i64:
+  private fn __init_global.syliTest_shadow.x() -> i64:
     entry: bb0
   
     bb0:
@@ -62,11 +63,20 @@ Overriding same name variable in the top-level scope:
       return 5:i64
   end
   
+  public fn "syliTest_shadow.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
   end
 
 
 Overriding same name variable in a nested scope:
   $ cat >test_shadow_nested.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let x = 5
   > let apply () =
   >   let x = 10
@@ -88,13 +98,13 @@ Overriding same name variable in a nested scope:
       return
   end
   
-  public fn syliTest_shadow_nested.apply() -> i64:
+  public fn syliTest_shadow_nested.apply(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %syliTest_shadow_nested.apply__x:i64 = cast(10:i64 as i64)
-      %Sy_var0:i64 = %syliTest_shadow_nested.apply__x:i64 + 1:i64
-      return %Sy_var0:i64
+      %sy1_x:i64 = cast(10:i64 as i64)
+      %Sy_var0:i64 = #call_direct "syliTest_shadow_nested.+" (%sy1_x:i64, 1:i64)
+      return
   end
   
   private fn __init_global.syliTest_shadow_nested.x() -> i64:
@@ -105,10 +115,19 @@ Overriding same name variable in a nested scope:
       return 5:i64
   end
   
+  public fn "syliTest_shadow_nested.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
   end
 
 Toplevel free variable capture:
   $ cat >test_toplevel_capture.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let x = 5
   > let add_to_x y = x + y
   > let result = add_to_x 10
@@ -144,7 +163,7 @@ Toplevel free variable capture:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %syliTest_toplevel_capture.x:i64 + %y:i64
+      %Sy_var0:i64 = #call_direct "syliTest_toplevel_capture.+" (%syliTest_toplevel_capture.x:i64, %y:i64)
       return %Sy_var0:i64
   end
   
@@ -156,10 +175,19 @@ Toplevel free variable capture:
       return 5:i64
   end
   
+  public fn "syliTest_toplevel_capture.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
+  end
+  
   end
 
 Simple nested function without captured variables:
   $ cat >test_nested_simple.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let y = 10
   > let outer x =
   >   let inner y = y + x + 1
@@ -185,8 +213,8 @@ Simple nested function without captured variables:
     entry: bb0
   
     bb0:
-      %syliTest_nested_simple.outer__inner:(i64 -> i64) = #make_closure {syliTest_nested_simple.outer__inner} (%x:i64) ()
-      %Sy_var0:i64 = #call_apply {%syliTest_nested_simple.outer__inner:(i64 -> i64)}  (2:i64)
+      %sy1_inner:(i64 -> i64) = #make_closure {sy1_inner} (%x:i64) ()
+      %Sy_var0:i64 = #call_apply {%sy1_inner:(i64 -> i64)}  (2:i64)
       return %Sy_var0:i64
   end
   
@@ -198,19 +226,28 @@ Simple nested function without captured variables:
       return 10:i64
   end
   
-  private fn syliTest_nested_simple.outer__inner(%x:i64, %y:i64) -> i64:
+  private fn sy1_inner(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = %y:i64 + %x:i64
-      %Sy_var1:i64 = %Sy_var0:i64 + 1:i64
+      %Sy_var0:i64 = #call_direct "syliTest_nested_simple.+" (%y:i64, %x:i64)
+      %Sy_var1:i64 = #call_direct "syliTest_nested_simple.+" (%Sy_var0:i64, 1:i64)
       return %Sy_var1:i64
+  end
+  
+  public fn "syliTest_nested_simple.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
 
 Closure with multipble chains of captured variables:
   $ cat >test_multi.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let add x y z = x + y + z
   > let add1 = add 1
   > let add1and2 = add1 2
@@ -262,24 +299,30 @@ Closure with multipble chains of captured variables:
       return %Sy_var0:(i64, i64 -> i64)
   end
   
-  public fn syliTest_multi.add(%x:?49, %y:?49, %z:?49) -> ?49:
+  public fn syliTest_multi.add(%x:i64, %y:i64, %z:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:?49 = %x:?49 + %y:?49
-      %Sy_var1:?49 = %Sy_var0:?49 + %z:?49
-      return %Sy_var1:?49
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      %Sy_var1:i64 = #call_direct "syliTest_multi.+" (%Sy_var0:i64, %z:i64)
+      return %Sy_var1:i64
+  end
+  
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
 
-TODO: main function should be lowered correctly,
-No variable type should be inside main function.
-
 Nested polymorphic function passed as an argument:
   $ cat >test_multi.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let apply f x y = f x y
-  > fn main () =
+  > let main () =
   >   let add a b = a + b
   >   let result = apply add 3 4
   > EOF
@@ -294,38 +337,46 @@ Nested polymorphic function passed as an argument:
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %syliTest_multi.main__add:(?63, ?63 -> ?63) = #make_closure {syliTest_multi.main__add} () ()
-      %Sy_var0:(i64, i64 -> i64) = cast(%syliTest_multi.main__add:(?63, ?63 -> ?63) as (i64, i64 -> i64))
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply (%Sy_var0:(i64, i64 -> i64), 3:i64, 4:i64)
-      return %Sy_var1:i64
+      %sy1_add:(i64, i64 -> i64) = #make_closure {sy1_add} () ()
+      %Sy_var0:i64 = #call_direct syliTest_multi.apply (%sy1_add:(i64, i64 -> i64), 3:i64, 4:i64)
+      return
   end
   
-  public fn syliTest_multi.apply(%f:(?52, ?54 -> ?58), %x:?52, %y:?54) -> ?58:
+  public fn syliTest_multi.apply(%f:(?62, ?64 -> ?68), %x:?62, %y:?64) -> ?68:
     entry: bb0
   
     bb0:
-      %Sy_var0:?58 = #call_apply {%f:(?52, ?54 -> ?58)}  (%x:?52, %y:?54)
-      return %Sy_var0:?58
+      %Sy_var0:?68 = #call_apply {%f:(?62, ?64 -> ?68)}  (%x:?62, %y:?64)
+      return %Sy_var0:?68
   end
   
-  private fn syliTest_multi.main__add(%a:?63, %b:?63) -> ?63:
+  private fn sy1_add(%a:i64, %b:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:?63 = %a:?63 + %b:?63
-      return %Sy_var0:?63
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%a:i64, %b:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end
 
 Applying partially applied function:
   $ cat >test_multi.sy <<EOF
+  > primitive (+) : i64 -> i64 -> i64 = "add"
   > let add x y = x + y
-  > fn main () =
+  > let main () =
   >   let result = (add 1) 2
   > EOF
   $ dune exec sylic -- cir_raw test_multi.sy
@@ -339,21 +390,29 @@ Applying partially applied function:
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       %Sy_var0:(i64 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
       %Sy_var1:i64 = #call_apply {%Sy_var0:(i64 -> i64)}  (2:i64)
-      return %Sy_var1:i64
+      return
   end
   
-  public fn syliTest_multi.add(%x:?33, %y:?33) -> ?33:
+  public fn syliTest_multi.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:?33 = %x:?33 + %y:?33
-      return %Sy_var0:?33
+      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      return %Sy_var0:i64
+  end
+  
+  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = %x:i64 + %y:i64
+      return %Sy_prim_result:i64
   end
   
   end

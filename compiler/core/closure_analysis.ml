@@ -5,8 +5,7 @@ open Syli_common
 module FreeVar = struct
   type t = ident
 
-  let compare (id1 : ident) (id2 : ident) =
-    String.compare id1.fullname id2.fullname
+  let compare (id1 : ident) (id2 : ident) = String.compare id1.name id2.name
 end
 
 module VarIdSet = Set.Make (FreeVar)
@@ -45,19 +44,15 @@ let collect_global_names (prog : program_core) : StringSet.t =
     List.fold_left
       (fun acc (item : structure_item) ->
         match item.structure_item_desc with
-        | CStr_Let { name; _ } -> StringSet.add name.fullname acc
+        | CStr_Let { name; _ } -> StringSet.add name.name acc
+        | CStr_External { fname; _ } -> StringSet.add fname.name acc
         | _ -> acc)
       StringSet.empty prog.structure_items
   in
-  let from_sigs =
-    List.fold_left
-      (fun acc (sig_item : signature_item) ->
-        match sig_item.signature_item_desc with
-        | CSig_Fun { name; _ } -> StringSet.add name.fullname acc
-        | _ -> acc)
-      StringSet.empty prog.signature_items
-  in
-  StringSet.union from_items from_sigs
+  from_items
+
+let rec ty_arity (ty : ty) : int =
+  match ty.ty_desc with CTy_Arrow (_, ret) -> 1 + ty_arity ret | _ -> 0
 
 let collect_known_functions (prog : program_core) : int StringMap.t =
   let from_lets =
@@ -67,26 +62,12 @@ let collect_known_functions (prog : program_core) : int StringMap.t =
         | CStr_Let { name; value; _ } -> (
             match value.node with
             | CExp_Lambda lam ->
-                StringMap.add name.fullname (List.length lam.params) acc
+                StringMap.add name.name (List.length lam.params) acc
             | _ -> acc)
         | _ -> acc)
       StringMap.empty prog.structure_items
   in
-  let from_sigs =
-    List.fold_left
-      (fun acc (sig_item : signature_item) ->
-        match sig_item.signature_item_desc with
-        | CSig_Fun { name; params; ret_ty; _ } ->
-            let arity =
-              match (params, ret_ty.ty_desc) with
-              | [], CTy_Arrow (fn_params, _) -> List.length fn_params
-              | _ -> List.length params
-            in
-            StringMap.add name.fullname arity acc
-        | _ -> acc)
-      StringMap.empty prog.signature_items
-  in
-  StringMap.union (fun _ v _ -> Some v) from_lets from_sigs
+  from_lets
 
 let run (prog : program_core) : core_closure_analysis =
   let global_names = collect_global_names prog in
@@ -115,7 +96,7 @@ let run (prog : program_core) : core_closure_analysis =
               let outer_local_names = acc.local_names in
               let inner_local_names =
                 List.fold_left
-                  (fun s (param : ident) -> StringSet.add param.fullname s)
+                  (fun s (param : ident) -> StringSet.add param.name s)
                   StringSet.empty lambda.params
               in
               let function_info =
@@ -144,8 +125,8 @@ let run (prog : program_core) : core_closure_analysis =
           | CExp_Ident id ->
               if
                 Option.is_some acc.current_lambda_id
-                && (not (StringSet.mem id.fullname acc.local_names))
-                && not (StringSet.mem id.fullname acc.global_names)
+                && (not (StringSet.mem id.name acc.local_names))
+                && not (StringSet.mem id.name acc.global_names)
               then push_free_var acc id;
               acc
           | CExp_Apply { closure_fun; args } ->
@@ -165,8 +146,7 @@ let run (prog : program_core) : core_closure_analysis =
                   | CExp_Let { name; _ } ->
                       {
                         acc'' with
-                        local_names =
-                          StringSet.add name.fullname acc''.local_names;
+                        local_names = StringSet.add name.name acc''.local_names;
                       }
                   | _ -> acc'')
                 acc exprs
@@ -179,7 +159,7 @@ let run (prog : program_core) : core_closure_analysis =
               | CExp_Lambda lambda ->
                   let inner_local_names =
                     List.fold_left
-                      (fun s (param : ident) -> StringSet.add param.fullname s)
+                      (fun s (param : ident) -> StringSet.add param.name s)
                       StringSet.empty lambda.params
                   in
                   let function_info =

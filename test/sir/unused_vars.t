@@ -17,17 +17,17 @@ Closure with free variables:
       return
   end
   
-  public fn syliTest_multi.apply() -> i64:
+  public fn syliTest_multi.apply(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:
-      %syliTest_multi.apply__free:i64 = cast(1:i64 as i64)
-      %syliTest_multi.apply__add:(?38, ?40 -> ?40) = #make_closure {syliTest_multi.apply__add} () ()
-      %Sy_var0:i64 = #call_apply {%syliTest_multi.apply__add:(?38, ?40 -> ?40) as (i64, i64 -> i64)}  (1:i64, 2:i64)
+      %sy1_free:i64 = cast(1:i64 as i64)
+      %sy2_add:(?38, ?40 -> ?40) = #make_closure {sy2_add} () ()
+      %Sy_var0:i64 = #call_apply {%sy2_add:(?38, ?40 -> ?40) as (i64, i64 -> i64)}  (1:i64, 2:i64)
       return %Sy_var0:i64
   end
   
-  private fn syliTest_multi.apply__add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
+  private fn sy2_add__i64__i64_ret_i64(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

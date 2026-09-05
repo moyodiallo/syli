@@ -2,10 +2,9 @@ End-to-end runtime binary tests
 
 Test 1: Compile, link, and run binary directly
   $ cat >test_binary.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
-  > fn main () = syli_print_i64(42)
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let main () = syli_print_i64(42)
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_binary.sy
   $ ./test_binary.exe && echo
@@ -13,10 +12,9 @@ Test 1: Compile, link, and run binary directly
 
 Test 3: Compile, link, and run another binary
   $ cat >startup_check.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
-  > fn main () = syli_print_i64(1)
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let main () = syli_print_i64(1)
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build startup_check.sy
   $ ./startup_check.exe && echo
@@ -24,16 +22,15 @@ Test 3: Compile, link, and run another binary
 
 Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let apply f x y = f x y
   > let add x y z = x
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let result = apply add1 3 4
   >   let result2 = apply add1 1.0 2.0
   >   syli_print_i64 result
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_multi.sy
   $ ./test_multi.exe
@@ -41,18 +38,17 @@ Closure as an argument with multiple captured variables:
 
 Closure as an argument with multiple captured variables:
   $ cat >test_multi.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let apply f x y = f x y
   > let add x y z = y
-  > fn main () =
+  > let main () =
   >   let add1 = add 1
   >   let result =
   >     if false then
   >       apply add1 3 4
   >     else apply add1 7 2.0
   >   syli_print_i64 result
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_multi.sy
   $ ./test_multi.exe
@@ -60,11 +56,10 @@ Closure as an argument with multiple captured variables:
 
 String literal prints via syli_print_str:
   $ cat >test_str.sy <<EOF
-  > signature:
-  >   extern syli_print_str : str -> unit = "syli_print_str"
-  > end
+  > foreign syli_print_str : string -> unit = "syli_print_str"
   > let s = "hello"
-  > fn main () = syli_print_str s
+  > let main () = syli_print_str s
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_str.sy
   $ ./test_str.exe
@@ -72,12 +67,11 @@ String literal prints via syli_print_str:
 
 Empty string literal compiles and runs:
   $ cat >test_empty.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let s = ""
-  > fn main () =
+  > let main () =
   >   syli_print_i64 42
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_empty.sy
   $ ./test_empty.exe
@@ -85,14 +79,13 @@ Empty string literal compiles and runs:
 
 Empty string printed via syli_print_str:
   $ cat >test_empty2.sy <<EOF
-  > signature:
-  >   extern syli_print_str : str -> unit = "syli_print_str"
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let s = ""
-  > fn main () =
+  > let main () =
   >   syli_print_str s
   >   syli_print_i64 42
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_empty2.sy
   $ ./test_empty2.exe
@@ -100,11 +93,10 @@ Empty string printed via syli_print_str:
 
 Global int64 value read inside a function body:
   $ cat >test_global.sy <<EOF
-  > signature:
-  >   extern syli_print_i64 : int64 -> unit = "syli_print_i64"
-  > end
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let x = 42
-  > fn main () = syli_print_i64 x
+  > let main () = syli_print_i64 x
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_global.sy
   $ ./test_global.exe
@@ -112,11 +104,10 @@ Global int64 value read inside a function body:
 
 Global str value read inside a function body:
   $ cat >test_global_str.sy <<EOF
-  > signature:
-  >   extern syli_print_str : str -> unit = "syli_print_str"
-  > end
+  > foreign syli_print_str : string -> unit = "syli_print_str"
   > let s = "global str"
-  > fn main () = syli_print_str s
+  > let main () = syli_print_str s
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_global_str.sy
   $ ./test_global_str.exe
@@ -124,14 +115,13 @@ Global str value read inside a function body:
 
 String escape sequences:
   $ cat >test_esc_str.sy <<EOF
-  > signature:
-  >   extern syli_print_str : str -> unit = "syli_print_str"
-  > end
-  > fn main () =
+  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > let main () =
   >   syli_print_str "hello\nworld"
   >   syli_print_str "\x41\x42\x43"
   >   syli_print_str "quot\"here"
   >   syli_print_str "back\\\\slash"
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_esc_str.sy
   $ ./test_esc_str.exe
@@ -140,10 +130,9 @@ String escape sequences:
 
 Char literal printed via syli_print_char:
   $ cat >test_char.sy <<EOF
-  > signature:
-  >   extern syli_print_char : char -> unit = "syli_print_char"
-  > end
-  > fn main () = syli_print_char 'A'
+  > foreign syli_print_char : char -> unit = "syli_print_char"
+  > let main () = syli_print_char 'A'
+  > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_char.sy
   $ ./test_char.exe

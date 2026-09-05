@@ -7,7 +7,7 @@
   LET
   IDENT(x)
   =
-  REF
+  IDENT(ref)
   INT(10)
   NEWLINE
   EOF
@@ -76,7 +76,7 @@
      print_int 2
   print_int 3
   $ dune exec sylic lex parse0.src
-  LOCAL
+  IDENT(local)
   :
   NEWLINE
   INDENT
@@ -151,11 +151,11 @@
   end
   print_int 2
   $ dune exec sylic lex parse0.src
-  LOCAL
+  IDENT(local)
   :
   NEWLINE
   INDENT
-  LOCAL
+  IDENT(local)
   :
   NEWLINE
   INDENT
@@ -202,7 +202,7 @@
   =
   NEWLINE
   INDENT
-  LOCAL
+  IDENT(local)
   :
   NEWLINE
   INDENT
@@ -355,7 +355,7 @@
       a + b
   end
   $ dune exec sylic lex parse0.src
-  FN
+  IDENT(fn)
   IDENT(add)
   IDENT(a)
   IDENT(b)
@@ -388,7 +388,7 @@
    print_int 5
   end
   $ dune exec sylic lex parse0.src
-  FN
+  IDENT(fn)
   IDENT(add)
   :
   NEWLINE
@@ -413,7 +413,7 @@
   print_int (add 10)
   end
   $ dune exec sylic lex parse0.src
-  FN
+  IDENT(fn)
   IDENT(add)
   IDENT(a)
   =
@@ -490,7 +490,7 @@ type variant
   |
   UIDENT(Some)
   OF
-  INT64
+  IDENT(int64)
   NEWLINE
   EOF
 
