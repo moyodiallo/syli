@@ -70,7 +70,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       return
   end
   
-  public fn syliComplex_dispatch.main() -> void:
+  public fn syliComplex_dispatch.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -163,14 +163,14 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       return
   end
   
-  public fn syliComplex_dispatch.main() -> void:
+  public fn syliComplex_dispatch.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.68_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.70_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -301,7 +301,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       return %x:i64
   end
   
-  private fn __make_closure_accum.dispatch.68_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.70_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:

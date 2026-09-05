@@ -1,44 +1,24 @@
 Ref type inference:
+TODO: add parametric polymorphic test when supported.
   $ cat >test_ref.sy <<EOF
+  > primitive (+)  : i64 -> i64 -> i64 = "add"
+  > type ref = { mutable value: i64 }
+  > let ref x = { value = x }
+  > let ( ! ) r = r.value
+  > let ( := ) r x = r.value := x
   > let a = ref 0
-  > let b = ref 1.5
-  > let incr (r : ref i64) = r := *r + 1
+  > let incr r = r := !r + 1
   > let main () = 0
   > EOF
   $ dune exec sylic typing test_ref.sy
-  
-  Parse error in test_ref.sy at line 3, column 18
-  
-    3 | let incr (r : ref i64) = r := *r + 1
-                           ^^^^^
-  
-  Unexpected token: 'INT64'
-  
-  [1]
-
-Deref must operate on a ref type:
-  $ cat >test_ref.sy <<EOF
-  > let main () =
-  >   let x = 5
-  >   let y = *x
-  > EOF
-  $ dune exec sylic typing test_ref.sy
-  
-  Parse error in test_ref.sy at line 3, column 10
-  
-    3 |   let y = *x
-                   ^
-  
-  Unexpected token: '*'
-  
-  [1]
-
-Reference must have coherantly typed:
-  $ cat >test_ref.sy <<EOF
-  > let main () =
-  >   let x = ref 5
-  >   x := 3.0
-  > EOF
-  $ dune exec sylic typing test_ref.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier 'ref'")
-  [2]
+  Typed test_ref.sy successfully: module Test_ref with 8 top-level typed items
+  Type Environment:
+  {
+    ! : ref -> i64
+    + : i64 -> i64 -> i64
+    := : ref -> i64 -> unit
+    a : ref
+    incr : ref -> unit
+    main : unit -> i64
+    ref : i64 -> ref
+  }

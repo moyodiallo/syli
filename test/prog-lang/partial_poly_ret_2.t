@@ -17,7 +17,7 @@
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:

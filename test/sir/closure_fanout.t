@@ -21,7 +21,7 @@ Closure fan-out through if-then-else with dispatch:
       return
   end
   
-  public fn syliTest_fanout.main() -> i64:
+  public fn syliTest_fanout.main(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:

@@ -27,7 +27,7 @@ Closure as an argument with multiple captured variables:
             syliTest_multi.apply(sy1_add1 : (f64) -> (f64) -> i64, 1.0 : f64, 2.0 : f64) : i64
       }
   
-  let syliTest_multi.sy3_any_pat = syliTest_multi.main() : unit
+  let syliTest_multi.sy3_any_pat = syliTest_multi.main(() : unit) : unit
   
   $ dune exe sylic -- oir test_multi.sy
   module Test_multi :
@@ -44,18 +44,18 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:void = #call_direct syliTest_multi.main ()
+      %Sy_var0:void = #call_direct syliTest_multi.main (0:i64)
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.62_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.64_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -134,7 +134,7 @@ Closure as an argument with multiple captured variables:
       return %x:i64
   end
   
-  private fn __make_closure_accum.dispatch.62_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.64_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:
@@ -238,7 +238,7 @@ Closure as an argument with multiple captured variables:
     call void @syli_rt_gc_cycle()
     %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.62_ret_i64 to ptr
+    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.64_ret_i64 to ptr
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
     store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
@@ -328,7 +328,7 @@ Closure as an argument with multiple captured variables:
     ret i64 %x
   }
   
-  define i64 @__make_closure_accum.dispatch.62_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.dispatch.64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb-1:
     %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
     %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1

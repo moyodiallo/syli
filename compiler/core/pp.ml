@@ -195,8 +195,12 @@ and string_of_expr ?(indent = 0) e =
   | _ -> Printf.sprintf "%s : %s" inner (string_of_ty e.ty)
 
 and string_of_lambda ?(indent = 0) lam =
+  let is_unit_param (id : ident) = id.name = "()" in
+  (* A sole `unit` param prints like the old erased form, `fun ()`. *)
   let params_str =
-    String.concat ", " (List.map (fun (id : ident) -> id.name) lam.params)
+    match lam.params with
+    | [ p ] when is_unit_param p -> ""
+    | ps -> String.concat ", " (List.map (fun (id : ident) -> id.name) ps)
   in
   Printf.sprintf "fun (%s) : %s ->\n%s%s" params_str (string_of_ty lam.ret_ty)
     (indent_str (indent + 1))

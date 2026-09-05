@@ -1,4 +1,5 @@
 Store a named polymorphic function in a ref and use it:
+TODO: fix when parametric will be supported.
   $ cat >test_ref.sy <<EOF
   > foreign syli_print_i64 : int64 -> unit = "syli_print_i64"
   > let id x = x

@@ -16,7 +16,7 @@ Closure as an argument with multiple captured variables:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -63,7 +63,7 @@ Closure as an argument with partial polymorphic closure:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -113,7 +113,7 @@ Closure as an argument with partial polymorphic closure:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -179,7 +179,7 @@ Closure as an argument with multiple captured variables:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -253,7 +253,7 @@ Closure as an argument with multiple captured variables:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -304,7 +304,7 @@ Closure as an argument with multiple captured variables:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:

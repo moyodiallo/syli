@@ -34,6 +34,7 @@ let make_fn (name : string) (blocks : block list) : function_cir =
     blocks;
     return_ty = void_ty;
     visibility = CR_Public;
+    unit_param_indices = [];
   }
 
 let make_prog (fns : function_cir list) : module_cir =

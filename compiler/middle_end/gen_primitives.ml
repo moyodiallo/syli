@@ -48,9 +48,18 @@ let mk_ir_ty (type_defs : C.ty_decl StringMap.t) (cty : C.ty) : I.ty =
         | CTy_Char -> I.CR_Char)
     | CTy_Var v -> I.CR_GenericTyp { type_var = v }
     | CTy_Arrow _ ->
+        (* Function parameters follow the Core->CIR calling convention: every
+           `unit` parameter is carried as an [i64] slot, uniformly. *)
+        let is_unit t =
+          match t.ty_desc with C.CTy_Constant C.CTy_Unit -> true | _ -> false
+        in
         let args =
           List.map
-            (fun a -> { I.id = fresh_id (); I.ir_type = go a })
+            (fun a ->
+              {
+                I.id = fresh_id ();
+                I.ir_type = (if is_unit a then I.CR_I64 else go a);
+              })
             (get_args_ty t)
         in
         let ret = { I.id = fresh_id (); I.ir_type = go (get_return_ty t) } in
@@ -187,6 +196,7 @@ let build_binop (type_defs : C.ty_decl StringMap.t) (name : string)
     blocks = [ entry_block ];
     return_ty = ir_ret_ty;
     visibility = (if is_public then I.CR_Public else I.CR_Private);
+    unit_param_indices = [];
   }
 
 let build (type_defs : C.ty_decl StringMap.t) ~(fn_name : string)

@@ -144,19 +144,25 @@ let rec desugar_pattern (p : Typed_ast.pattern) : pattern =
 
 let desugar_lambda_params (env : env) (params : Typed_ast.param list) :
     ident list * env =
-  let idents, param_substs =
+  (*  A `unit` and 'any' param carries no runtime value and is never bound in the body,
+      but it is kept in the Core param list (as the placeholder [()]) so the
+      arity/position of the surrounding application stays accurate. *)
+  let idents, bindings =
     List.split
-      (List.filter_map
+      (List.map
          (fun (p : Typed_ast.param) ->
            match p.pattern.pattern_desc with
            | TPat_Ident name ->
-               Some
-                 ( { name = name.name; path = name.path; id = p.pattern.id },
-                   (name.name, name.name) )
-           | TPat_Unit -> None
-           | _ -> error_at p.loc "lambda parameter must desugar to identifier")
+               ( { name = name.name; path = name.path; id = p.pattern.id },
+                 Some (name.name, name.name) )
+           | TPat_Unit -> ({ name = "()"; path = []; id = p.pattern.id }, None)
+           | TPat_Any -> ({ name = "_"; path = []; id = p.pattern.id }, None)
+           | _ ->
+               error_at p.loc
+                 "lambda parameter must simplified to identifier, unit or any")
          params)
   in
+  let param_substs = List.filter_map Fun.id bindings in
   let env' =
     {
       env with
@@ -228,14 +234,7 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
             { params; body = fst (desugar_expr env_params l.body); ret_ty },
           env )
     | TExp_Apply { closure_fun; args } ->
-        let args =
-          List.filter_map
-            (fun a ->
-              match a.expr_desc with
-              | TExp_Constant { constant_desc = TConst_Unit; _ } -> None
-              | _ -> Some (fst (desugar_expr env a)))
-            args
-        in
+        let args = List.map (fun a -> fst (desugar_expr env a)) args in
         ( CExp_Apply { closure_fun = fst (desugar_expr env closure_fun); args },
           env )
     | TExp_Let l ->
@@ -260,8 +259,8 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               }
           | _ ->
               error_at l.loc
-                "let pattern must be simplified to an identifier, unit, or \
-                 wildcard"
+                "let param pattern must be simplified to an identifier, unit, \
+                 or wildcard"
         in
         let qualified_name = lebind_expr_rename env name in
         let new_bind_subst =

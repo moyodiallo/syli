@@ -288,6 +288,15 @@ let lower_float_binop (op : Rir.binop) : fbinop =
   | CR_Mod -> LV_FRem
   | _ -> fail "unsupported float binary operator"
 
+let drop_at_positions (positions : int list) (xs : 'a list) : 'a list =
+  if positions = [] then xs
+  else
+    let drop = IntSet.of_list positions in
+    xs
+    |> List.mapi (fun i x -> (i, x))
+    |> List.filter_map (fun (i, x) ->
+        if IntSet.mem i drop then None else Some x)
+
 let lower_target_operand (ctx : lower_ctx) (target : Rir.call_target)
     (args : operand list) (ret_ty : lltype) :
     lower_ctx * operand * instruction list =
@@ -297,14 +306,18 @@ let lower_target_operand (ctx : lower_ctx) (target : Rir.call_target)
       match StringMap.find_opt name ctx.functions with
       | Some (fn : Rir.function_rir) ->
           let params =
-            List.map (fun (v : Rir.var) -> lltype_of_var v) fn.params
+            drop_at_positions fn.unit_param_indices fn.params
+            |> List.map (fun (v : Rir.var) -> lltype_of_var v)
           in
           let fn_ty = LV_Func (params, lltype_of_ty fn.return_ty) in
           (ctx, global name fn_ty, [])
       | None -> (
           match StringMap.find_opt name ctx.ffi_functions with
           | Some ffi ->
-              let params = List.map lltype_of_ty ffi.params in
+              let params =
+                drop_at_positions ffi.unit_param_indices ffi.params
+                |> List.map lltype_of_ty
+              in
               let fn_ty = LV_Func (params, lltype_of_ty ffi.ret_ty) in
               (ctx, global ffi.name fn_ty, [])
           | None -> (ctx, global name (LV_Func (arg_tys, ret_ty)), [])))
@@ -321,6 +334,13 @@ let lower_target_operand (ctx : lower_ctx) (target : Rir.call_target)
                    type %s"
                   (var_name v)
                   (string_of_lltype (ty_of_operand op)))))
+
+(* Lower a RIR cast rvalue with the LLVM cast opcode dictated by the RIR
+   constructor (RR_CastBit / RR_CastIntToPtr / RR_CastPtrToInt). *)
+let lower_cast (ctx : lower_ctx) (op : cast_op) (src : Rir.operand)
+    (to_ty : Rir.ty) : lower_ctx * instr_rhs * instruction list =
+  let ctx, src', extra = lower_operand ctx src in
+  (ctx, LV_Cast (op, src', lltype_of_ty to_ty), extra)
 
 let lower_rvalue_rhs (ctx : lower_ctx) (rv : Rir.rvalue) :
     lower_ctx * instr_rhs * instruction list =
@@ -393,9 +413,9 @@ let lower_rvalue_rhs (ctx : lower_ctx) (rv : Rir.rvalue) :
       (ctx, rhs, extra)
   | Rir.RR_Object_load _ ->
       fail "RR_Object_load must be lowered through lower_statement"
-  | Rir.RR_Cast { src; to_ty } ->
-      let ctx, src', extra = lower_operand ctx src in
-      (ctx, LV_Cast (LV_BitCast, src', lltype_of_ty to_ty), extra)
+  | Rir.RR_CastBit { src; to_ty } -> lower_cast ctx LV_BitCast src to_ty
+  | Rir.RR_CastIntToPtr { src; to_ty } -> lower_cast ctx LV_IntToPtr src to_ty
+  | Rir.RR_CastPtrToInt { src; to_ty } -> lower_cast ctx LV_PtrToInt src to_ty
   | Rir.RR_Addr_fn { fn } ->
       let fn_ptr = global fn LV_Ptr in
       let ptr_ty = lltype_of_ty rv.ty in
@@ -403,15 +423,39 @@ let lower_rvalue_rhs (ctx : lower_ctx) (rv : Rir.rvalue) :
 
 let lower_statement (ctx : lower_ctx) (stmt : Rir.statement) :
     lower_ctx * instruction list list =
+  let cast_src = function
+    | Rir.RR_CastBit { src; _ }
+    | Rir.RR_CastIntToPtr { src; _ }
+    | Rir.RR_CastPtrToInt { src; _ } ->
+        src
+    | _ -> assert false
+  in
+  let cast_op = function
+    | Rir.RR_CastBit _ -> LV_BitCast
+    | Rir.RR_CastIntToPtr _ -> LV_IntToPtr
+    | Rir.RR_CastPtrToInt _ -> LV_PtrToInt
+    | _ -> assert false
+  in
   match stmt.node with
-  | Rir.RR_Assign { dst; rvalue = { node = Rir.RR_Cast { src; to_ty }; _ } } ->
-      let ctx, src', extra = lower_operand ctx src in
-      if ty_of_operand src' = lltype_of_ty to_ty then
+  | Rir.RR_Assign
+      {
+        dst;
+        rvalue =
+          {
+            node =
+              (Rir.RR_CastBit _ | Rir.RR_CastIntToPtr _ | Rir.RR_CastPtrToInt _)
+              as c;
+            ty = rv_ty;
+            _;
+          };
+      } ->
+      let ctx, src', extra = lower_operand ctx (cast_src c) in
+      let dst_llty = lltype_of_ty rv_ty in
+      if ty_of_operand src' = dst_llty then
         ({ ctx with var_env = IntMap.add dst.id src' ctx.var_env }, [ extra ])
       else
         let ctx, instrs =
-          assign_rhs_to_var ctx dst
-            (LV_Cast (LV_BitCast, src', lltype_of_ty to_ty))
+          assign_rhs_to_var ctx dst (LV_Cast (cast_op c, src', dst_llty))
         in
         (ctx, [ extra; instrs ])
   | Rir.RR_Assign
@@ -442,6 +486,20 @@ let lower_statement (ctx : lower_ctx) (stmt : Rir.statement) :
       let args_ops, extra_list = List.split args_results in
       let extra = List.concat extra_list in
       let ret_ty = lltype_of_var dst in
+      (* Drop `unit` carriers when calling a known unit-free real function or
+         an FFI function whose `unit` slot is dropped at the boundary. *)
+      let drop_positions =
+        match target with
+        | Rir.Direct name -> (
+            match StringMap.find_opt name ctx.functions with
+            | Some fn -> fn.unit_param_indices
+            | None -> (
+                match StringMap.find_opt name ctx.ffi_functions with
+                | Some ffi -> ffi.unit_param_indices
+                | None -> []))
+        | Rir.Indirect _ -> []
+      in
+      let args_ops = drop_at_positions drop_positions args_ops in
       let ctx, fn_op, extra2 =
         lower_target_operand ctx target args_ops ret_ty
       in
@@ -613,7 +671,8 @@ let lower_function (ctx : lower_ctx) (fn : Rir.function_rir) : lower_ctx * func
     (final_ctx, blocks)
   in
   let params =
-    List.map (fun (v : Rir.var) -> (lltype_of_var v, var_name v)) fn.params
+    drop_at_positions fn.unit_param_indices fn.params
+    |> List.map (fun (v : Rir.var) -> (lltype_of_var v, var_name v))
   in
   ( final_ctx,
     {
@@ -716,7 +775,10 @@ let lower_program (prog : Rir.program_rir) : module_ =
   let ffi_declarations =
     List.map
       (fun (ffi : Rir.ffi_external_function) ->
-        let params = List.map lltype_of_ty ffi.params in
+        let params =
+          drop_at_positions ffi.unit_param_indices ffi.params
+          |> List.map lltype_of_ty
+        in
         (ffi.name, LV_Func (params, lltype_of_ty ffi.ret_ty)))
       prog.ffi_external_functions
   in

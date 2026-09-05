@@ -48,17 +48,17 @@ Nested functions:
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:
-      %sy1_apply:void = #make_closure {sy1_apply} () ()
-      %sy2_add:void = #make_closure {sy2_add} () ()
-      %Sy_var0:(?102, f64 -> f64) = #partial_apply {%sy2_add:void} (1.0f:f64)
+      %sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) = #make_closure {sy1_apply} () ()
+      %sy2_add:(f64, ?97, f64 -> f64) = #make_closure {sy2_add} () ()
+      %Sy_var0:(?102, f64 -> f64) = #partial_apply {%sy2_add:(f64, ?97, f64 -> f64)} (1.0f:f64)
       %Sy_var1:(i64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (i64, f64 -> f64))
-      %Sy_var2:f64 = #call_apply {%sy1_apply:void as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_var1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
+      %Sy_var2:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_var1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
       %Sy_var3:(f64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (f64, f64 -> f64))
-      %Sy_var4:f64 = #call_apply {%sy1_apply:void as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_var3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
+      %Sy_var4:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_var3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
       return 0:i64
   end
   
@@ -99,17 +99,17 @@ Nested functions:
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:
-      %sy1_apply:void = #make_closure {sy1_apply} () ()
-      %sy2_add:void = #make_closure {sy2_add} () ()
-      %Sy_var0:(?102, f64 -> f64) = #partial_apply {%sy2_add:void} (1.0f:f64)
+      %sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) = #make_closure {sy1_apply} () ()
+      %sy2_add:(f64, ?97, f64 -> f64) = #make_closure {sy2_add} () ()
+      %Sy_var0:(?102, f64 -> f64) = #partial_apply {%sy2_add:(f64, ?97, f64 -> f64)} (1.0f:f64)
       %Sy_var1:(i64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (i64, f64 -> f64))
-      %Sy_var2:f64 = #call_apply {%sy1_apply:void as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_var1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
+      %Sy_var2:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_var1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
       %Sy_var3:(f64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (f64, f64 -> f64))
-      %Sy_var4:f64 = #call_apply {%sy1_apply:void as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_var3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
+      %Sy_var4:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_var3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
       return 0:i64
   end
   

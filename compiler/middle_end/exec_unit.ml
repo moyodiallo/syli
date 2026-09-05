@@ -40,6 +40,7 @@ let mk_fn ~name ~params ~locals ~ret_ty ~visibility (entry : block) :
     blocks = [ entry ];
     return_ty = ret_ty;
     visibility;
+    unit_param_indices = [];
   }
 
 (** [syli_modules_init()] — calls each module's [__init.{module}] in order *)

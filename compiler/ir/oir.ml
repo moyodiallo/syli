@@ -165,6 +165,7 @@ type function_oir = {
   blocks : block list;
   return_ty : ty;
   visibility : visibility;
+  unit_param_indices : int list;
 }
 
 type ffi_external_function = {
@@ -173,6 +174,7 @@ type ffi_external_function = {
   ret_ty : ty;
   params : ty list;
   calling_convention : string option;
+  unit_param_indices : int list;
 }
 
 type global_value = {

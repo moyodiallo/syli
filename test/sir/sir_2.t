@@ -16,13 +16,12 @@ A function with let bindings:
       return
   end
   
-  public fn syliTest_let.let_bingings() -> void:
+  public fn syliTest_let.let_bingings(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %sy1_x:void = cast(10:i64 as void)
-      %Sy_var0:i64 = cast(%sy1_x:void as i64)
-      %Sy_var1:i64 = #call_direct "syliTest_let.+" (%Sy_var0:i64, 32:i64)
+      %sy1_x:i64 = cast(10:i64 as i64)
+      %Sy_var0:i64 = #call_direct "syliTest_let.+" (%sy1_x:i64, 32:i64)
       return
   end
   
@@ -210,7 +209,7 @@ Partial apply from a lambda with captured local value:
       return
   end
   
-  public fn syli_tmp_partial2.make_partial() -> (i64 -> i64):
+  public fn syli_tmp_partial2.make_partial(%__unit.0:i64) -> (i64 -> i64):
     entry: bb0
   
     bb0:

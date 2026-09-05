@@ -49,7 +49,7 @@
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:

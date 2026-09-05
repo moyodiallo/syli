@@ -1,5 +1,6 @@
 (* ==================================== *)
 (* Core AST for Syli                    *)
+(* It is a simplified Typed_Ast         *)
 (* ==================================== *)
 
 (* Unique expression ID *)

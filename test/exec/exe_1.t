@@ -107,3 +107,76 @@ If-then-else with (unit):
   $ dune exec sylic -- build test_if_unit.sy
   $ ./test_if_unit.exe
   0
+
+Closure with unit as arguments:
+  $ cat >test_multi.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let apply f x y = f x y
+  > let add () () z = z
+  > let main () =
+  >   let add1 = add ()
+  >   let result =
+  >     if false then
+  >       apply add1 () 4
+  >     else apply add1 () 2
+  >   syli_print_i64 result
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_multi.sy
+  $ ./test_multi.exe
+  2
+
+Closure with one unit as arguments:
+  $ cat >test_multi.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let add () = 2
+  > let main () =
+  >   let add1 = add
+  >   let result =
+  >     if false then
+  >       add1 ()
+  >     else add1 ()
+  >   syli_print_i64 result
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_multi.sy
+  $ ./test_multi.exe
+  2
+
+Closure with last argument as unit:
+  $ cat >test_multi.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let add x () = x
+  > let main () =
+  >   let add1 = add 2
+  >   let result =
+  >     if false then
+  >       add1 ()
+  >     else add1 ()
+  >   syli_print_i64 result
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_multi.sy
+  $ ./test_multi.exe
+  2
+
+
+Closure with unit as arguments:
+  $ cat >test_multi.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > let apply f x y = f x y
+  > let add () () z () = z
+  > let main () =
+  >   let add1 = add ()
+  >   let result =
+  >     if false then
+  >       (apply add1 () 4) ()
+  >     else (apply add1 () 2) ()
+  >   syli_print_i64 result
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_multi.sy
+  Fatal error: exception Invalid_argument("List.iter2")
+  ***** UNREACHABLE *****
+  $ ./test_multi.exe
+  ***** UNREACHABLE *****

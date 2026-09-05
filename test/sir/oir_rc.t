@@ -23,7 +23,7 @@ Record object with ref variable death:
       return
   end
   
-  public fn syliTest_rc1.main() -> void:
+  public fn syliTest_rc1.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -60,7 +60,7 @@ Multiple ref variables with independent lifetimes:
       return
   end
   
-  public fn syliTest_rc2.main() -> void:
+  public fn syliTest_rc2.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -109,14 +109,14 @@ Closure with captured variable:
       return
   end
   
-  public fn syliTest_rc3.main() -> void:
+  public fn syliTest_rc3.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc3.add.72_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc3.add.78_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 10:i64):i64
       
@@ -150,7 +150,7 @@ Closure with captured variable:
       return %Sy_var0:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc3.add.72_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc3.add.78_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -192,7 +192,7 @@ Closure returned from function — verifies the returned closure is NOT released
       return
   end
   
-  public fn syliTest_rc_returned.main() -> void:
+  public fn syliTest_rc_returned.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
@@ -274,21 +274,21 @@ Closure compose — two closures passed as borrowed parameters, released in call
       return
   end
   
-  public fn syliTest_rc_compose.main() -> void:
+  public fn syliTest_rc_compose.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.86_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.95_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 10:i64):i64
       
       gc_cycle
       %Sy_var1:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.93_ret_i64)
+      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.102_ret_i64)
       obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
       obj_set(%Sy_var1:obj_ptr, 1:i32, 20:i64):i64
       
@@ -325,7 +325,7 @@ Closure compose — two closures passed as borrowed parameters, released in call
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_compose.add.86_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_compose.add.102_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -335,7 +335,7 @@ Closure compose — two closures passed as borrowed parameters, released in call
       return %Sy_rst:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_compose.add.93_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_compose.add.95_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -377,14 +377,14 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
       return
   end
   
-  public fn syliTest_rc_twice.main() -> void:
+  public fn syliTest_rc_twice.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_twice.add.104_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_twice.add.110_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -421,7 +421,7 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
       return %Sy_var1:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_twice.add.104_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_twice.add.110_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:

@@ -18,7 +18,7 @@
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -59,14 +59,14 @@ TODO: need to be fixed, the arity should be 3 instead of 2.
       return
   end
   
-  public fn syliTest_multi.main() -> i64:
+  public fn syliTest_multi.main(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:
       gc_cycle
       %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.29_ret_i64)
+      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.31_ret_i64)
       obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
       
@@ -96,7 +96,7 @@ TODO: need to be fixed, the arity should be 3 instead of 2.
       return %z:i64
   end
   
-  private fn __make_closure_accum.dispatch.29_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.dispatch.31_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
     entry: bb-1
   
     bb-1:

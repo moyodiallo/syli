@@ -361,6 +361,18 @@ let runtime_call_of_object_create (dst : Oir.var) (size : Rir.operand) :
     ret_ty = Some (lower_ty dst.ty);
   }
 
+(* Whether an OIR type is represented as an LLVM pointer at the codegen
+   boundary (so an i64 <-> that type cast needs inttoptr/ptrtoint). *)
+let oir_is_ptr (t : Oir.ir_type) : bool =
+  match t with
+  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr | Oir.OR_FnPtr -> true
+  | _ -> false
+
+let oir_operand_ir (op : Oir.operand) : Oir.ir_type =
+  match op with
+  | Oir.OR_OVar v -> v.ty.Oir.ir_type
+  | Oir.OR_OConstant (_, ty) -> ty.Oir.ir_type
+
 let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
   let rir_ty = lower_ty rv.ty in
   let ctx, node =
@@ -399,7 +411,16 @@ let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
             } )
     | OR_Cast { src; to_ty } ->
         let ctx, src' = lower_operand ctx src in
-        (ctx, RR_Cast { src = src'; to_ty = lower_ty to_ty })
+        let rir_to_ty = lower_ty to_ty in
+        let node =
+          match
+            (oir_is_ptr (oir_operand_ir src), oir_is_ptr to_ty.Oir.ir_type)
+          with
+          | false, true -> RR_CastIntToPtr { src = src'; to_ty = rir_to_ty }
+          | true, false -> RR_CastPtrToInt { src = src'; to_ty = rir_to_ty }
+          | _ -> RR_CastBit { src = src'; to_ty = rir_to_ty }
+        in
+        (ctx, node)
     | OR_Move _ -> failwith "OR_Move must be lowered through statement_of_oir"
     | OR_Addr_fn { fn } -> (ctx, RR_Addr_fn { fn })
   in
@@ -825,6 +846,7 @@ let function_of_oir (ctx : ctx) (fn : Oir.function_oir) : ctx * Rir.function_rir
       blocks;
       return_ty = lower_ty fn.return_ty;
       visibility = lower_visibility fn.visibility;
+      unit_param_indices = fn.unit_param_indices;
     } )
 
 let lower_ffi_external_function (ffi : Oir.ffi_external_function) :
@@ -835,6 +857,7 @@ let lower_ffi_external_function (ffi : Oir.ffi_external_function) :
     ret_ty = lower_ty ffi.ret_ty;
     params = List.map lower_ty ffi.params;
     calling_convention = ffi.calling_convention;
+    unit_param_indices = ffi.unit_param_indices;
   }
 
 let lower_global_value (gv : Oir.global_value) : Rir.global_value =

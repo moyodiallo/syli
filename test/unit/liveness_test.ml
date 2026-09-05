@@ -49,6 +49,7 @@ let make_fn name ~locals entry blocks =
     blocks;
     return_ty = i64_ty;
     visibility = OR_Public;
+    unit_param_indices = [];
   }
 
 let print_fn label (fn : function_oir) =
@@ -328,6 +329,7 @@ let test_empty_entry_block () =
       blocks = [ bb ];
       return_ty = i64_ty;
       visibility = OR_Public;
+      unit_param_indices = [];
     }
   in
   print_fn "test_empty_entry_block: input" fn;

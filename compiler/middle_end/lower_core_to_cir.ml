@@ -200,36 +200,31 @@ let arg_ty_of_operand = function
 let get_args_ty = Gen_primitives.get_args_ty
 let get_return_ty = Gen_primitives.get_return_ty
 
-let lower_closure_apply (ctx : ctx) (closure_var : I.var)
-    (closure_fun_ty : C.ty) (concrete_arg_ops : I.operand list) (out_ty : I.ty)
-    : ctx * I.operand =
-  let ctx, concrete_closure_var = (ctx, closure_var) in
-  let ctx, call_dst, result =
-    let ctx, dst = fresh_var ctx out_ty in
-    (ctx, dst, I.CR_OVar dst)
-  in
-  let ctx, _ =
-    if List.length (get_args_ty closure_fun_ty) = List.length concrete_arg_ops
-    then
-      emit ctx
-        (I.CR_Call
-           {
-             dst = call_dst;
-             target = I.Apply { closure = concrete_closure_var };
-             args = concrete_arg_ops;
-           })
-        out_ty
-    else
-      emit ctx
-        (I.CR_Partial_apply
-           {
-             dst = call_dst;
-             closure = concrete_closure_var;
-             new_args = concrete_arg_ops;
-           })
-        out_ty
-  in
-  (ctx, result)
+let is_unit_cty (t : C.ty) : bool =
+  match t.ty_desc with C.CTy_Constant C.CTy_Unit -> true | _ -> false
+
+let rec take n xs =
+  if n <= 0 then []
+  else match xs with x :: rest -> x :: take (n - 1) rest | [] -> []
+
+let unit_slot_ir_ty () : I.ty = { I.id = fresh_id (); I.ir_type = I.CR_I64 }
+
+(* IR type of one function-parameter slot given its Core type. *)
+let slot_ir_ty (type_defs : C.ty_decl StringMap.t) (t : C.ty) : I.ty =
+  if is_unit_cty t then unit_slot_ir_ty () else mk_ir_ty type_defs t
+
+(* IR types for a *full* Core parameter list: every parameter — including a
+   `unit` — occupies one slot. *)
+let full_param_ir_tys (type_defs : C.ty_decl StringMap.t) (ctys : C.ty list) :
+    I.ty list =
+  List.map (slot_ir_ty type_defs) ctys
+
+(* Indices (into a Core parameter list) of `unit` params. Uniform: these are
+   carried as [i64] slots in the IR and dropped only at LLVM emission. *)
+let unit_indices_of_ctys (ctys : C.ty list) : int list =
+  ctys
+  |> List.mapi (fun i t -> (i, t))
+  |> List.filter_map (fun (i, t) -> if is_unit_cty t then Some i else None)
 
 let collect_toplevel_functions (prog : C.program_core) : int StringMap.t =
   List.fold_left
@@ -276,31 +271,17 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                (Printf.sprintf
                   "Unbound identifier during Core->SIR lowering: %s" id.name)))
   | CExp_Apply { closure_fun; args } -> (
-      let ctx, arg_ops = List.fold_left_map lower_expr ctx args in
-      (* Cast each arg operand to the concrete type knowned at apply site.
-         The concrete type will be knowned before the calling site,
-         which helps the monomorphization.*)
-      let arg_tys =
-        List.map (fun (a : C.expr) -> mk_ir_ty ctx.type_defs a.ty) args
-      in
-      let ctx, concrete_arg_ops =
-        List.fold_left2
-          (fun (ctx, acc) op arg_ty ->
-            match op with
-            | I.CR_OVar v
-              when not (ir_type_equal v.I.ty.I.ir_type arg_ty.I.ir_type) ->
-                let ctx, new_v = fresh_var ctx arg_ty in
-                let ctx, _ = emit ctx (assign_cast_var new_v v arg_ty) arg_ty in
-                (ctx, I.CR_OVar new_v :: acc)
-            | I.CR_OVar _ | I.CR_OConstant _ -> (ctx, op :: acc))
-          (ctx, []) arg_ops arg_tys
-      in
-      let concrete_arg_ops = List.rev concrete_arg_ops in
+      let callee_arg_ctys = List.map (fun (a : C.expr) -> a.ty) args in
       match closure_fun.node with
       | CExp_Ident id -> (
           match StringMap.find_opt id.name ctx.toplevel_functions with
           | Some arity when List.length args = arity ->
-              (* Known function, fully applied → direct call *)
+              (* Known function, fully applied → direct call. Uniform slots;
+                 `unit` slots are dropped only at LLVM emission. *)
+              let slot_tys = full_param_ir_tys ctx.type_defs callee_arg_ctys in
+              let ctx, concrete_arg_ops =
+                lower_args_to_slots ctx args slot_tys
+              in
               let ctx, call_dst, result =
                 let ctx, dst = fresh_var ctx out_ty in
                 (ctx, dst, I.CR_OVar dst)
@@ -317,7 +298,14 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
               in
               (ctx, result)
           | Some _ ->
-              (* Known function, partially applied → create closure *)
+              (* Known function, partially applied → capture the represented
+                 prefix as a closure *)
+              let slot_tys =
+                List.map (slot_ir_ty ctx.type_defs) callee_arg_ctys
+              in
+              let ctx, concrete_arg_ops =
+                lower_args_to_slots ctx args slot_tys
+              in
               let ctx, fn_var = fresh_var ctx out_ty in
               let ctx, _ =
                 emit ctx
@@ -343,8 +331,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                     failwith
                       "lowering: expected operand variable for closure apply"
               in
-              lower_closure_apply ctx closure_var closure_fun.ty
-                concrete_arg_ops out_ty)
+              lower_closure_apply ctx closure_var closure_fun.ty args out_ty)
       | _ ->
           let ctx, closure = lower_expr ctx closure_fun in
           let closure_var : I.var =
@@ -353,19 +340,21 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
             | _ ->
                 failwith "lowering: expected operand variable for closure apply"
           in
-          lower_closure_apply ctx closure_var closure_fun.ty concrete_arg_ops
-            out_ty)
+          lower_closure_apply ctx closure_var closure_fun.ty args out_ty)
   | CExp_Let { rec_flag; name; value } -> (
       let lambda_name = name.name in
       match value.node with
       | CExp_Lambda lam ->
-          (* Lift function, create closure *)
+          (* Lift the function and the create closure *)
           let ctx, fn_sir =
             lower_lambda_function ctx lambda_name lam value.ty value.id
           in
           let fn_sir = { fn_sir with I.visibility = I.CR_Private } in
           let ctx = { ctx with lifted_fns = fn_sir :: ctx.lifted_fns } in
-          let ctx, fn_var = fresh_var_with_name ctx lambda_name out_ty in
+          (* Since the type of the let-expession is unit,
+            so the type of the bound name is the type of the value *)
+          let fn_ty = mk_ir_ty ctx.type_defs value.ty in
+          let ctx, fn_var = fresh_var_with_name ctx lambda_name fn_ty in
           let free_var_idents =
             match Hashtbl.find_opt ctx.analysis.CA.closure_infos value.id with
             | Some info -> CA.VarIdSet.elements info.free_vars
@@ -380,27 +369,30 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
             I.CR_Make_closure
               { dst = fn_var; fn = lambda_name; free_vars; captured_args = [] }
           in
-          let ctx, _ = emit ctx make_closure out_ty in
+          let ctx, _ = emit ctx make_closure fn_ty in
           let ctx = { ctx with env = StringMap.add name.name fn_var ctx.env } in
           (ctx, I.CR_OVar fn_var)
       | _ -> (
           (* Evaluate the value and always bind the let-name in the environment. *)
           let ctx, result = lower_expr ctx value in
+          (*  Since the type of the let-expession is unit,
+              so the type of the bound name is the type of the value *)
+          let value_ty = mk_ir_ty ctx.type_defs value.ty in
           match result with
           | I.CR_OVar v ->
               let ctx = { ctx with env = StringMap.add name.name v ctx.env } in
               (ctx, I.CR_OVar v)
           | I.CR_OConstant _ ->
-              let ctx, v = fresh_var_with_name ctx name.name out_ty in
+              let ctx, v = fresh_var_with_name ctx name.name value_ty in
               let rv : I.rvalue =
                 {
                   I.id = v.I.id;
-                  node = I.CR_Cast { src = result; to_ty = out_ty };
-                  ty = out_ty;
+                  node = I.CR_Cast { src = result; to_ty = value_ty };
+                  ty = value_ty;
                 }
               in
               let ctx, _ =
-                emit ctx (I.CR_Assign { dst = v; rvalue = rv }) out_ty
+                emit ctx (I.CR_Assign { dst = v; rvalue = rv }) value_ty
               in
               let ctx = { ctx with env = StringMap.add name.name v ctx.env } in
               (ctx, I.CR_OVar v)))
@@ -586,16 +578,8 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
 
 and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
     (lam_ty : C.ty) (lambda_expr_id : int) : ctx * I.function_cir =
-  let param_tys =
-    (* param should match param_tys *)
-    let rec take n xs =
-      if n <= 0 then []
-      else match xs with x :: rest -> x :: take (n - 1) rest | [] -> []
-    in
-    get_args_ty lam_ty
-    |> List.filter (fun ty -> ty.ty_desc <> CTy_Constant CTy_Unit)
-    |> take (List.length lam.params)
-  in
+  let param_ctys = take (List.length lam.params) (get_args_ty lam_ty) in
+  let slot_tys = full_param_ir_tys ctx.type_defs param_ctys in
   let free_idents =
     match Hashtbl.find_opt ctx.analysis.CA.closure_infos lambda_expr_id with
     | Some info -> CA.VarIdSet.elements info.free_vars
@@ -604,7 +588,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
   let free_vars : I.var list =
     List.filter_map (fun (id : C.ident) -> env_find_var_opt ctx id) free_idents
   in
-  let lambda_body_ctx, lambda_param_vars =
+  let lambda_body_ctx, (lambda_param_vars, unit_param_indices) =
     let base_ctx =
       {
         empty_ctx with
@@ -619,17 +603,24 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
     let ctx_with_free_vars =
       List.fold_left (fun ctx fv -> env_add_var ctx fv) base_ctx free_vars
     in
-    let body_ctx, lambda_params =
+    let tys = List.combine slot_tys param_ctys in
+    let body_ctx, lambda_params, unit_pos_rev, _ =
       List.fold_left2
-        (fun (ctx, vars) (p : C.ident) (pty : C.ty) ->
-          let ir_pty : I.ty = mk_ir_ty ctx.type_defs pty in
-          let ctx, v = fresh_var_with_name ctx p.name ir_pty in
-          let ctx = env_add_var ctx v in
-          (ctx, v :: vars))
-        (ctx_with_free_vars, free_vars)
-        lam.params param_tys
+        (fun (ctx, vars, unit_pos, idx) (p : C.ident) (slot_ty, param_ty) ->
+          if is_unit_cty param_ty then
+            let ctx, v =
+              fresh_var_with_name ctx (Printf.sprintf "__unit.%d" idx) slot_ty
+            in
+            let ctx = env_add_var ctx v in
+            (ctx, v :: vars, idx :: unit_pos, idx + 1)
+          else
+            let ctx, v = fresh_var_with_name ctx p.name slot_ty in
+            let ctx = env_add_var ctx v in
+            (ctx, v :: vars, unit_pos, idx + 1))
+        (ctx_with_free_vars, free_vars, [], List.length free_vars)
+        lam.params tys
     in
-    (body_ctx, List.rev lambda_params)
+    (body_ctx, (List.rev lambda_params, List.rev unit_pos_rev))
   in
   let body_ctx, ret_op = lower_expr lambda_body_ctx lam.body in
   let ctx = { ctx with lifted_fns = body_ctx.lifted_fns @ ctx.lifted_fns } in
@@ -649,9 +640,74 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
       blocks;
       return_ty = declared_ret_ty;
       visibility = I.CR_Public;
+      unit_param_indices;
     }
   in
   (ctx, fn_sir)
+
+and lower_args_to_slots (ctx : ctx) (args : C.expr list) (slot_tys : I.ty list)
+    : ctx * I.operand list =
+  match slot_tys with
+  | [] -> (ctx, [])
+  | _ ->
+      let ctx, ops =
+        List.fold_left2
+          (fun (ctx, acc) (a : C.expr) slot_ty ->
+            if is_unit_cty a.ty then
+              (* a `unit` value carried in an i64 slot is the integer 0 *)
+              (ctx, I.CR_OConstant (I.CR_IntLit "0", slot_ty) :: acc)
+            else
+              let ctx, op = lower_expr ctx a in
+              let ctx, op =
+                match op with
+                | I.CR_OVar v
+                  when not (ir_type_equal v.I.ty.I.ir_type slot_ty.I.ir_type) ->
+                    let ctx, new_v = fresh_var ctx slot_ty in
+                    let ctx, _ =
+                      emit ctx (assign_cast_var new_v v slot_ty) slot_ty
+                    in
+                    (ctx, I.CR_OVar new_v)
+                | I.CR_OVar _ | I.CR_OConstant _ -> (ctx, op)
+              in
+              (ctx, op :: acc))
+          (ctx, []) args slot_tys
+      in
+      (ctx, List.rev ops)
+
+and lower_closure_apply (ctx : ctx) (closure_var : I.var)
+    (closure_fun_ty : C.ty) (args : C.expr list) (out_ty : I.ty) :
+    ctx * I.operand =
+  let remaining = List.length (get_args_ty closure_fun_ty) in
+  let napplied = List.length args in
+  let slot_tys =
+    List.map (fun (a : C.expr) -> slot_ir_ty ctx.type_defs a.ty) args
+  in
+  let ctx, concrete_arg_ops = lower_args_to_slots ctx args slot_tys in
+  let ctx, call_dst, result =
+    let ctx, dst = fresh_var ctx out_ty in
+    (ctx, dst, I.CR_OVar dst)
+  in
+  let ctx, _ =
+    if remaining = napplied then
+      emit ctx
+        (I.CR_Call
+           {
+             dst = call_dst;
+             target = I.Apply { closure = closure_var };
+             args = concrete_arg_ops;
+           })
+        out_ty
+    else
+      emit ctx
+        (I.CR_Partial_apply
+           {
+             dst = call_dst;
+             closure = closure_var;
+             new_args = concrete_arg_ops;
+           })
+        out_ty
+  in
+  (ctx, result)
 
 let build_const_init_fn (name : string) (value : I.constant) (ty : I.ty) :
     I.function_cir =
@@ -685,6 +741,7 @@ let build_const_init_fn (name : string) (value : I.constant) (ty : I.ty) :
     blocks = [ entry_block ];
     return_ty = ty;
     visibility = I.CR_Private;
+    unit_param_indices = [];
   }
 
 let build_module_initializer (module_name : string)
@@ -754,6 +811,7 @@ let build_module_initializer (module_name : string)
     blocks = [ entry_block ];
     return_ty = void_ty;
     visibility = I.CR_Public;
+    unit_param_indices = [];
   }
 
 let lower_program (prog : C.program_core) : I.module_cir =
@@ -846,6 +904,7 @@ let lower_program (prog : C.program_core) : I.module_cir =
                     blocks;
                     return_ty = global_ty;
                     visibility = I.CR_Private;
+                    unit_param_indices = [];
                   }
                 in
                 let gv : I.global_value =
@@ -869,14 +928,15 @@ let lower_program (prog : C.program_core) : I.module_cir =
             match external_fn.kind with
             | Foreign ->
                 let ret_ty = get_return_ty ty in
-                let param_tys = get_args_ty ty in
+                let param_ctys = get_args_ty ty in
                 let ext_fn : I.ffi_external_function =
                   {
                     I.name = external_fn.symbol;
                     I.syli_name = fname.name;
                     I.ret_ty = mk_ir_ty type_defs ret_ty;
-                    I.params = List.map (mk_ir_ty type_defs) param_tys;
+                    I.params = full_param_ir_tys type_defs param_ctys;
                     I.calling_convention = external_fn.calling_convention;
+                    I.unit_param_indices = unit_indices_of_ctys param_ctys;
                   }
                 in
                 let ext_ty = mk_ir_ty type_defs ty in

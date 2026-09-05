@@ -91,8 +91,14 @@ let string_of_rvalue (rv : rvalue) : string =
       Printf.sprintf "obj_get(%s, %s):%s" (operand_to_string obj)
         (operand_to_string field_idx)
         (string_of_ty value_ty)
-  | RR_Cast { src; to_ty } ->
-      Printf.sprintf "cast(%s as %s)" (operand_to_string src)
+  | RR_CastBit { src; to_ty } ->
+      Printf.sprintf "bitcast(%s as %s)" (operand_to_string src)
+        (string_of_ty to_ty)
+  | RR_CastIntToPtr { src; to_ty } ->
+      Printf.sprintf "inttoptr(%s as %s)" (operand_to_string src)
+        (string_of_ty to_ty)
+  | RR_CastPtrToInt { src; to_ty } ->
+      Printf.sprintf "ptrtoint(%s as %s)" (operand_to_string src)
         (string_of_ty to_ty)
   | RR_Addr_fn { fn } -> Printf.sprintf "addr_fn(%s)" fn
 

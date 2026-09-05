@@ -29,16 +29,16 @@ Monomorphization issue.
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct syliTest_file.apply ()
+      %Sy_var0:i64 = #call_direct syliTest_file.apply (0:i64)
       %Sy_var1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var0:i64)
       return
   end
   
-  public fn syliTest_file.apply() -> i64:
+  public fn syliTest_file.apply(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -82,16 +82,16 @@ Monomorphization issue.
       return
   end
   
-  public fn syliTest_file.main() -> void:
+  public fn syliTest_file.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct syliTest_file.apply ()
+      %Sy_var0:i64 = #call_direct syliTest_file.apply (0:i64)
       %Sy_var1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var0:i64)
       return
   end
   
-  public fn syliTest_file.apply() -> i64:
+  public fn syliTest_file.apply(%__unit.0:i64) -> i64:
     entry: bb0
   
     bb0:

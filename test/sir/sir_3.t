@@ -98,13 +98,12 @@ Overriding same name variable in a nested scope:
       return
   end
   
-  public fn syliTest_shadow_nested.apply() -> void:
+  public fn syliTest_shadow_nested.apply(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %sy1_x:void = cast(10:i64 as void)
-      %Sy_var0:i64 = cast(%sy1_x:void as i64)
-      %Sy_var1:i64 = #call_direct "syliTest_shadow_nested.+" (%Sy_var0:i64, 1:i64)
+      %sy1_x:i64 = cast(10:i64 as i64)
+      %Sy_var0:i64 = #call_direct "syliTest_shadow_nested.+" (%sy1_x:i64, 1:i64)
       return
   end
   
@@ -214,8 +213,8 @@ Simple nested function without captured variables:
     entry: bb0
   
     bb0:
-      %sy1_inner:void = #make_closure {sy1_inner} (%x:i64) ()
-      %Sy_var0:i64 = #call_apply {%sy1_inner:void as (i64 -> i64)}  (2:i64)
+      %sy1_inner:(i64 -> i64) = #make_closure {sy1_inner} (%x:i64) ()
+      %Sy_var0:i64 = #call_apply {%sy1_inner:(i64 -> i64)}  (2:i64)
       return %Sy_var0:i64
   end
   
@@ -338,13 +337,12 @@ Nested polymorphic function passed as an argument:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
-      %sy1_add:void = #make_closure {sy1_add} () ()
-      %Sy_var0:(i64, i64 -> i64) = cast(%sy1_add:void as (i64, i64 -> i64))
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply (%Sy_var0:(i64, i64 -> i64), 3:i64, 4:i64)
+      %sy1_add:(i64, i64 -> i64) = #make_closure {sy1_add} () ()
+      %Sy_var0:i64 = #call_direct syliTest_multi.apply (%sy1_add:(i64, i64 -> i64), 3:i64, 4:i64)
       return
   end
   
@@ -392,7 +390,7 @@ Applying partially applied function:
       return
   end
   
-  public fn syliTest_multi.main() -> void:
+  public fn syliTest_multi.main(%__unit.0:i64) -> void:
     entry: bb0
   
     bb0:
