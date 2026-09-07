@@ -20,14 +20,14 @@ Overriding same name variable in the top-level scope:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_shadow.x ()
-      store_global syliTest_shadow.x = %__init_tmp_0:i64
-      %__init_tmp_1:i64 = #call_direct __init_global.syliTest_shadow.y ()
-      store_global syliTest_shadow.y = %__init_tmp_1:i64
-      %__init_tmp_2:i64 = #call_direct __init_global.syliTest_shadow.x ()
-      store_global syliTest_shadow.x = %__init_tmp_2:i64
-      %__init_tmp_3:i64 = #call_direct __init_global.syliTest_shadow.result ()
-      store_global syliTest_shadow.result = %__init_tmp_3:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_shadow.x ()
+      store_global syliTest_shadow.x = %__sy_cir_init_tmp_0:i64
+      %__sy_cir_init_tmp_1:i64 = #call_direct __init_global.syliTest_shadow.y ()
+      store_global syliTest_shadow.y = %__sy_cir_init_tmp_1:i64
+      %__sy_cir_init_tmp_2:i64 = #call_direct __init_global.syliTest_shadow.x ()
+      store_global syliTest_shadow.x = %__sy_cir_init_tmp_2:i64
+      %__sy_cir_init_tmp_3:i64 = #call_direct __init_global.syliTest_shadow.result ()
+      store_global syliTest_shadow.result = %__sy_cir_init_tmp_3:i64
       return
   end
   
@@ -35,8 +35,8 @@ Overriding same name variable in the top-level scope:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_shadow.+" (%syliTest_shadow.x:i64, 1:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_shadow.+" (%syliTest_shadow.x:i64, 1:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_shadow.x() -> i64:
@@ -51,8 +51,8 @@ Overriding same name variable in the top-level scope:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_shadow.+" (%syliTest_shadow.x:i64, 1:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_shadow.+" (%syliTest_shadow.x:i64, 1:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_shadow.x() -> i64:
@@ -93,8 +93,8 @@ Overriding same name variable in a nested scope:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_shadow_nested.x ()
-      store_global syliTest_shadow_nested.x = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_shadow_nested.x ()
+      store_global syliTest_shadow_nested.x = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -103,7 +103,7 @@ Overriding same name variable in a nested scope:
   
     bb0:
       %sy1_x:i64 = cast(10:i64 as i64)
-      %Sy_var0:i64 = #call_direct "syliTest_shadow_nested.+" (%sy1_x:i64, 1:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_shadow_nested.+" (%sy1_x:i64, 1:i64)
       return
   end
   
@@ -144,10 +144,10 @@ Toplevel free variable capture:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_toplevel_capture.x ()
-      store_global syliTest_toplevel_capture.x = %__init_tmp_0:i64
-      %__init_tmp_1:i64 = #call_direct __init_global.syliTest_toplevel_capture.result ()
-      store_global syliTest_toplevel_capture.result = %__init_tmp_1:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_toplevel_capture.x ()
+      store_global syliTest_toplevel_capture.x = %__sy_cir_init_tmp_0:i64
+      %__sy_cir_init_tmp_1:i64 = #call_direct __init_global.syliTest_toplevel_capture.result ()
+      store_global syliTest_toplevel_capture.result = %__sy_cir_init_tmp_1:i64
       return
   end
   
@@ -155,16 +155,16 @@ Toplevel free variable capture:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct syliTest_toplevel_capture.add_to_x (10:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct syliTest_toplevel_capture.add_to_x (10:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_toplevel_capture.add_to_x(%y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_toplevel_capture.+" (%syliTest_toplevel_capture.x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_toplevel_capture.+" (%syliTest_toplevel_capture.x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_toplevel_capture.x() -> i64:
@@ -204,8 +204,8 @@ Simple nested function without captured variables:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_nested_simple.y ()
-      store_global syliTest_nested_simple.y = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_nested_simple.y ()
+      store_global syliTest_nested_simple.y = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -214,8 +214,8 @@ Simple nested function without captured variables:
   
     bb0:
       %sy1_inner:(i64 -> i64) = #make_closure {sy1_inner} (%x:i64) ()
-      %Sy_var0:i64 = #call_apply {%sy1_inner:(i64 -> i64)}  (2:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%sy1_inner:(i64 -> i64)}  (2:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_nested_simple.y() -> i64:
@@ -230,9 +230,9 @@ Simple nested function without captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_nested_simple.+" (%y:i64, %x:i64)
-      %Sy_var1:i64 = #call_direct "syliTest_nested_simple.+" (%Sy_var0:i64, 1:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_nested_simple.+" (%y:i64, %x:i64)
+      %Sy_cir_var_1:i64 = #call_direct "syliTest_nested_simple.+" (%Sy_cir_var_0:i64, 1:i64)
+      return %Sy_cir_var_1:i64
   end
   
   public fn "syliTest_nested_simple.+"(%x:i64, %y:i64) -> i64:
@@ -266,12 +266,12 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:(i64, i64 -> i64) = #call_direct __init_global.syliTest_multi.add1 ()
-      store_global syliTest_multi.add1 = %__init_tmp_0:(i64, i64 -> i64)
-      %__init_tmp_1:(i64 -> i64) = #call_direct __init_global.syliTest_multi.add1and2 ()
-      store_global syliTest_multi.add1and2 = %__init_tmp_1:(i64 -> i64)
-      %__init_tmp_2:i64 = #call_direct __init_global.syliTest_multi.result ()
-      store_global syliTest_multi.result = %__init_tmp_2:i64
+      %__sy_cir_init_tmp_0:(i64, i64 -> i64) = #call_direct __init_global.syliTest_multi.add1 ()
+      store_global syliTest_multi.add1 = %__sy_cir_init_tmp_0:(i64, i64 -> i64)
+      %__sy_cir_init_tmp_1:(i64 -> i64) = #call_direct __init_global.syliTest_multi.add1and2 ()
+      store_global syliTest_multi.add1and2 = %__sy_cir_init_tmp_1:(i64 -> i64)
+      %__sy_cir_init_tmp_2:i64 = #call_direct __init_global.syliTest_multi.result ()
+      store_global syliTest_multi.result = %__sy_cir_init_tmp_2:i64
       return
   end
   
@@ -279,33 +279,33 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%syliTest_multi.add1and2:(i64 -> i64)}  (3:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%syliTest_multi.add1and2:(i64 -> i64)}  (3:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_multi.add1and2() -> (i64 -> i64):
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #partial_apply {%syliTest_multi.add1:(i64, i64 -> i64)} (2:i64)
-      return %Sy_var0:(i64 -> i64)
+      %Sy_cir_var_0:(i64 -> i64) = #partial_apply {%syliTest_multi.add1:(i64, i64 -> i64)} (2:i64)
+      return %Sy_cir_var_0:(i64 -> i64)
   end
   
   private fn __init_global.syliTest_multi.add1() -> (i64, i64 -> i64):
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64, i64 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      return %Sy_var0:(i64, i64 -> i64)
+      %Sy_cir_var_0:(i64, i64 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      return %Sy_cir_var_0:(i64, i64 -> i64)
   end
   
   public fn syliTest_multi.add(%x:i64, %y:i64, %z:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
-      %Sy_var1:i64 = #call_direct "syliTest_multi.+" (%Sy_var0:i64, %z:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      %Sy_cir_var_1:i64 = #call_direct "syliTest_multi.+" (%Sy_cir_var_0:i64, %z:i64)
+      return %Sy_cir_var_1:i64
   end
   
   public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
@@ -342,7 +342,7 @@ Nested polymorphic function passed as an argument:
   
     bb0:
       %sy1_add:(i64, i64 -> i64) = #make_closure {sy1_add} () ()
-      %Sy_var0:i64 = #call_direct syliTest_multi.apply (%sy1_add:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_multi.apply (%sy1_add:(i64, i64 -> i64), 3:i64, 4:i64)
       return
   end
   
@@ -350,16 +350,16 @@ Nested polymorphic function passed as an argument:
     entry: bb0
   
     bb0:
-      %Sy_var0:?68 = #call_apply {%f:(?62, ?64 -> ?68)}  (%x:?62, %y:?64)
-      return %Sy_var0:?68
+      %Sy_cir_var_0:?68 = #call_apply {%f:(?62, ?64 -> ?68)}  (%x:?62, %y:?64)
+      return %Sy_cir_var_0:?68
   end
   
   private fn sy1_add(%a:i64, %b:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%a:i64, %b:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%a:i64, %b:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
@@ -394,8 +394,8 @@ Applying partially applied function:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:i64 = #call_apply {%Sy_var0:(i64 -> i64)}  (2:i64)
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:i64 = #call_apply {%Sy_cir_var_0:(i64 -> i64)}  (2:i64)
       return
   end
   
@@ -403,8 +403,8 @@ Applying partially applied function:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:

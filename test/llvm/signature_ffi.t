@@ -25,8 +25,8 @@ Signature with foreignal declaration emits an foreignal declaration in LLVM IR:
   
   define void @__init.Test_int() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call i64 @__init_global.syliTest_int.x()
-    store i64 %__init_tmp_0, ptr @syliTest_int.x
+    %__sy_cir_init_tmp_0 = call i64 @__init_global.syliTest_int.x()
+    store i64 %__sy_cir_init_tmp_0, ptr @syliTest_int.x
     ret void
   }
   

@@ -13,7 +13,7 @@ Two independent incremental state machines, each with its own worklist and budge
 
 - **Releasing**: processes the refcount-zero waitlist. Traverses reference graphs, decrements child refcounts, and frees objects.
 - **Tracing** (`Sy_Tracing`): 2-color mark from stack roots. The tracing flag guarantees each object is processed at most once per tracing phase. Iterates the tracing worklist; the mutations worklist captures unmarked children of objects modified by write barriers during tracing.
-`syli_rt_gc_cycle()` sets budgets for both phases and calls them (releasing → tracing). Each phase is incremental — it processes a budgeted number of objects per invocation and returns to idle when its worklist is empty.
+`syli_rt_gc_cycle()` sets budgets for both phases and calls them (releasing -> tracing). Each phase is incremental — it processes a budgeted number of objects per invocation and returns to idle when its worklist is empty.
 
 
 ### Makefile

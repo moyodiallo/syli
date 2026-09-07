@@ -11,12 +11,18 @@ module Oir = Syli_ir.Oir
 module Rir = Syli_ir.Rir
 
 type ctx = {
-  oir_var_ids : Rir.var IntMap.t (* Oir var id → Rir var with fresh Rir id *);
-  block_ids : int IntMap.t (* Oir block id → Rir block id *);
+  oir_var_ids : Rir.var IntMap.t (* Oir var id -> Rir var with fresh Rir id *);
+  block_ids : int IntMap.t (* Oir block id -> Rir block id *);
+  mutable fn_var_incr_name : int;
 }
 
-let fresh_global_id = Oir.fresh_id
-let tmp_counter = ref 0
+let fresh_global_id = Rir.fresh_id
+
+let fresh_var ctx (name : string) (ty : Rir.ty) : Rir.var =
+  let id = fresh_global_id () in
+  let var_name_id = ctx.fn_var_incr_name in
+  ctx.fn_var_incr_name <- var_name_id + 1;
+  { id; fullname = name ^ "_" ^ string_of_int var_name_id; ty }
 
 (* Helper constructors *)
 let i32_ty () : Rir.ty = { id = fresh_global_id (); ty = RR_I32 }
@@ -246,13 +252,9 @@ let lower_var (ctx : ctx) (v : Oir.var) : ctx * Rir.var =
   match IntMap.find_opt v.id ctx.oir_var_ids with
   | Some v' -> (ctx, v')
   | None ->
-      let id = fresh_id () in
+      let id = fresh_global_id () in
       let v' = { id; fullname = v.name; ty = lower_ty v.ty } in
-      ( {
-          oir_var_ids = IntMap.add v.id v' ctx.oir_var_ids;
-          block_ids = ctx.block_ids;
-        },
-        v' )
+      ({ ctx with oir_var_ids = IntMap.add v.id v' ctx.oir_var_ids }, v')
 
 let lower_constant (c : Oir.constant) : Rir.constant =
   match c with
@@ -373,6 +375,14 @@ let oir_operand_ir (op : Oir.operand) : Oir.ir_type =
   | Oir.OR_OVar v -> v.ty.Oir.ir_type
   | Oir.OR_OConstant (_, ty) -> ty.Oir.ir_type
 
+let rir_cast_node ~(src : Rir.operand) ~(src_is_ptr : bool) (to_ty : Oir.ty) :
+    Rir.rvalue_node =
+  let rir_to_ty = lower_ty to_ty in
+  match (src_is_ptr, oir_is_ptr to_ty.Oir.ir_type) with
+  | false, true -> RR_CastIntToPtr { src; to_ty = rir_to_ty }
+  | true, false -> RR_CastPtrToInt { src; to_ty = rir_to_ty }
+  | _ -> RR_CastBit { src; to_ty = rir_to_ty }
+
 let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
   let rir_ty = lower_ty rv.ty in
   let ctx, node =
@@ -409,16 +419,12 @@ let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
               args = [ obj' ];
               ret_ty = Some rir_ty;
             } )
-    | OR_Cast { src; to_ty } ->
+    | OR_Cast { src; to_ty; ownership = _ } ->
         let ctx, src' = lower_operand ctx src in
-        let rir_to_ty = lower_ty to_ty in
         let node =
-          match
-            (oir_is_ptr (oir_operand_ir src), oir_is_ptr to_ty.Oir.ir_type)
-          with
-          | false, true -> RR_CastIntToPtr { src = src'; to_ty = rir_to_ty }
-          | true, false -> RR_CastPtrToInt { src = src'; to_ty = rir_to_ty }
-          | _ -> RR_CastBit { src = src'; to_ty = rir_to_ty }
+          rir_cast_node ~src:src'
+            ~src_is_ptr:(oir_is_ptr (oir_operand_ir src))
+            to_ty
         in
         (ctx, node)
     | OR_Move _ -> failwith "OR_Move must be lowered through statement_of_oir"
@@ -449,6 +455,61 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
   | OR_Assign
       {
         dst;
+        rvalue = { node = OR_Cast { src = Oir.OR_OVar v; to_ty; ownership }; _ };
+        _;
+      }
+    when is_var_ref v
+         && ownership <> Oir.OR_Ownership_transfer
+         && ownership <> Oir.OR_Ownership_constant ->
+      let ctx, dst' = lower_var ctx dst in
+      let ctx, op' = lower_operand ctx (Oir.OR_OVar v) in
+      let rir_ty =
+        match op' with RR_OVar v -> v.ty | RR_OConstant (_, ty) -> ty
+      in
+      let tmp = fresh_var ctx "Sy_rir_tmp" rir_ty in
+      let fn_name =
+        match ownership with
+        | Oir.OR_Ownership_borrow -> RR_RT_object_borrow
+        | Oir.OR_Ownership_own -> RR_RT_object_own
+        | Oir.OR_Ownership_share -> RR_RT_object_share
+        | Oir.OR_Ownership_transfer | Oir.OR_Ownership_constant
+        | Oir.OR_Ownership_unknown ->
+            assert false
+      in
+      let ownership_stmt =
+        {
+          id = fresh_global_id ();
+          node =
+            RR_Runtime_call
+              {
+                dst = tmp;
+                call = { fn_name; args = [ op' ]; ret_ty = Some rir_ty };
+              };
+          ty = rir_ty;
+        }
+      in
+      let cast_assign =
+        {
+          id = fresh_global_id ();
+          node =
+            RR_Assign
+              {
+                dst = dst';
+                rvalue =
+                  {
+                    id = fresh_global_id ();
+                    node =
+                      rir_cast_node ~src:(RR_OVar tmp) ~src_is_ptr:true to_ty;
+                    ty = lower_ty to_ty;
+                  };
+              };
+          ty = lower_ty to_ty;
+        }
+      in
+      (ctx, [ ownership_stmt; cast_assign ])
+  | OR_Assign
+      {
+        dst;
         rvalue =
           {
             node = Oir.OR_Object_get { obj; field_idx; value_ty; ownership_get };
@@ -458,14 +519,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
     when is_var_ref dst && not (ownership_get = OR_Ownership_transfer) ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, rv' = rvalue_of_oir ctx rv in
-      incr tmp_counter;
-      let raw_tmp =
-        {
-          id = fresh_global_id ();
-          fullname = "Sy_raw_tmp_" ^ string_of_int !tmp_counter;
-          ty = dst'.ty;
-        }
-      in
+      let raw_tmp = fresh_var ctx "Sy_rir_raw_tmp" dst'.ty in
       let load_stmt =
         {
           id = fresh_global_id ();
@@ -513,14 +567,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
       let ctx, field_idx' = lower_operand ctx field_idx in
       let ctx, value' = lower_operand ctx value in
       let rir_ty = lower_ty value_ty in
-      incr tmp_counter;
-      let tmp =
-        {
-          id = fresh_global_id ();
-          fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
-          ty = rir_ty;
-        }
-      in
+      let tmp = fresh_var ctx "Sy_rir_tmp" rir_ty in
       let fn_name =
         match ownership_set with
         | Oir.OR_Ownership_own -> RR_RT_object_own
@@ -599,19 +646,12 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             match a with
             | { Oir.operand = OR_OVar v; ownership_arg = OR_Ownership_borrow }
               when is_var_ref v ->
-                incr tmp_counter;
                 let rir_ty =
                   match op' with
                   | RR_OVar v -> v.ty
                   | RR_OConstant (_, ty) -> ty
                 in
-                let tmp =
-                  {
-                    id = fresh_global_id ();
-                    fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
-                    ty = rir_ty;
-                  }
-                in
+                let tmp = fresh_var ctx "Sy_rir_tmp" rir_ty in
                 let borrow_stmt =
                   {
                     id = fresh_global_id ();
@@ -674,14 +714,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
       let rir_ty =
         match value' with RR_OVar v -> v.ty | RR_OConstant (_, ty) -> ty
       in
-      incr tmp_counter;
-      let tmp =
-        {
-          id = fresh_global_id ();
-          fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
-          ty = rir_ty;
-        }
-      in
+      let tmp = fresh_var ctx "Sy_rir_tmp" rir_ty in
       let fn_name =
         match ownership_store with
         | Oir.OR_Ownership_own -> RR_RT_object_own
@@ -767,14 +800,7 @@ let block_of_oir (ctx : ctx) (block : Oir.block) : ctx * Rir.block =
         { operand = Some (Oir.OR_OVar v); ownership_ret = Oir.OR_Ownership_own }
       when is_var_ref v ->
         let _, v' = lower_var ctx v in
-        incr tmp_counter;
-        let tmp =
-          {
-            id = fresh_global_id ();
-            fullname = "Sy_tmp_" ^ string_of_int !tmp_counter;
-            ty = v'.ty;
-          }
-        in
+        let tmp = fresh_var ctx "Sy_rir_tmp" v'.ty in
         let own_stmt =
           {
             id = fresh_global_id ();
@@ -809,7 +835,13 @@ let block_of_oir (ctx : ctx) (block : Oir.block) : ctx * Rir.block =
 let function_of_oir (ctx : ctx) (fn : Oir.function_oir) : ctx * Rir.function_rir
     =
   (* Reset per-function state: variables and block IDs are scoped to one function *)
-  let ctx = { oir_var_ids = IntMap.empty; block_ids = IntMap.empty } in
+  let ctx =
+    {
+      oir_var_ids = IntMap.empty;
+      block_ids = IntMap.empty;
+      fn_var_incr_name = 0;
+    }
+  in
   let ctx, params =
     List.fold_left_map (fun ctx p -> lower_var ctx p) ctx fn.params
   in
@@ -872,7 +904,11 @@ let lower_global_value (gv : Oir.global_value) : Rir.global_value =
 let lower (ctx : Pipeline_types.oir_ctx) : Pipeline_types.rir_ctx =
   let prog = ctx.module_oir in
   let lowering_ctx : ctx =
-    { oir_var_ids = IntMap.empty; block_ids = IntMap.empty }
+    {
+      oir_var_ids = IntMap.empty;
+      block_ids = IntMap.empty;
+      fn_var_incr_name = 0;
+    }
   in
   let _, rir_functions =
     List.fold_left_map

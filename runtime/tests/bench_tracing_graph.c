@@ -48,7 +48,7 @@ static bool tracing_done(void)
    label: section header printed to stdout.
 
    Allocates the graph externally; this function only handles
-   the suspend→add_suspect→gc_drain loop + metric reporting.
+   the suspend->add_suspect->gc_drain loop + metric reporting.
    ────────────────────────────────────────────────────────────── */
 static void run_tracing_bench(const char* label, obj_ptr* root_slot,
     size_t node_count, int N_ROUNDS, uint64_t alloc_ns)
@@ -109,7 +109,7 @@ static void run_tracing_bench(const char* label, obj_ptr* root_slot,
 
 /* ──────────────────────────────────────────────────────────────
    Tracing Bench 1: Linear Chain
-   head → n1 → n2 → … → tail  (10 000 nodes)
+   head -> n1 -> n2 -> … -> tail  (10 000 nodes)
    ────────────────────────────────────────────────────────────── */
 static void bench_linear_chain(void)
 {
@@ -184,7 +184,7 @@ static void bench_binary_tree(void)
 
 /* ──────────────────────────────────────────────────────────────
    Tracing Bench 3: Diamond Shared DAG
-   root → (left[i], right[i]) → shared   for i in [0, diamonds)
+   root -> (left[i], right[i]) -> shared   for i in [0, diamonds)
    20 000 diamonds; each diamond shares one node (refcount = 40 000).
    ────────────────────────────────────────────────────────────── */
 static void bench_diamond_shared(void)

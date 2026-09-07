@@ -21,7 +21,7 @@ A function with let bindings:
   
     bb0:
       %sy1_x:i64 = cast(10:i64 as i64)
-      %Sy_var0:i64 = #call_direct "syliTest_let.+" (%sy1_x:i64, 32:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_let.+" (%sy1_x:i64, 32:i64)
       return
   end
   
@@ -53,8 +53,8 @@ Simple Partial apply (ir_fp — after generate_functions, before monomorphize):
     entry: bb0
   
     bb0:
-      %__init_tmp_0:(i64 -> i64) = #call_direct __init_global.syliTest_partial.m ()
-      store_global syliTest_partial.m = %__init_tmp_0:(i64 -> i64)
+      %__sy_cir_init_tmp_0:(i64 -> i64) = #call_direct __init_global.syliTest_partial.m ()
+      store_global syliTest_partial.m = %__sy_cir_init_tmp_0:(i64 -> i64)
       return
   end
   
@@ -62,16 +62,16 @@ Simple Partial apply (ir_fp — after generate_functions, before monomorphize):
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
-      return %Sy_var0:(i64 -> i64)
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
+      return %Sy_cir_var_0:(i64 -> i64)
   end
   
   public fn syliTest_partial.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
@@ -102,8 +102,8 @@ Simple Partial apply (ir):
     entry: bb0
   
     bb0:
-      %__init_tmp_0:(i64 -> i64) = #call_direct __init_global.syliTest_partial.m ()
-      store_global syliTest_partial.m = %__init_tmp_0:(i64 -> i64)
+      %__sy_cir_init_tmp_0:(i64 -> i64) = #call_direct __init_global.syliTest_partial.m ()
+      store_global syliTest_partial.m = %__sy_cir_init_tmp_0:(i64 -> i64)
       return
   end
   
@@ -111,16 +111,16 @@ Simple Partial apply (ir):
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
-      return %Sy_var0:(i64 -> i64)
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
+      return %Sy_cir_var_0:(i64 -> i64)
   end
   
   public fn syliTest_partial.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
@@ -141,7 +141,7 @@ Simple Partial apply (ir_mono):
   > let m = add 5
   > EOF
   $ dune exec sylic -- cir_mono test_partial.sy | grep "#make_closure"
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
 
 
 Simple Partial apply (ir_raw):
@@ -161,8 +161,8 @@ Simple Partial apply (ir_raw):
     entry: bb0
   
     bb0:
-      %__init_tmp_0:(i64 -> i64) = #call_direct __init_global.syliTest_partial.m ()
-      store_global syliTest_partial.m = %__init_tmp_0:(i64 -> i64)
+      %__sy_cir_init_tmp_0:(i64 -> i64) = #call_direct __init_global.syliTest_partial.m ()
+      store_global syliTest_partial.m = %__sy_cir_init_tmp_0:(i64 -> i64)
       return
   end
   
@@ -170,16 +170,16 @@ Simple Partial apply (ir_raw):
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
-      return %Sy_var0:(i64 -> i64)
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_partial.add} () ( captured_args=[5:i64])
+      return %Sy_cir_var_0:(i64 -> i64)
   end
   
   public fn syliTest_partial.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
@@ -213,17 +213,17 @@ Partial apply from a lambda with captured local value:
     entry: bb0
   
     bb0:
-      %__lambda_29:(i64, i64 -> i64) = #make_closure {__lambda_29} () ()
-      %Sy_var0:(i64 -> i64) = #partial_apply {%__lambda_29:(i64, i64 -> i64)} (5:i64)
-      return %Sy_var0:(i64 -> i64)
+      %__sy_cir_lambda_26:(i64, i64 -> i64) = #make_closure {__sy_cir_lambda_26} () ()
+      %Sy_cir_var_0:(i64 -> i64) = #partial_apply {%__sy_cir_lambda_26:(i64, i64 -> i64)} (5:i64)
+      return %Sy_cir_var_0:(i64 -> i64)
   end
   
-  public fn __lambda_29(%x:i64, %y:i64) -> i64:
+  public fn __sy_cir_lambda_26(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syli_tmp_partial2.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syli_tmp_partial2.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syli_tmp_partial2.+"(%x:i64, %y:i64) -> i64:

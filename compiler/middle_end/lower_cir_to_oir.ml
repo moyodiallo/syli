@@ -1,12 +1,12 @@
 (** Conversion from CIR (Closure IR) to OIR (Object IR).
 
     Key transformations:
-    - Cir.CR_Make_closure → object_create + field stores
-    - Cir.CR_Partial_apply → object_create + field stores (chain via parent ptr,
-      no copy)
-    - Apply call target → Direct_fnptr (resolved to accum function)
-    - Cir.CR_Arrow type → pointer type
-    - Cir.CR_GenericTyp → error (should be monomorphized away) *)
+    - Cir.CR_Make_closure -> object_create + field stores
+    - Cir.CR_Partial_apply -> object_create + field stores (chain via parent
+      ptr, no copy)
+    - Apply call target -> Direct_fnptr (resolved to accum function)
+    - Cir.CR_Arrow type -> pointer type
+    - Cir.CR_GenericTyp -> error (should be monomorphized away) *)
 
 open Syli_common
 open Syli_ir.Oir
@@ -17,24 +17,27 @@ module Oir = Syli_ir.Oir
 type ctx = {
   closure_graph : Closure_graph.t;
   trampolines : function_oir StringMap.t;
-  var_ids : Oir.var IntMap.t (* Cir var id → Oir var with fresh Oir id *);
-  block_ids : int IntMap.t (* Cir block id → Oir block id *);
+  var_ids : Oir.var IntMap.t (* Cir var id -> Oir var with fresh Oir id *);
+  block_ids : int IntMap.t (* Cir block id -> Oir block id *);
   available_fns : StringSet.t (* monomorphized function names *);
+  mutable fn_var_incr_name : int;
 }
 
-(* Counters for generating unique temporary variable names *)
-let tmp_counter = ref 0
+let fresh_global_id = Oir.fresh_id
 
-let fresh_var (name : string) (ty : Oir.ty) : Oir.var =
-  let idx = !tmp_counter in
-  tmp_counter := idx + 1;
-  { id = Oir.fresh_id (); name = name ^ "_" ^ string_of_int idx; ty }
-
-let fresh_global_id = Cir.fresh_id
+let fresh_var ctx (name : string) (ty : Oir.ty) : Oir.var =
+  let id = fresh_global_id () in
+  let var_name_id = ctx.fn_var_incr_name in
+  ctx.fn_var_incr_name <- var_name_id + 1;
+  { id; name = name ^ "_" ^ string_of_int var_name_id; ty }
 
 (* Helper constructors *)
 let i64_ty () : Oir.ty = { id = fresh_global_id (); ir_type = Oir.OR_I64 }
 let fn_ptr_ty () : Oir.ty = { id = fresh_global_id (); ir_type = Oir.OR_FnPtr }
+
+let obj_ptr_ty () : Oir.ty =
+  { id = fresh_global_id (); ir_type = Oir.OR_Obj_Ptr }
+
 let void_ty () : Oir.ty = { id = fresh_global_id (); ir_type = Oir.OR_Void }
 let i32_ty () : Oir.ty = { id = fresh_global_id (); ir_type = Oir.OR_I32 }
 
@@ -147,7 +150,7 @@ let lower_var (ctx : ctx) (v : Cir.var) : ctx * Oir.var =
   match IntMap.find_opt v.id ctx.var_ids with
   | Some v' -> (ctx, v')
   | None ->
-      let v' = { id = Oir.fresh_id (); name = v.name; ty = lower_ty v.ty } in
+      let v' = { id = fresh_global_id (); name = v.name; ty = lower_ty v.ty } in
       ({ ctx with var_ids = IntMap.add v.id v' ctx.var_ids }, v')
 
 let lower_constant (c : Cir.constant) : Oir.constant =
@@ -258,7 +261,13 @@ let rvalue_of_cir (ctx : ctx) (rv : Cir.rvalue) : ctx * Oir.rvalue =
         (ctx, Oir.OR_Object_get_tag { obj = obj' })
     | Cir.CR_Cast { src; to_ty } ->
         let ctx, src' = lower_operand ctx src in
-        (ctx, Oir.OR_Cast { src = src'; to_ty = lower_ty to_ty })
+        ( ctx,
+          Oir.OR_Cast
+            {
+              src = src';
+              to_ty = lower_ty to_ty;
+              ownership = Oir.OR_Ownership_unknown;
+            } )
     | Cir.CR_Move { src } ->
         let ctx, src' = lower_operand ctx src in
         (ctx, Oir.OR_Move { src = src' })
@@ -283,19 +292,23 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~fn_name =
   let closure_graph = ctx.closure_graph in
   let gen_functions = ctx.trampolines in
   let make_closure_node = IntMap.find node_id closure_graph.graph.nodes in
-  let specializations =
+  (* Lowered types of the stored (capture) slots of this closure node. *)
+  let stored_tys = List.map lower_ty make_closure_node.arg_tys in
+  let raw_specializations =
     match
       IntMap.find_opt node_id closure_graph.make_closure_fn_specializations
     with
-    | Some specializations ->
-        List.map
-          (fun spe ->
-            ( spe.dispatch_cumul,
-              spe.fn_name,
-              List.map lower_ty spe.arg_tys,
-              lower_ty spe.ret_ty ))
-          specializations
+    | Some specializations -> specializations
     | None -> failwith "any make_closure should have it owns specializations"
+  in
+  let specializations =
+    List.map
+      (fun spe ->
+        ( spe.dispatch_cumul,
+          spe.fn_name,
+          List.map lower_ty spe.arg_tys,
+          lower_ty spe.ret_ty ))
+      raw_specializations
   in
   let base_ret_ty =
     match
@@ -310,58 +323,43 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~fn_name =
   in
   (* node.arg_tys already includes the free-var types (see closure_graph
      CR_Make_closure), so it is the exact number of stored closure fields. *)
-  let arg_tys_len = List.length make_closure_node.arg_tys in
-  let stored_args_size = arg_tys_len in
+  let n_make_closure_loads = List.length make_closure_node.arg_tys in
   let is_generic = IntSet.mem node_id closure_graph.generic_nodes in
   let needs_cast spe_ret =
     is_generic && spe_ret.Oir.ir_type <> ret_ty.Oir.ir_type
   in
-  let resolve_callee_name fn_name param_tys ret_ty =
-    if StringSet.mem fn_name ctx.available_fns then fn_name
-    else
-      let suffix =
-        String.concat "__"
-          (List.map Gen_closure_helpers.type_key_of_ty param_tys)
-      in
-      fn_name ^ "__" ^ suffix ^ "_ret_"
-      ^ Gen_closure_helpers.type_key_of_ty ret_ty
+  let callee_of (spe : Closure_graph.fn_specialization) =
+    if StringSet.mem spe.fn_name ctx.available_fns then spe.fn_name
+    else Helpers.specialization_name spe.fn_name spe.arg_tys spe.ret_ty
   in
   (* Generate the wrappers (for the accum dispatch to call) *)
   let gen_functions =
     List.fold_left
       (fun acc
-           ((_, fn_name, param_tys, spe_ret_ty) :
-             int * string * Oir.ty list * Oir.ty) ->
-        let callee_name = resolve_callee_name fn_name param_tys spe_ret_ty in
-        if needs_cast spe_ret_ty then
-          let wrapper_name =
-            Gen_closure_helpers.apply_wrapper_name_cast ~fn_name ~param_tys
-              ~cast_from:spe_ret_ty
-          in
-          StringMap.update wrapper_name
-            (fun wrapper_name_opt ->
-              match wrapper_name_opt with
-              | None ->
-                  Option.some
-                  @@ Gen_closure_helpers.build_apply_wrapper_cast ~fn_name
-                       ~param_tys ~cast_from:spe_ret_ty ~callee_name
-              | Some _ as existing -> existing)
-            acc
-        else
-          let wrapper_name =
-            Gen_closure_helpers.apply_wrapper_name ~fn_name ~param_tys
-              ~ret_ty:spe_ret_ty
-          in
-          StringMap.update wrapper_name
-            (fun wrapper_name_opt ->
-              match wrapper_name_opt with
-              | None ->
-                  Option.some
-                  @@ Gen_closure_helpers.build_apply_wrapper ~fn_name ~param_tys
-                       ~ret_ty:spe_ret_ty ~callee_name
-              | Some _ as existing -> existing)
-            acc)
-      gen_functions specializations
+           ((raw_spe, (_, fn_name, param_tys, spe_ret_ty)) :
+             Closure_graph.fn_specialization
+             * (int * string * Oir.ty list * Oir.ty)) ->
+        let callee_name = callee_of raw_spe in
+        let wrapper_ret_ty, cast_from =
+          if needs_cast spe_ret_ty then (ret_ty, Some spe_ret_ty)
+          else (spe_ret_ty, None)
+        in
+        let wrapper_name =
+          Gen_closure_helpers.apply_wrapper_name ~fn_name ~param_tys
+            ~ret_ty:wrapper_ret_ty ~cast_from
+        in
+        StringMap.update wrapper_name
+          (fun wrapper_name_opt ->
+            match wrapper_name_opt with
+            | None ->
+                Option.some
+                @@ Gen_closure_helpers.build_apply_wrapper ~fn_name ~param_tys
+                     ~ret_ty:wrapper_ret_ty ~callee_name ~cast_from
+                     ~n_make_closure_loads
+            | Some _ as existing -> existing)
+          acc)
+      gen_functions
+      (List.combine raw_specializations specializations)
   in
   (* Generate the make_closure accum dispatch function *)
   let gen_fn_name, gen_functions =
@@ -378,7 +376,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~fn_name =
               | None ->
                   Option.some
                   @@ Gen_closure_helpers.build_make_closure_accum ~fn_name
-                       ~stored_args_size
+                       ~stored_tys
                        ~args_size:
                          (List.length make_closure_node.remaining_arg_tys)
                        ~specializations:tys ~ret_ty node_id)
@@ -395,7 +393,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~fn_name =
               | None ->
                   Option.some
                   @@ Gen_closure_helpers.build_make_closure_accum_dispatch
-                       ~stored_args_size
+                       ~stored_tys
                        ~args_size:
                          (List.length make_closure_node.remaining_arg_tys)
                        ~specializations ~ret_ty node_id)
@@ -451,16 +449,19 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   in
   let ctx = { ctx with trampolines } in
   let total_fields = 1 + stored_args_size in
-  let field_types : Cir.ty list =
-    sir_fn_ptr_ty :: List.init stored_args_size (fun _ -> sir_i64_ty)
+  let stored_operands =
+    List.map (fun (v : Cir.var) -> Cir.CR_OVar v) free_vars @ captured_args
   in
+  let stored_cir_tys = List.map sir_operand_ty stored_operands in
+  let stored_oir_tys = List.map lower_ty stored_cir_tys in
+  let field_types : Cir.ty list = sir_fn_ptr_ty :: stored_cir_tys in
   let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst field_types in
   let size_op = int_operand total_fields in
   let create_stmt_node =
     Oir.OR_Object_create { dst = oir_dst; size = size_op }
   in
   (* Set clos[0] = accum_fn *)
-  let accum_var = fresh_var "Sy_accum_fn" (fn_ptr_ty ()) in
+  let accum_var = fresh_var ctx "Sy_oir_accum_fn" (fn_ptr_ty ()) in
   let accum_addr_stmt =
     {
       id = fresh_global_id ();
@@ -494,9 +495,6 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
     }
   in
   (* Store stored_args at field index 1 *)
-  let stored_operands =
-    List.map (fun (v : Cir.var) -> Cir.CR_OVar v) free_vars @ captured_args
-  in
   let ctx, lowered_operands =
     List.fold_left_map
       (fun ctx arg -> lower_operand ctx arg)
@@ -504,7 +502,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   in
   let stored_arg_stmts =
     List.mapi
-      (fun i value ->
+      (fun i (value, value_ty) ->
         {
           id = fresh_global_id ();
           node =
@@ -513,12 +511,12 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
                 obj = oir_dst;
                 field_idx = int_operand (1 + i);
                 value;
-                value_ty = i64_ty ();
+                value_ty;
                 ownership_set = Oir.OR_Ownership_constant;
               };
           ty = fn_ptr_ty ();
         })
-      lowered_operands
+      (List.combine lowered_operands stored_oir_tys)
   in
   ( ctx,
     [
@@ -534,8 +532,10 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
     IntMap.find_opt node_dst_id closure_graph.node_dispatch_possibilities
     |> Option.value ~default:[]
   in
-  let stored_args_size = List.length node.arg_tys in
   let args_size = List.length node.remaining_arg_tys in
+  (* Lowered types of the new args stored by this partial node (used as the
+     name key). *)
+  let stored_tys = List.map lower_ty node.arg_tys in
   let base_ret_ty =
     match IntMap.find_opt node_dst_id closure_graph.concrete_ret_ty with
     | Some ty -> lower_ty ty
@@ -548,8 +548,8 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
   let is_dispatch, gen_fn_name, gen_functions =
     if List.exists (fun x -> x > 0) dispatch_id_possibilities then
       let closure_accum_name =
-        Gen_closure_helpers.partial_closure_accum_dispatch_name
-          ~stored_args_size ~args_size ~ret_ty
+        Gen_closure_helpers.partial_closure_accum_dispatch_name ~stored_tys
+          ~args_size ~ret_ty
       in
       ( true,
         closure_accum_name,
@@ -559,12 +559,12 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
             | None ->
                 Option.some
                 @@ Gen_closure_helpers.build_partial_closure_accum_dispatch
-                     ~stored_args_size ~args_size ret_ty)
+                     ~stored_tys ~args_size ret_ty)
           gen_functions )
     else
       let closure_accum_name =
-        Gen_closure_helpers.partial_closure_accum_name ~stored_args_size
-          ~args_size ~ret_ty
+        Gen_closure_helpers.partial_closure_accum_name ~stored_tys ~args_size
+          ~ret_ty
       in
       ( false,
         closure_accum_name,
@@ -573,8 +573,8 @@ let partial_gen_apply_functions gen_functions closure_graph node_dst_id =
             | Some _ as existing -> existing
             | None ->
                 Option.some
-                @@ Gen_closure_helpers.build_partial_closure_accum
-                     ~stored_args_size ~args_size ret_ty)
+                @@ Gen_closure_helpers.build_partial_closure_accum ~stored_tys
+                     ~args_size ret_ty)
           gen_functions )
   in
   (is_dispatch, gen_fn_name, gen_functions)
@@ -599,11 +599,12 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
   let ctx = { ctx with trampolines } in
   let has_dispatch = if is_dispatch then 1 else 0 in
   let total_fields = 2 + has_dispatch + new_args_count in
+  let new_arg_cir_tys = List.map sir_operand_ty new_args in
+  let new_arg_oir_tys = List.map lower_ty new_arg_cir_tys in
   let sir_field_types : Cir.ty list =
     [ sir_fn_ptr_ty ]
     @ (if is_dispatch then [ sir_i64_ty ] else [])
-    @ [ sir_obj_ptr_ty ]
-    @ List.init new_args_count (fun _ -> sir_i64_ty)
+    @ [ sir_obj_ptr_ty ] @ new_arg_cir_tys
   in
   let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst sir_field_types in
   let size_op = int_operand total_fields in
@@ -611,7 +612,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
     Oir.OR_Object_create { dst = oir_dst; size = size_op }
   in
   (* Set clos[0] = accum_fn *)
-  let accum_var = fresh_var "Sy_accum_fn" (fn_ptr_ty ()) in
+  let accum_var = fresh_var ctx "Sy_accum_fn" (fn_ptr_ty ()) in
   let accum_addr_stmt =
     {
       id = fresh_global_id ();
@@ -694,7 +695,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
   in
   let store_new_arg_stmts =
     List.mapi
-      (fun i value ->
+      (fun i (value, value_ty) ->
         {
           id = fresh_global_id ();
           node =
@@ -703,12 +704,12 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
                 obj = oir_dst;
                 field_idx = int_operand (args_idx + i);
                 value;
-                value_ty = i64_ty ();
+                value_ty;
                 ownership_set = Oir.OR_Ownership_constant;
               };
           ty = fn_ptr_ty ();
         })
-      lowered_args
+      (List.combine lowered_args new_arg_oir_tys)
   in
   ( ctx,
     [
@@ -744,7 +745,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
     Oir.OR_Object_create { dst = oir_dst; size = size_op }
   in
   (* Set clos[0] = accum_fn *)
-  let accum_var = fresh_var "Sy_accum_fn" (fn_ptr_ty ()) in
+  let accum_var = fresh_var ctx "Sy_oir_accum_fn" (fn_ptr_ty ()) in
   let accum_addr_stmt =
     {
       id = fresh_global_id ();
@@ -898,7 +899,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
   | Cir.CR_Call { dst; target = Apply { closure }; args } ->
       let ctx, oir_dst = lower_var ctx dst in
       let is_void = dst.ty.Cir.ir_type = Cir.CR_Void in
-      let accum_ptr = fresh_var "Sy_accum_ptr" (fn_ptr_ty ()) in
+      let accum_ptr = fresh_var ctx "Sy_accum_ptr" (fn_ptr_ty ()) in
       let ctx, closure_op = lower_operand ctx (Cir.CR_OVar closure) in
       let load_accum_stmt =
         {
@@ -924,12 +925,30 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
           ty = fn_ptr_ty ();
         }
       in
-      (* Cast args to i64 for accum function (it expects all args as i64) *)
-      let make_tmp_i64_var () : Oir.var =
-        let idx = !tmp_counter in
-        tmp_counter := idx + 1;
-        let id = -(idx + 1) in
-        { Oir.id; name = "Sy_apply_cast_" ^ string_of_int idx; ty = i64_ty () }
+      (* Applied arguments are typed as: object arguments stay typed
+         obj_ptr so that ownership system does not miss it, scalars stay i64 carrier. *)
+      let make_tmp_cast_var (ty : Oir.ty) : Oir.var =
+        fresh_var ctx "Sy_apply_cast" ty
+      in
+      let make_cast_stmt (dst : Oir.var) (src : Oir.operand) (to_ty : Oir.ty) :
+          Oir.statement =
+        {
+          id = fresh_global_id ();
+          node =
+            Oir.OR_Assign
+              {
+                dst;
+                rvalue =
+                  {
+                    id = fresh_global_id ();
+                    node =
+                      Oir.OR_Cast
+                        { src; to_ty; ownership = Oir.OR_Ownership_unknown };
+                    ty = to_ty;
+                  };
+              };
+          ty = to_ty;
+        }
       in
       let ctx, cast_results =
         List.fold_left_map
@@ -943,26 +962,10 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
             match arg_ty.Oir.ir_type with
             | Oir.OR_I64 -> (ctx, ([], oir_arg))
             | _ ->
-                let cast_var = make_tmp_i64_var () in
-                let cast_stmt =
-                  {
-                    id = fresh_global_id ();
-                    node =
-                      Oir.OR_Assign
-                        {
-                          dst = cast_var;
-                          rvalue =
-                            {
-                              id = fresh_global_id ();
-                              node =
-                                Oir.OR_Cast { src = oir_arg; to_ty = i64_ty () };
-                              ty = i64_ty ();
-                            };
-                        };
-                    ty = i64_ty ();
-                  }
-                in
-                (ctx, ([ cast_stmt ], Oir.OR_OVar cast_var)))
+                let cast_var = make_tmp_cast_var (i64_ty ()) in
+                ( ctx,
+                  ( [ make_cast_stmt cast_var oir_arg (i64_ty ()) ],
+                    Oir.OR_OVar cast_var ) ))
           ctx args
       in
       let cast_stmts = List.concat_map fst cast_results in
@@ -993,7 +996,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
       in
       let call_dst, extra_cast_stmt =
         if needs_result_cast then
-          let tmp = fresh_var "Sy_apply_tmp" (i64_ty ()) in
+          let tmp = fresh_var ctx "Sy_apply_tmp" (i64_ty ()) in
           let cast_stmt =
             {
               id = fresh_global_id ();
@@ -1006,7 +1009,11 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
                         id = fresh_global_id ();
                         node =
                           Oir.OR_Cast
-                            { src = Oir.OR_OVar tmp; to_ty = oir_dst.ty };
+                            {
+                              src = Oir.OR_OVar tmp;
+                              to_ty = oir_dst.ty;
+                              ownership = Oir.OR_Ownership_unknown;
+                            };
                         ty = oir_dst.ty;
                       };
                   };
@@ -1018,7 +1025,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
       in
       let call_stmt =
         if is_void then
-          let void_tmp = fresh_var "Sy_void_apply" (void_ty ()) in
+          let void_tmp = fresh_var ctx "Sy_void_apply" (void_ty ()) in
           {
             id = fresh_global_id ();
             node =
@@ -1123,7 +1130,14 @@ let function_of_cir (ctx : ctx) (fn : Cir.function_cir) : ctx * Oir.function_oir
     =
   (* Reset per-function state: variables and blocks are scoped to one
      function *)
-  let ctx = { ctx with var_ids = IntMap.empty; block_ids = IntMap.empty } in
+  let ctx =
+    {
+      ctx with
+      var_ids = IntMap.empty;
+      block_ids = IntMap.empty;
+      fn_var_incr_name = 0;
+    }
+  in
   (* Initialize with params first, then locals, so subsequent references
      resolve *)
   let ctx, params =
@@ -1181,7 +1195,6 @@ let lower_ffi_external_function (ffi : Cir.ffi_external_function) :
 let lower (ctx : Pipeline_types.cir_mono_ctx) : Pipeline_types.oir_ctx =
   let prog : Cir.module_cir = ctx.module_cir in
   let graph = ctx.closure_graph in
-  tmp_counter := 0;
   let lowering_ctx : ctx =
     {
       closure_graph = graph;
@@ -1191,6 +1204,7 @@ let lower (ctx : Pipeline_types.cir_mono_ctx) : Pipeline_types.oir_ctx =
       available_fns =
         StringSet.of_list
           (List.map (fun (f : Cir.function_cir) -> f.name) prog.functions);
+      fn_var_incr_name = 0;
     }
   in
   (* Lower original functions, threading ctx to collect generated trampolines *)

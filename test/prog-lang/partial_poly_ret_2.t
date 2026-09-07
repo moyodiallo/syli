@@ -21,10 +21,10 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:(?62, ?63 -> ?63) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:(?66 -> ?66) = #partial_apply {%Sy_var0:(?62, ?63 -> ?63)} (1.0f:f64)
-      %Sy_var2:(?69 -> ?69) = #partial_apply {%Sy_var0:(?62, ?63 -> ?63)} (1:i64)
-      %Sy_var3:i64 = #call_apply {%Sy_var1:(?66 -> ?66) as (i64 -> i64)}  (1:i64)
+      %Sy_cir_var_0:(?62, ?63 -> ?63) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(?66 -> ?66) = #partial_apply {%Sy_cir_var_0:(?62, ?63 -> ?63)} (1.0f:f64)
+      %Sy_cir_var_2:(?69 -> ?69) = #partial_apply {%Sy_cir_var_0:(?62, ?63 -> ?63)} (1:i64)
+      %Sy_cir_var_3:i64 = #call_apply {%Sy_cir_var_1:(?66 -> ?66) as (i64 -> i64)}  (1:i64)
       return
   end
   

@@ -15,8 +15,8 @@ If-then-else with i64 result:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_if_i64.x ()
-      store_global syliTest_if_i64.x = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_if_i64.x ()
+      store_global syliTest_if_i64.x = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -24,20 +24,20 @@ If-then-else with i64 result:
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = cast(true:bool as bool)
-      cond_br %Sy_var0:bool, bb1, bb2
+      %Sy_cir_var_0:bool = cast(true:bool as bool)
+      cond_br %Sy_cir_var_0:bool, bb1, bb2
   
     bb2:
-      %Sy_var1:i64 = move(0:i64)
+      %Sy_cir_var_1:i64 = move(0:i64)
       goto bb3
   
     bb1:
-      %Sy_var1:i64 = move(1:i64)
+      %Sy_cir_var_1:i64 = move(1:i64)
       goto bb3
   
     bb3:
   
-      return %Sy_var1:i64
+      return %Sy_cir_var_1:i64
   end
   
   end
@@ -60,10 +60,10 @@ If-then-else with bool comparison:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_if_cmp.x ()
-      store_global syliTest_if_cmp.x = %__init_tmp_0:i64
-      %__init_tmp_1:i64 = #call_direct __init_global.syliTest_if_cmp.y ()
-      store_global syliTest_if_cmp.y = %__init_tmp_1:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_if_cmp.x ()
+      store_global syliTest_if_cmp.x = %__sy_cir_init_tmp_0:i64
+      %__sy_cir_init_tmp_1:i64 = #call_direct __init_global.syliTest_if_cmp.y ()
+      store_global syliTest_if_cmp.y = %__sy_cir_init_tmp_1:i64
       return
   end
   
@@ -71,20 +71,20 @@ If-then-else with bool comparison:
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = #call_direct "syliTest_if_cmp.>" (%syliTest_if_cmp.x:i64, 5:i64)
-      cond_br %Sy_var0:bool, bb1, bb2
+      %Sy_cir_var_0:bool = #call_direct "syliTest_if_cmp.>" (%syliTest_if_cmp.x:i64, 5:i64)
+      cond_br %Sy_cir_var_0:bool, bb1, bb2
   
     bb2:
-      %Sy_var1:i64 = move(0:i64)
+      %Sy_cir_var_1:i64 = move(0:i64)
       goto bb3
   
     bb1:
-      %Sy_var1:i64 = move(1:i64)
+      %Sy_cir_var_1:i64 = move(1:i64)
       goto bb3
   
     bb3:
   
-      return %Sy_var1:i64
+      return %Sy_cir_var_1:i64
   end
   
   private fn __init_global.syliTest_if_cmp.x() -> i64:
@@ -116,7 +116,7 @@ If-then-else without else (unit):
     entry: bb0
   
     bb0:
-      %__init_tmp_0:void = #call_direct __init_global.syliTest_if_unit.x ()
+      %__sy_cir_init_tmp_0:void = #call_direct __init_global.syliTest_if_unit.x ()
       return
   end
   
@@ -124,8 +124,8 @@ If-then-else without else (unit):
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = cast(true:bool as bool)
-      cond_br %Sy_var0:bool, bb1, bb2
+      %Sy_cir_var_0:bool = cast(true:bool as bool)
+      cond_br %Sy_cir_var_0:bool, bb1, bb2
   
     bb2:
       nop
@@ -168,20 +168,20 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:bool = cast(true:bool as bool)
-      cond_br %Sy_var1:bool, bb1, bb2
+      %Sy_cir_var_0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:bool = cast(true:bool as bool)
+      cond_br %Sy_cir_var_1:bool, bb1, bb2
   
     bb2:
-      %Sy_var5:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
-      %Sy_var6:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (%Sy_var5:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
-      %Sy_var2:i64 = move(%Sy_var6:i64)
+      %Sy_cir_var_5:(f64, f64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (f64, f64 -> i64))
+      %Sy_cir_var_6:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (%Sy_cir_var_5:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_2:i64 = move(%Sy_cir_var_6:i64)
       goto bb3
   
     bb1:
-      %Sy_var3:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
-      %Sy_var4:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_var3:(i64, i64 -> i64), 3:i64, 4:i64)
-      %Sy_var2:i64 = move(%Sy_var4:i64)
+      %Sy_cir_var_3:(i64, i64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (i64, i64 -> i64))
+      %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_cir_var_3:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_2:i64 = move(%Sy_cir_var_4:i64)
       goto bb3
   
     bb3:
@@ -193,16 +193,16 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(%f:(f64, f64 -> i64), %x:f64, %y:f64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(f64, f64 -> i64)}  (%x:f64, %y:f64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(f64, f64 -> i64)}  (%x:f64, %y:f64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
@@ -333,23 +333,23 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?103, ?104 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:bool = cast(true:bool as bool)
-      cond_br %Sy_var1:bool, bb1, bb2
+      %Sy_cir_var_0:(?103, ?104 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:bool = cast(true:bool as bool)
+      cond_br %Sy_cir_var_1:bool, bb1, bb2
   
     bb1:
-      %Sy_var3:(?107 -> i64) = #partial_apply {%Sy_var0:(?103, ?104 -> i64)} (4:i64)
-      %Sy_var2:(?113 -> i64) = move(%Sy_var3:(?107 -> i64))
+      %Sy_cir_var_3:(?107 -> i64) = #partial_apply {%Sy_cir_var_0:(?103, ?104 -> i64)} (4:i64)
+      %Sy_cir_var_2:(?113 -> i64) = move(%Sy_cir_var_3:(?107 -> i64))
       goto bb3
   
     bb2:
-      %Sy_var4:(?111 -> i64) = #partial_apply {%Sy_var0:(?103, ?104 -> i64)} (2.0f:f64)
-      %Sy_var2:(?113 -> i64) = move(%Sy_var4:(?111 -> i64))
+      %Sy_cir_var_4:(?111 -> i64) = #partial_apply {%Sy_cir_var_0:(?103, ?104 -> i64)} (2.0f:f64)
+      %Sy_cir_var_2:(?113 -> i64) = move(%Sy_cir_var_4:(?111 -> i64))
       goto bb3
   
     bb3:
-      %Sy_var5:i64 = #call_apply {%Sy_var2:(?113 -> i64) as (i64 -> i64)}  (4:i64)
-      return %Sy_var5:i64
+      %Sy_cir_var_5:i64 = #call_apply {%Sy_cir_var_2:(?113 -> i64) as (i64 -> i64)}  (4:i64)
+      return %Sy_cir_var_5:i64
   end
   
   public fn syliTest_multi.add(%x:?94, %y:?96, %z:?98) -> ?94:
@@ -364,8 +364,8 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:?92 = #call_apply {%f:(?86, ?88 -> ?92)}  (%x:?86, %y:?88)
-      return %Sy_var0:?92
+      %Sy_cir_var_0:?92 = #call_apply {%f:(?86, ?88 -> ?92)}  (%x:?86, %y:?88)
+      return %Sy_cir_var_0:?92
   end
   
   end

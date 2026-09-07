@@ -59,7 +59,7 @@ let fresh_var (ctx : ctx) (ty : I.ty) : ctx * I.var =
   let idx = !(ctx.tmp_counter) in
   ctx.tmp_counter := idx + 1;
   let v : I.var =
-    { I.id = fresh_id (); I.name = "Sy_var" ^ string_of_int idx; I.ty }
+    { I.id = fresh_id (); I.name = "Sy_cir_var_" ^ string_of_int idx; I.ty }
   in
   ({ ctx with locals = v :: ctx.locals }, v)
 
@@ -276,7 +276,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       | CExp_Ident id -> (
           match StringMap.find_opt id.name ctx.toplevel_functions with
           | Some arity when List.length args = arity ->
-              (* Known function, fully applied → direct call. Uniform slots;
+              (* Known function, fully applied -> direct call. Uniform slots;
                  `unit` slots are dropped only at LLVM emission. *)
               let slot_tys = full_param_ir_tys ctx.type_defs callee_arg_ctys in
               let ctx, concrete_arg_ops =
@@ -298,7 +298,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
               in
               (ctx, result)
           | Some _ ->
-              (* Known function, partially applied → capture the represented
+              (* Known function, partially applied -> capture the represented
                  prefix as a closure *)
               let slot_tys =
                 List.map (slot_ir_ty ctx.type_defs) callee_arg_ctys
@@ -470,7 +470,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let ctx = { ctx with pending_merge_id = Some merge_id } in
       (ctx, I.CR_OVar result_var)
   | CExp_Lambda lam ->
-      let lambda_name = Printf.sprintf "__lambda_%d" (fresh_id ()) in
+      let lambda_name = Printf.sprintf "__sy_cir_lambda_%d" (fresh_id ()) in
       let ctx, fn_sir = lower_lambda_function ctx lambda_name lam e.ty e.id in
       let ctx = { ctx with lifted_fns = fn_sir :: ctx.lifted_fns } in
       let ctx, fn_var = fresh_var_with_name ctx lambda_name out_ty in
@@ -716,7 +716,7 @@ let build_const_init_fn (name : string) (value : I.constant) (ty : I.ty) :
   let void_ty : I.ty = { I.id = 0; I.ir_type = I.CR_Void } in
   let void_var : I.var =
     let id = fresh_id () in
-    { I.id; I.name = "__void_" ^ string_of_int id; I.ty = void_ty }
+    { I.id; I.name = "__sy_cir_void_" ^ string_of_int id; I.ty = void_ty }
   in
   let ret_op = I.CR_OConstant (value, ty) in
   let term : I.terminator =
@@ -749,7 +749,7 @@ let build_module_initializer (module_name : string)
   let void_ty : I.ty = { I.id = 0; I.ir_type = I.CR_Void } in
   let void_var : I.var =
     let id = fresh_id () in
-    { I.id; I.name = "__void_" ^ string_of_int id; I.ty = void_ty }
+    { I.id; I.name = "__sy_cir_void_" ^ string_of_int id; I.ty = void_ty }
   in
   let stmts_acc, locals_acc =
     List.fold_left
@@ -757,7 +757,7 @@ let build_module_initializer (module_name : string)
         let tmp_var : I.var =
           {
             I.id = fresh_id ();
-            I.name = "__init_tmp_" ^ string_of_int index;
+            I.name = "__sy_cir_init_tmp_" ^ string_of_int index;
             I.ty = gv.ty;
           }
         in

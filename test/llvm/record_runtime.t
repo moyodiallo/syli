@@ -24,11 +24,11 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:syliTest_e2e_print.person{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
-      obj_set(%Sy_var0:obj_ptr, 0:i64, 10:i64):i64
-      obj_set(%Sy_var0:obj_ptr, 1:i64, 30:i64):i64
-      %Sy_var1:i64 = obj_get(%Sy_var0:obj_ptr, 1:i64):i64
-      %Sy_var2:void = #call_direct syliTest_e2e_print.syli_print_i64 (%Sy_var1:i64)
+      %Sy_cir_var_0:syliTest_e2e_print.person{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 10:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 30:i64):i64
+      %Sy_cir_var_1:i64 = obj_get(%Sy_cir_var_0:obj_ptr, 1:i64):i64
+      %Sy_cir_var_2:void = #call_direct syliTest_e2e_print.syli_print_i64 (%Sy_cir_var_1:i64)
       return
   end
   
@@ -62,19 +62,19 @@
   define void @syliTest_e2e_print.main() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i64 2)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i64 2)
     ; nop
-    %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 0
-    store i64 10, ptr addrspace(1) %Sy_tmp1
-    %Sy_tmp2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp2, i32 0, i32 2, i64 1
-    store i64 30, ptr addrspace(1) %Sy_tmp3
-    %Sy_tmp4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp4, i32 0, i32 2, i64 1
-    %Sy_var1 = load i64, ptr addrspace(1) %Sy_tmp5
-    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_var0)
-    call void @syli_print_i64(i64 %Sy_var1)
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
+    store i64 10, ptr addrspace(1) %Sy_llvm_tmp_1
+    %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i64 1
+    store i64 30, ptr addrspace(1) %Sy_llvm_tmp_3
+    %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i64 1
+    %Sy_cir_var_1 = load i64, ptr addrspace(1) %Sy_llvm_tmp_5
+    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_cir_var_0)
+    call void @syli_print_i64(i64 %Sy_cir_var_1)
     ret void
   }
   

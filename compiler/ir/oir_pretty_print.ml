@@ -140,8 +140,18 @@ let string_of_rvalue (rv : rvalue) : string =
   | OR_Object_length { obj } -> Printf.sprintf "len(%s)" (string_of_operand obj)
   | OR_Object_get_tag { obj } ->
       Printf.sprintf "get_tag(%s)" (string_of_operand obj)
-  | OR_Cast { src; to_ty } ->
-      Printf.sprintf "cast(%s as %s)" (string_of_operand src)
+  | OR_Cast { src; to_ty; ownership } ->
+      let src_ir =
+        match src with
+        | OR_OVar v -> v.ty.ir_type
+        | OR_OConstant (_, ty) -> ty.ir_type
+      in
+      let op_str =
+        if is_ref_ir_type src_ir && not (is_ref_ir_type to_ty.ir_type) then
+          Printf.sprintf "@%s " (string_of_ownership_op ownership)
+        else ""
+      in
+      Printf.sprintf "%scast(%s as %s)" op_str (string_of_operand src)
         (string_of_short_ty to_ty)
   | OR_Move { src } -> Printf.sprintf "move(%s)" (string_of_operand src)
   | OR_Addr_fn { fn } -> Printf.sprintf "addr_fn(%s)" fn

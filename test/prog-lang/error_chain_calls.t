@@ -33,8 +33,8 @@ Monomorphization issue.
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct syliTest_file.apply (0:i64)
-      %Sy_var1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var0:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.apply (0:i64)
+      %Sy_cir_var_1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_cir_var_0:i64)
       return
   end
   
@@ -42,18 +42,18 @@ Monomorphization issue.
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64, i64 -> i64) = #make_closure {syliTest_file.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64 -> i64) = #partial_apply {%Sy_var0:(i64, i64 -> i64)} (2:i64)
-      %Sy_var2:i64 = #call_apply {%Sy_var1:(i64 -> i64)}  (3:i64)
-      return %Sy_var2:i64
+      %Sy_cir_var_0:(i64, i64 -> i64) = #make_closure {syliTest_file.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64 -> i64) = #partial_apply {%Sy_cir_var_0:(i64, i64 -> i64)} (2:i64)
+      %Sy_cir_var_2:i64 = #call_apply {%Sy_cir_var_1:(i64 -> i64)}  (3:i64)
+      return %Sy_cir_var_2:i64
   end
   
   public fn syliTest_file.add(%x:?83, %y:i64, %z:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_file.+" (%y:i64, %z:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_file.+" (%y:i64, %z:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_file.+"(%x:i64, %y:i64) -> i64:
@@ -86,8 +86,8 @@ Monomorphization issue.
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct syliTest_file.apply (0:i64)
-      %Sy_var1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var0:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.apply (0:i64)
+      %Sy_cir_var_1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_cir_var_0:i64)
       return
   end
   
@@ -95,10 +95,10 @@ Monomorphization issue.
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64, i64 -> i64) = #make_closure {syliTest_file.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64 -> i64) = #partial_apply {%Sy_var0:(i64, i64 -> i64)} (2:i64)
-      %Sy_var2:i64 = #call_apply {%Sy_var1:(i64 -> i64)}  (3:i64)
-      return %Sy_var2:i64
+      %Sy_cir_var_0:(i64, i64 -> i64) = #make_closure {syliTest_file.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64 -> i64) = #partial_apply {%Sy_cir_var_0:(i64, i64 -> i64)} (2:i64)
+      %Sy_cir_var_2:i64 = #call_apply {%Sy_cir_var_1:(i64 -> i64)}  (3:i64)
+      return %Sy_cir_var_2:i64
   end
   
   public fn "syliTest_file.+"(%x:i64, %y:i64) -> i64:
@@ -113,8 +113,8 @@ Monomorphization issue.
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_file.+" (%y:i64, %z:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_file.+" (%y:i64, %z:i64)
+      return %Sy_cir_var_0:i64
   end
   
   end

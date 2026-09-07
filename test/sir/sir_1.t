@@ -15,8 +15,8 @@ Integer literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_int.x ()
-      store_global syliTest_int.x = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_int.x ()
+      store_global syliTest_int.x = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -48,10 +48,10 @@ Boolean literals:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:bool = #call_direct __init_global.syliTest_bool.p ()
-      store_global syliTest_bool.p = %__init_tmp_0:bool
-      %__init_tmp_1:bool = #call_direct __init_global.syliTest_bool.q ()
-      store_global syliTest_bool.q = %__init_tmp_1:bool
+      %__sy_cir_init_tmp_0:bool = #call_direct __init_global.syliTest_bool.p ()
+      store_global syliTest_bool.p = %__sy_cir_init_tmp_0:bool
+      %__sy_cir_init_tmp_1:bool = #call_direct __init_global.syliTest_bool.q ()
+      store_global syliTest_bool.q = %__sy_cir_init_tmp_1:bool
       return
   end
   
@@ -89,8 +89,8 @@ String literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:string = #call_direct __init_global.syliTest_str.s ()
-      store_global syliTest_str.s = %__init_tmp_0:string
+      %__sy_cir_init_tmp_0:string = #call_direct __init_global.syliTest_str.s ()
+      store_global syliTest_str.s = %__sy_cir_init_tmp_0:string
       return
   end
   
@@ -119,8 +119,8 @@ Empty string literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:string = #call_direct __init_global.syliTest_empty.s ()
-      store_global syliTest_empty.s = %__init_tmp_0:string
+      %__sy_cir_init_tmp_0:string = #call_direct __init_global.syliTest_empty.s ()
+      store_global syliTest_empty.s = %__sy_cir_init_tmp_0:string
       return
   end
   
@@ -159,14 +159,14 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_arith.a ()
-      store_global syliTest_arith.a = %__init_tmp_0:i64
-      %__init_tmp_1:i64 = #call_direct __init_global.syliTest_arith.b ()
-      store_global syliTest_arith.b = %__init_tmp_1:i64
-      %__init_tmp_2:i64 = #call_direct __init_global.syliTest_arith.c ()
-      store_global syliTest_arith.c = %__init_tmp_2:i64
-      %__init_tmp_3:i64 = #call_direct __init_global.syliTest_arith.d ()
-      store_global syliTest_arith.d = %__init_tmp_3:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_arith.a ()
+      store_global syliTest_arith.a = %__sy_cir_init_tmp_0:i64
+      %__sy_cir_init_tmp_1:i64 = #call_direct __init_global.syliTest_arith.b ()
+      store_global syliTest_arith.b = %__sy_cir_init_tmp_1:i64
+      %__sy_cir_init_tmp_2:i64 = #call_direct __init_global.syliTest_arith.c ()
+      store_global syliTest_arith.c = %__sy_cir_init_tmp_2:i64
+      %__sy_cir_init_tmp_3:i64 = #call_direct __init_global.syliTest_arith.d ()
+      store_global syliTest_arith.d = %__sy_cir_init_tmp_3:i64
       return
   end
   
@@ -174,32 +174,32 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_arith./" (20:i64, 4:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith./" (20:i64, 4:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_arith.c() -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_arith.*" (4:i64, 6:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith.*" (4:i64, 6:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_arith.b() -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_arith.-" (10:i64, 2:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith.-" (10:i64, 2:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_arith.a() -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_arith.+" (5:i64, 3:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith.+" (5:i64, 3:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_arith.+"(%x:i64, %y:i64) -> i64:
@@ -255,10 +255,10 @@ Comparison operations produce a temporary variable:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:bool = #call_direct __init_global.syliTest_cmp.eq ()
-      store_global syliTest_cmp.eq = %__init_tmp_0:bool
-      %__init_tmp_1:bool = #call_direct __init_global.syliTest_cmp.lt ()
-      store_global syliTest_cmp.lt = %__init_tmp_1:bool
+      %__sy_cir_init_tmp_0:bool = #call_direct __init_global.syliTest_cmp.eq ()
+      store_global syliTest_cmp.eq = %__sy_cir_init_tmp_0:bool
+      %__sy_cir_init_tmp_1:bool = #call_direct __init_global.syliTest_cmp.lt ()
+      store_global syliTest_cmp.lt = %__sy_cir_init_tmp_1:bool
       return
   end
   
@@ -266,16 +266,16 @@ Comparison operations produce a temporary variable:
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = #call_direct "syliTest_cmp.<" (2:i64, 5:i64)
-      return %Sy_var0:bool
+      %Sy_cir_var_0:bool = #call_direct "syliTest_cmp.<" (2:i64, 5:i64)
+      return %Sy_cir_var_0:bool
   end
   
   private fn __init_global.syliTest_cmp.eq() -> bool:
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = #call_direct "syliTest_cmp.==" (5:i64, 5:i64)
-      return %Sy_var0:bool
+      %Sy_cir_var_0:bool = #call_direct "syliTest_cmp.==" (5:i64, 5:i64)
+      return %Sy_cir_var_0:bool
   end
   
   public fn "syliTest_cmp.=="(%x:i64, %y:i64) -> bool:
@@ -391,8 +391,8 @@ Closures as an argument:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_closure.result ()
-      store_global syliTest_closure.result = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_closure.result ()
+      store_global syliTest_closure.result = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -400,17 +400,17 @@ Closures as an argument:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_closure.double_x} () ()
-      %Sy_var1:i64 = #call_direct syliTest_closure.apply_twice__fn_i64_i64__i64_ret_i64 (%Sy_var0:(i64 -> i64), 10:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_closure.double_x} () ()
+      %Sy_cir_var_1:i64 = #call_direct syliTest_closure.apply_twice__fn_i64_i64__i64_ret_i64 (%Sy_cir_var_0:(i64 -> i64), 10:i64)
+      return %Sy_cir_var_1:i64
   end
   
   public fn syliTest_closure.double_x(%x:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_closure.+" (%x:i64, %x:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_closure.+" (%x:i64, %x:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_closure.+"(%x:i64, %y:i64) -> i64:
@@ -425,9 +425,9 @@ Closures as an argument:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(i64 -> i64)}  (%x:i64)
-      %Sy_var1:i64 = #call_apply {%f:(i64 -> i64)}  (%Sy_var0:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(i64 -> i64)}  (%x:i64)
+      %Sy_cir_var_1:i64 = #call_apply {%f:(i64 -> i64)}  (%Sy_cir_var_0:i64)
+      return %Sy_cir_var_1:i64
   end
   
   end
@@ -448,8 +448,8 @@ Char literal:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:char = #call_direct __init_global.syliTest_char.c ()
-      store_global syliTest_char.c = %__init_tmp_0:char
+      %__sy_cir_init_tmp_0:char = #call_direct __init_global.syliTest_char.c ()
+      store_global syliTest_char.c = %__sy_cir_init_tmp_0:char
       return
   end
   

@@ -120,7 +120,7 @@ type rvalue_node =
     }
   | OR_Object_length of { obj : operand }
   | OR_Object_get_tag of { obj : operand }
-  | OR_Cast of { src : operand; to_ty : ty }
+  | OR_Cast of { src : operand; to_ty : ty; ownership : ownership_op }
   | OR_Move of { src : operand }
   | OR_Addr_fn of { fn : qualified_name }
 

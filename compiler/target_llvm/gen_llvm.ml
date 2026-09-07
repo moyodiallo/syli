@@ -92,7 +92,8 @@ type lower_ctx = {
 
 let fresh_reg (ctx : lower_ctx) (ty : lltype) : lower_ctx * operand =
   let n = ctx.next_reg in
-  ({ ctx with next_reg = n + 1 }, LV_Local ("Sy_tmp" ^ string_of_int n, ty))
+  ( { ctx with next_reg = n + 1 },
+    LV_Local ("Sy_llvm_tmp_" ^ string_of_int n, ty) )
 
 let fresh_global_id =
   let counter = ref 0 in
