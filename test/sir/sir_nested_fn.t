@@ -54,11 +54,11 @@ Nested functions:
     bb0:
       %sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) = #make_closure {sy1_apply} () ()
       %sy2_add:(f64, ?97, f64 -> f64) = #make_closure {sy2_add} () ()
-      %Sy_var0:(?102, f64 -> f64) = #partial_apply {%sy2_add:(f64, ?97, f64 -> f64)} (1.0f:f64)
-      %Sy_var1:(i64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (i64, f64 -> f64))
-      %Sy_var2:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_var1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
-      %Sy_var3:(f64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (f64, f64 -> f64))
-      %Sy_var4:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_var3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?102, f64 -> f64) = #partial_apply {%sy2_add:(f64, ?97, f64 -> f64)} (1.0f:f64)
+      %Sy_cir_var_1:(i64, f64 -> f64) = cast(%Sy_cir_var_0:(?102, f64 -> f64) as (i64, f64 -> f64))
+      %Sy_cir_var_2:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_cir_var_1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
+      %Sy_cir_var_3:(f64, f64 -> f64) = cast(%Sy_cir_var_0:(?102, f64 -> f64) as (f64, f64 -> f64))
+      %Sy_cir_var_4:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_cir_var_3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
       return 0:i64
   end
   
@@ -66,16 +66,16 @@ Nested functions:
     entry: bb0
   
     bb0:
-      %Sy_var0:?93 = #call_apply {%f:(?87, ?89 -> ?93)}  (%x:?87, %y:?89)
-      return %Sy_var0:?93
+      %Sy_cir_var_0:?93 = #call_apply {%f:(?87, ?89 -> ?93)}  (%x:?87, %y:?89)
+      return %Sy_cir_var_0:?93
   end
   
   private fn sy2_add(%x:f64, %y:?97, %z:f64) -> f64:
     entry: bb0
   
     bb0:
-      %Sy_var0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
-      return %Sy_var0:f64
+      %Sy_cir_var_0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
+      return %Sy_cir_var_0:f64
   end
   
   public fn "syliTest_multi.+"(%x:f64, %y:f64) -> f64:
@@ -105,11 +105,11 @@ Nested functions:
     bb0:
       %sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) = #make_closure {sy1_apply} () ()
       %sy2_add:(f64, ?97, f64 -> f64) = #make_closure {sy2_add} () ()
-      %Sy_var0:(?102, f64 -> f64) = #partial_apply {%sy2_add:(f64, ?97, f64 -> f64)} (1.0f:f64)
-      %Sy_var1:(i64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (i64, f64 -> f64))
-      %Sy_var2:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_var1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
-      %Sy_var3:(f64, f64 -> f64) = cast(%Sy_var0:(?102, f64 -> f64) as (f64, f64 -> f64))
-      %Sy_var4:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_var3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?102, f64 -> f64) = #partial_apply {%sy2_add:(f64, ?97, f64 -> f64)} (1.0f:f64)
+      %Sy_cir_var_1:(i64, f64 -> f64) = cast(%Sy_cir_var_0:(?102, f64 -> f64) as (i64, f64 -> f64))
+      %Sy_cir_var_2:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((i64, f64 -> f64), i64, f64 -> f64)}  (%Sy_cir_var_1:(i64, f64 -> f64), 3:i64, 4.0f:f64)
+      %Sy_cir_var_3:(f64, f64 -> f64) = cast(%Sy_cir_var_0:(?102, f64 -> f64) as (f64, f64 -> f64))
+      %Sy_cir_var_4:f64 = #call_apply {%sy1_apply:((?87, ?89 -> ?93), ?87, ?89 -> ?93) as ((f64, f64 -> f64), f64, f64 -> f64)}  (%Sy_cir_var_3:(f64, f64 -> f64), 1.0f:f64, 2.0f:f64)
       return 0:i64
   end
   
@@ -125,32 +125,32 @@ Nested functions:
     entry: bb0
   
     bb0:
-      %Sy_var0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
-      return %Sy_var0:f64
+      %Sy_cir_var_0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
+      return %Sy_cir_var_0:f64
   end
   
   private fn sy2_add__f64__f64__f64_ret_f64(%x:f64, %y:f64, %z:f64) -> f64:
     entry: bb0
   
     bb0:
-      %Sy_var0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
-      return %Sy_var0:f64
+      %Sy_cir_var_0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
+      return %Sy_cir_var_0:f64
   end
   
   private fn sy1_apply__fn_i64_f64_f64__i64__f64_ret_f64(%f:(i64, f64 -> f64), %x:i64, %y:f64) -> f64:
     entry: bb0
   
     bb0:
-      %Sy_var0:f64 = #call_apply {%f:(i64, f64 -> f64)}  (%x:i64, %y:f64)
-      return %Sy_var0:f64
+      %Sy_cir_var_0:f64 = #call_apply {%f:(i64, f64 -> f64)}  (%x:i64, %y:f64)
+      return %Sy_cir_var_0:f64
   end
   
   private fn sy1_apply__fn_f64_f64_f64__f64__f64_ret_f64(%f:(f64, f64 -> f64), %x:f64, %y:f64) -> f64:
     entry: bb0
   
     bb0:
-      %Sy_var0:f64 = #call_apply {%f:(f64, f64 -> f64)}  (%x:f64, %y:f64)
-      return %Sy_var0:f64
+      %Sy_cir_var_0:f64 = #call_apply {%f:(f64, f64 -> f64)}  (%x:f64, %y:f64)
+      return %Sy_cir_var_0:f64
   end
   
   end

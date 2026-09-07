@@ -264,6 +264,62 @@ let annotate_function (fn : function_oir) : function_oir =
                     { rvalue = { node = OR_Move { src = OR_OVar v }; _ }; _ }
                   when is_ref_ty v.ty ->
                     ([ stmt ], IntSet.singleton v.id)
+                | OR_Assign
+                    {
+                      dst;
+                      rvalue =
+                        {
+                          node = OR_Cast ({ src = OR_OVar v; _ } as cast_node);
+                          _;
+                        } as rvalue_node;
+                      _;
+                    }
+                  when is_ref_ty v.ty && not (is_ref_ty dst.ty) ->
+                    (* Narrowing an object to the i64 carrier (an ownership
+                       carrier hand-off, flagged unknown by the producer):
+                       - dead-after -> transfer: ownership moves, so do not
+                         release the source here (the callee releases once).
+                       - live-after -> borrow: the caller keeps ownership, so the
+                         carrier word is untagged downstream (RIR lowers the
+                         borrow cast through the borrow helper). *)
+                    let live_after =
+                      match IntMap.find_opt stmt.id live_map.stmts with
+                      | Some info -> IntSet.mem v.id info.live_after
+                      | None -> false
+                    in
+                    let ownership =
+                      if live_after then OR_Ownership_borrow
+                      else OR_Ownership_transfer
+                    in
+                    let rvalue =
+                      {
+                        rvalue_node with
+                        node = OR_Cast { cast_node with ownership };
+                      }
+                    in
+                    ( [ { stmt with node = OR_Assign { dst; rvalue } } ],
+                      if live_after then IntSet.empty else IntSet.singleton v.id
+                    )
+                | OR_Assign
+                    {
+                      dst;
+                      rvalue =
+                        { node = OR_Cast ({ src; _ } as cast_node); _ } as
+                        rvalue_node;
+                      _;
+                    } ->
+                    (* Other casts (int -> int, word -> ref widening, fn-ptr, bitcast,
+                       constant-sourced) are pure representation changes. *)
+                    let rvalue =
+                      {
+                        rvalue_node with
+                        node =
+                          OR_Cast
+                            { cast_node with ownership = OR_Ownership_transfer };
+                      }
+                    in
+                    ( [ { stmt with node = OR_Assign { dst; rvalue } } ],
+                      IntSet.empty )
                 | _ -> ([ stmt ], IntSet.empty)
               in
               stmts

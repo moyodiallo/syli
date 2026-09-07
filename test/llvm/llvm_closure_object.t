@@ -35,49 +35,49 @@ Closure with multipble chains of captured variables:
   define i64 @syliTest_multi.apply() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.59_ret_i64 to ptr
-    %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
-    %Sy_tmp2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp2, i32 0, i32 2, i32 1
-    store i64 1, ptr addrspace(1) %Sy_tmp3
+    %Sy_oir_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.56_ret_i64 to ptr
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    store ptr %Sy_oir_accum_fn_0, ptr addrspace(1) %Sy_llvm_tmp_1
+    %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i32 1
+    store i64 1, ptr addrspace(1) %Sy_llvm_tmp_3
     ; nop
     call void @syli_rt_gc_cycle()
-    %Sy_var1 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748291, i32 1, i32 3)
+    %Sy_cir_var_1 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748291, i32 1, i32 3)
     ; nop
     %Sy_accum_fn_1 = bitcast ptr @__partial_closure_accum.clos1_arg1_ret_i64 to ptr
-    %Sy_tmp4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp4, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_1, ptr addrspace(1) %Sy_tmp5
-    %Sy_tmp6 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
-    %Sy_tmp7 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp6, i32 0, i32 2, i32 1
-    %Sy_release_tmp_1 = load ptr addrspace(1), ptr addrspace(1) %Sy_tmp7
+    %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_1)
+    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i32 0
+    store ptr %Sy_accum_fn_1, ptr addrspace(1) %Sy_llvm_tmp_5
+    %Sy_llvm_tmp_6 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_1)
+    %Sy_llvm_tmp_7 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_6, i32 0, i32 2, i32 1
+    %Sy_release_tmp_1 = load ptr addrspace(1), ptr addrspace(1) %Sy_llvm_tmp_7
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_release_tmp_1)
-    %Sy_tmp_1 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp8 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
-    %Sy_tmp9 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp8, i32 0, i32 2, i32 1
-    store ptr addrspace(1) %Sy_tmp_1, ptr addrspace(1) %Sy_tmp9
-    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %Sy_var1, ptr addrspace(1) %Sy_tmp_1)
-    %Sy_tmp10 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
-    %Sy_tmp11 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp10, i32 0, i32 2, i32 2
-    store i64 2, ptr addrspace(1) %Sy_tmp11
+    %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_8 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_1)
+    %Sy_llvm_tmp_9 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_8, i32 0, i32 2, i32 1
+    store ptr addrspace(1) %Sy_rir_tmp_0, ptr addrspace(1) %Sy_llvm_tmp_9
+    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_1, ptr addrspace(1) %Sy_rir_tmp_0)
+    %Sy_llvm_tmp_10 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_1)
+    %Sy_llvm_tmp_11 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_10, i32 0, i32 2, i32 2
+    store i64 2, ptr addrspace(1) %Sy_llvm_tmp_11
     ; nop
-    %Sy_tmp12 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var1)
-    %Sy_tmp13 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp12, i32 0, i32 2, i32 0
-    %Sy_accum_ptr_2 = load ptr, ptr addrspace(1) %Sy_tmp13
-    %Sy_var2 = call i64 %Sy_accum_ptr_2(i64 3, ptr addrspace(1) %Sy_var1, i64 0)
+    %Sy_llvm_tmp_12 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_1)
+    %Sy_llvm_tmp_13 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_12, i32 0, i32 2, i32 0
+    %Sy_accum_ptr_2 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_13
+    %Sy_cir_var_2 = call i64 %Sy_accum_ptr_2(i64 3, ptr addrspace(1) %Sy_cir_var_1, i64 0)
     ; nop
-    ret i64 %Sy_var2
+    ret i64 %Sy_cir_var_2
   }
   
   define i64 @syliTest_multi.add(i64 %x, i64 %y, i64 %z) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
-    %Sy_var1 = call i64 @"syliTest_multi.+"(i64 %Sy_var0, i64 %z)
-    ret i64 %Sy_var1
+    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
+    %Sy_cir_var_1 = call i64 @"syliTest_multi.+"(i64 %Sy_cir_var_0, i64 %z)
+    ret i64 %Sy_cir_var_1
   }
   
   define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
@@ -86,37 +86,37 @@ Closure with multipble chains of captured variables:
     ret i64 %Sy_prim_result
   }
   
-  define i64 @__make_closure_accum.syliTest_multi.add.59_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.syliTest_multi.add.56_ret_i64(i64 %Sy_oir_x0, i64 %Sy_oir_x1, ptr addrspace(1) %Sy_oir_clos, i64 %Sy_oir_dp_id) gc "statepoint-example" {
   bb0:
-    %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
-    %Sy_val0 = load i64, ptr addrspace(1) %Sy_tmp1
-    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_clos)
-    %Sy_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_val0, i64 %Sy_x0, i64 %Sy_x1)
-    ret i64 %Sy_rst
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_oir_clos)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 1
+    %Sy_val0 = load i64, ptr addrspace(1) %Sy_llvm_tmp_1
+    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_oir_clos)
+    %Sy_oir_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_val0, i64 %Sy_oir_x0, i64 %Sy_oir_x1)
+    ret i64 %Sy_oir_rst
   }
   
   define i64 @__partial_closure_accum.clos1_arg1_ret_i64(i64 %Sy_x0, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
   bb0:
-    %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i64 1
-    %Sy_raw_tmp_2 = load ptr addrspace(1), ptr addrspace(1) %Sy_tmp1
-    %Sy_p_clos = call ptr addrspace(1) @syli_rt_ownership_share(ptr addrspace(1) %Sy_raw_tmp_2)
-    %Sy_tmp2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_p_clos)
-    %Sy_tmp3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp2, i32 0, i32 2, i64 0
-    %Sy_p_accum = load ptr, ptr addrspace(1) %Sy_tmp3
-    %Sy_tmp4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
-    %Sy_tmp5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp4, i32 0, i32 2, i64 2
-    %Sy_val0 = load i64, ptr addrspace(1) %Sy_tmp5
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 1
+    %Sy_rir_raw_tmp_0 = load ptr addrspace(1), ptr addrspace(1) %Sy_llvm_tmp_1
+    %Sy_p_clos = call ptr addrspace(1) @syli_rt_ownership_share(ptr addrspace(1) %Sy_rir_raw_tmp_0)
+    %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_p_clos)
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i64 0
+    %Sy_p_accum = load ptr, ptr addrspace(1) %Sy_llvm_tmp_3
+    %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_clos)
+    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i64 2
+    %Sy_val0 = load i64, ptr addrspace(1) %Sy_llvm_tmp_5
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_clos)
     %Sy_rst = call i64 %Sy_p_accum(i64 %Sy_val0, i64 %Sy_x0, ptr addrspace(1) %Sy_p_clos, i64 %Sy_dp_id)
     ret i64 %Sy_rst
   }
   
-  define i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2) gc "statepoint-example" {
+  define i64 @__wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(i64 %Sy_oir_x0, i64 %Sy_oir_x1, i64 %Sy_oir_x2) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_multi.add(i64 %Sy_x0, i64 %Sy_x1, i64 %Sy_x2)
-    ret i64 %Sy_rst
+    %Sy_oir_rst = call i64 @syliTest_multi.add(i64 %Sy_oir_x0, i64 %Sy_oir_x1, i64 %Sy_oir_x2)
+    ret i64 %Sy_oir_rst
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {
@@ -192,29 +192,29 @@ Closure as an argument:
   
   define void @__init.Test_multi() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call i64 @__init_global.syliTest_multi.result()
-    store i64 %__init_tmp_0, ptr @syliTest_multi.result
+    %__sy_cir_init_tmp_0 = call i64 @__init_global.syliTest_multi.result()
+    store i64 %__sy_cir_init_tmp_0, ptr @syliTest_multi.result
     ret void
   }
   
   define i64 @__init_global.syliTest_multi.result() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_var0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
     ; nop
-    %Sy_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.85_ret_i64 to ptr
-    %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_var0)
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
-    store ptr %Sy_accum_fn_0, ptr addrspace(1) %Sy_tmp1
+    %Sy_oir_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.82_ret_i64 to ptr
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    store ptr %Sy_oir_accum_fn_0, ptr addrspace(1) %Sy_llvm_tmp_1
     ; nop
-    %Sy_var1 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_var0, i64 3, i64 4)
-    ret i64 %Sy_var1
+    %Sy_cir_var_1 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_cir_var_0, i64 3, i64 4)
+    ret i64 %Sy_cir_var_1
   }
   
   define i64 @syliTest_multi.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
-    ret i64 %Sy_var0
+    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
+    ret i64 %Sy_cir_var_0
   }
   
   define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
@@ -225,25 +225,25 @@ Closure as an argument:
   
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_tmp0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
-    %Sy_tmp1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_tmp0, i32 0, i32 2, i32 0
-    %Sy_accum_ptr_1 = load ptr, ptr addrspace(1) %Sy_tmp1
-    %Sy_var0 = call i64 %Sy_accum_ptr_1(i64 %x, i64 %y, ptr addrspace(1) %f, i64 0)
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_accum_ptr_0 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_1
+    %Sy_cir_var_0 = call i64 %Sy_accum_ptr_0(i64 %x, i64 %y, ptr addrspace(1) %f, i64 0)
     ; nop
-    ret i64 %Sy_var0
+    ret i64 %Sy_cir_var_0
   }
   
-  define i64 @__make_closure_accum.syliTest_multi.add.85_ret_i64(i64 %Sy_x0, i64 %Sy_x1, ptr addrspace(1) %Sy_clos, i64 %Sy_dp_id) gc "statepoint-example" {
+  define i64 @__make_closure_accum.syliTest_multi.add.82_ret_i64(i64 %Sy_oir_x0, i64 %Sy_oir_x1, ptr addrspace(1) %Sy_oir_clos, i64 %Sy_oir_dp_id) gc "statepoint-example" {
   bb0:
-    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_clos)
-    %Sy_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1)
-    ret i64 %Sy_rst
+    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_oir_clos)
+    %Sy_oir_rst = call i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_oir_x0, i64 %Sy_oir_x1)
+    ret i64 %Sy_oir_rst
   }
   
-  define i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_x0, i64 %Sy_x1) gc "statepoint-example" {
+  define i64 @__wrapper.syliTest_multi.add.i64_i64_ret_i64(i64 %Sy_oir_x0, i64 %Sy_oir_x1) gc "statepoint-example" {
   bb0:
-    %Sy_rst = call i64 @syliTest_multi.add(i64 %Sy_x0, i64 %Sy_x1)
-    ret i64 %Sy_rst
+    %Sy_oir_rst = call i64 @syliTest_multi.add(i64 %Sy_oir_x0, i64 %Sy_oir_x1)
+    ret i64 %Sy_oir_rst
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {

@@ -24,8 +24,8 @@ Integer literal emits an i64 function:
   
   define void @__init.Test_int() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call i64 @__init_global.syliTest_int.x()
-    store i64 %__init_tmp_0, ptr @syliTest_int.x
+    %__sy_cir_init_tmp_0 = call i64 @__init_global.syliTest_int.x()
+    store i64 %__sy_cir_init_tmp_0, ptr @syliTest_int.x
     ret void
   }
   
@@ -105,10 +105,10 @@ Boolean literals emit i1 functions:
   
   define void @__init.Test_bool() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call i1 @__init_global.syliTest_bool.p()
-    store i1 %__init_tmp_0, ptr @syliTest_bool.p
-    %__init_tmp_1 = call i1 @__init_global.syliTest_bool.q()
-    store i1 %__init_tmp_1, ptr @syliTest_bool.q
+    %__sy_cir_init_tmp_0 = call i1 @__init_global.syliTest_bool.p()
+    store i1 %__sy_cir_init_tmp_0, ptr @syliTest_bool.p
+    %__sy_cir_init_tmp_1 = call i1 @__init_global.syliTest_bool.q()
+    store i1 %__sy_cir_init_tmp_1, ptr @syliTest_bool.q
     ret void
   }
   
@@ -192,17 +192,17 @@ String literal emits an i8* return:
   
   define void @__init.Test_str() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call { ptr, i64 } @__init_global.syliTest_str.s()
-    store { ptr, i64 } %__init_tmp_0, ptr @syliTest_str.s
+    %__sy_cir_init_tmp_0 = call { ptr, i64 } @__init_global.syliTest_str.s()
+    store { ptr, i64 } %__sy_cir_init_tmp_0, ptr @syliTest_str.s
     ret void
   }
   
   define { ptr, i64 } @__init_global.syliTest_str.s() gc "statepoint-example" {
   bb0:
-    %Sy_tmp0 = getelementptr i8, ptr @__str.1, i32 0
-    %Sy_tmp1 = insertvalue { ptr, i64 } zeroinitializer, ptr %Sy_tmp0, 0
-    %Sy_tmp2 = insertvalue { ptr, i64 } %Sy_tmp1, i64 5, 1
-    ret { ptr, i64 } %Sy_tmp2
+    %Sy_llvm_tmp_0 = getelementptr i8, ptr @__str.1, i32 0
+    %Sy_llvm_tmp_1 = insertvalue { ptr, i64 } zeroinitializer, ptr %Sy_llvm_tmp_0, 0
+    %Sy_llvm_tmp_2 = insertvalue { ptr, i64 } %Sy_llvm_tmp_1, i64 5, 1
+    ret { ptr, i64 } %Sy_llvm_tmp_2
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {
@@ -284,39 +284,39 @@ Arithmetic operations emit the corresponding LLVM instructions:
   
   define void @__init.Test_arith() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call i64 @__init_global.syliTest_arith.a()
-    store i64 %__init_tmp_0, ptr @syliTest_arith.a
-    %__init_tmp_1 = call i64 @__init_global.syliTest_arith.b()
-    store i64 %__init_tmp_1, ptr @syliTest_arith.b
-    %__init_tmp_2 = call i64 @__init_global.syliTest_arith.c()
-    store i64 %__init_tmp_2, ptr @syliTest_arith.c
-    %__init_tmp_3 = call i64 @__init_global.syliTest_arith.d()
-    store i64 %__init_tmp_3, ptr @syliTest_arith.d
+    %__sy_cir_init_tmp_0 = call i64 @__init_global.syliTest_arith.a()
+    store i64 %__sy_cir_init_tmp_0, ptr @syliTest_arith.a
+    %__sy_cir_init_tmp_1 = call i64 @__init_global.syliTest_arith.b()
+    store i64 %__sy_cir_init_tmp_1, ptr @syliTest_arith.b
+    %__sy_cir_init_tmp_2 = call i64 @__init_global.syliTest_arith.c()
+    store i64 %__sy_cir_init_tmp_2, ptr @syliTest_arith.c
+    %__sy_cir_init_tmp_3 = call i64 @__init_global.syliTest_arith.d()
+    store i64 %__sy_cir_init_tmp_3, ptr @syliTest_arith.d
     ret void
   }
   
   define i64 @__init_global.syliTest_arith.d() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_arith./"(i64 20, i64 4)
-    ret i64 %Sy_var0
+    %Sy_cir_var_0 = call i64 @"syliTest_arith./"(i64 20, i64 4)
+    ret i64 %Sy_cir_var_0
   }
   
   define i64 @__init_global.syliTest_arith.c() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_arith.*"(i64 4, i64 6)
-    ret i64 %Sy_var0
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.*"(i64 4, i64 6)
+    ret i64 %Sy_cir_var_0
   }
   
   define i64 @__init_global.syliTest_arith.b() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_arith.-"(i64 10, i64 2)
-    ret i64 %Sy_var0
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.-"(i64 10, i64 2)
+    ret i64 %Sy_cir_var_0
   }
   
   define i64 @__init_global.syliTest_arith.a() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_arith.+"(i64 5, i64 3)
-    ret i64 %Sy_var0
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.+"(i64 5, i64 3)
+    ret i64 %Sy_cir_var_0
   }
   
   define i64 @"syliTest_arith.+"(i64 %x, i64 %y) gc "statepoint-example" {
@@ -417,23 +417,23 @@ Comparison operations emit icmp instructions:
   
   define void @__init.Test_cmp() gc "statepoint-example" {
   bb0:
-    %__init_tmp_0 = call i1 @__init_global.syliTest_cmp.eq()
-    store i1 %__init_tmp_0, ptr @syliTest_cmp.eq
-    %__init_tmp_1 = call i1 @__init_global.syliTest_cmp.lt()
-    store i1 %__init_tmp_1, ptr @syliTest_cmp.lt
+    %__sy_cir_init_tmp_0 = call i1 @__init_global.syliTest_cmp.eq()
+    store i1 %__sy_cir_init_tmp_0, ptr @syliTest_cmp.eq
+    %__sy_cir_init_tmp_1 = call i1 @__init_global.syliTest_cmp.lt()
+    store i1 %__sy_cir_init_tmp_1, ptr @syliTest_cmp.lt
     ret void
   }
   
   define i1 @__init_global.syliTest_cmp.lt() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i1 @"syliTest_cmp.<"(i64 2, i64 5)
-    ret i1 %Sy_var0
+    %Sy_cir_var_0 = call i1 @"syliTest_cmp.<"(i64 2, i64 5)
+    ret i1 %Sy_cir_var_0
   }
   
   define i1 @__init_global.syliTest_cmp.eq() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i1 @"syliTest_cmp.=="(i64 5, i64 5)
-    ret i1 %Sy_var0
+    %Sy_cir_var_0 = call i1 @"syliTest_cmp.=="(i64 5, i64 5)
+    ret i1 %Sy_cir_var_0
   }
   
   define i1 @"syliTest_cmp.=="(i64 %x, i64 %y) gc "statepoint-example" {
@@ -521,9 +521,9 @@ Simple Function:
   
   define i64 @syliTest_fn.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @"syliTest_fn.+"(i64 %x, i64 20)
-    %Sy_var1 = call i64 @"syliTest_fn.+"(i64 %Sy_var0, i64 %y)
-    ret i64 %Sy_var1
+    %Sy_cir_var_0 = call i64 @"syliTest_fn.+"(i64 %x, i64 20)
+    %Sy_cir_var_1 = call i64 @"syliTest_fn.+"(i64 %Sy_cir_var_0, i64 %y)
+    ret i64 %Sy_cir_var_1
   }
   
   define i64 @"syliTest_fn.+"(i64 %x, i64 %y) gc "statepoint-example" {

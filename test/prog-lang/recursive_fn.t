@@ -53,8 +53,8 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct syliTest_file.factorial (5:i64)
-      %Sy_var1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_var0:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.factorial (5:i64)
+      %Sy_cir_var_1:void = #call_direct syliTest_file.syli_print_i64 (%Sy_cir_var_0:i64)
       return
   end
   
@@ -62,23 +62,23 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:bool = #call_direct "syliTest_file.==" (%n:i64, 0:i64)
-      cond_br %Sy_var0:bool, bb1, bb2
+      %Sy_cir_var_0:bool = #call_direct "syliTest_file.==" (%n:i64, 0:i64)
+      cond_br %Sy_cir_var_0:bool, bb1, bb2
   
     bb2:
-      %Sy_var2:i64 = #call_direct "syliTest_file.-" (%n:i64, 1:i64)
-      %Sy_var3:i64 = #call_direct syliTest_file.factorial (%Sy_var2:i64)
-      %Sy_var4:i64 = #call_direct "syliTest_file.*" (%n:i64, %Sy_var3:i64)
-      %Sy_var1:i64 = move(%Sy_var4:i64)
+      %Sy_cir_var_2:i64 = #call_direct "syliTest_file.-" (%n:i64, 1:i64)
+      %Sy_cir_var_3:i64 = #call_direct syliTest_file.factorial (%Sy_cir_var_2:i64)
+      %Sy_cir_var_4:i64 = #call_direct "syliTest_file.*" (%n:i64, %Sy_cir_var_3:i64)
+      %Sy_cir_var_1:i64 = move(%Sy_cir_var_4:i64)
       goto bb3
   
     bb1:
-      %Sy_var1:i64 = move(1:i64)
+      %Sy_cir_var_1:i64 = move(1:i64)
       goto bb3
   
     bb3:
   
-      return %Sy_var1:i64
+      return %Sy_cir_var_1:i64
   end
   
   public fn "syliTest_file.-"(%x:i64, %y:i64) -> i64:
@@ -131,28 +131,28 @@
   
   define void @syliTest_file.main() gc "statepoint-example" {
   bb0:
-    %Sy_var0 = call i64 @syliTest_file.factorial(i64 5)
-    call void @syli_print_i64(i64 %Sy_var0)
+    %Sy_cir_var_0 = call i64 @syliTest_file.factorial(i64 5)
+    call void @syli_print_i64(i64 %Sy_cir_var_0)
     ret void
   }
   
   define i64 @syliTest_file.factorial(i64 %n) gc "statepoint-example" {
   bb0:
-    %Sy_var1 = alloca i64
-    %Sy_var0 = call i1 @"syliTest_file.=="(i64 %n, i64 0)
-    br i1 %Sy_var0, label %bb1, label %bb2
+    %Sy_cir_var_1 = alloca i64
+    %Sy_cir_var_0 = call i1 @"syliTest_file.=="(i64 %n, i64 0)
+    br i1 %Sy_cir_var_0, label %bb1, label %bb2
   bb2:
-    %Sy_var2 = call i64 @"syliTest_file.-"(i64 %n, i64 1)
-    %Sy_var3 = call i64 @syliTest_file.factorial(i64 %Sy_var2)
-    %Sy_var4 = call i64 @"syliTest_file.*"(i64 %n, i64 %Sy_var3)
-    store i64 %Sy_var4, ptr %Sy_var1
+    %Sy_cir_var_2 = call i64 @"syliTest_file.-"(i64 %n, i64 1)
+    %Sy_cir_var_3 = call i64 @syliTest_file.factorial(i64 %Sy_cir_var_2)
+    %Sy_cir_var_4 = call i64 @"syliTest_file.*"(i64 %n, i64 %Sy_cir_var_3)
+    store i64 %Sy_cir_var_4, ptr %Sy_cir_var_1
     br label %bb3
   bb1:
-    store i64 1, ptr %Sy_var1
+    store i64 1, ptr %Sy_cir_var_1
     br label %bb3
   bb3:
-    %Sy_tmp0 = load i64, ptr %Sy_var1
-    ret i64 %Sy_tmp0
+    %Sy_llvm_tmp_0 = load i64, ptr %Sy_cir_var_1
+    ret i64 %Sy_llvm_tmp_0
   }
   
   define i64 @"syliTest_file.-"(i64 %x, i64 %y) gc "statepoint-example" {

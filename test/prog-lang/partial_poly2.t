@@ -25,22 +25,22 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?64, ?65 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:bool = cast(true:bool as bool)
-      cond_br %Sy_var1:bool, bb1, bb2
+      %Sy_cir_var_0:(?64, ?65 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:bool = cast(true:bool as bool)
+      cond_br %Sy_cir_var_1:bool, bb1, bb2
   
     bb1:
-      %Sy_var3:(?70 -> i64) = #partial_apply {%Sy_var0:(?64, ?65 -> i64)} (3:i64)
-      %Sy_var2:(?70 -> i64) = move(%Sy_var3:(?70 -> i64))
+      %Sy_cir_var_3:(?70 -> i64) = #partial_apply {%Sy_cir_var_0:(?64, ?65 -> i64)} (3:i64)
+      %Sy_cir_var_2:(?70 -> i64) = move(%Sy_cir_var_3:(?70 -> i64))
       goto bb3
   
     bb2:
-      %Sy_var4:(?70 -> i64) = #partial_apply {%Sy_var0:(?64, ?65 -> i64)} (1.0f:f64)
-      %Sy_var2:(?70 -> i64) = move(%Sy_var4:(?70 -> i64))
+      %Sy_cir_var_4:(?70 -> i64) = #partial_apply {%Sy_cir_var_0:(?64, ?65 -> i64)} (1.0f:f64)
+      %Sy_cir_var_2:(?70 -> i64) = move(%Sy_cir_var_4:(?70 -> i64))
       goto bb3
   
     bb3:
-      %Sy_var5:i64 = #call_apply {%Sy_var2:(?70 -> i64) as (f64 -> i64)}  (1.0f:f64)
+      %Sy_cir_var_5:i64 = #call_apply {%Sy_cir_var_2:(?70 -> i64) as (f64 -> i64)}  (1.0f:f64)
       return 0:i64
   end
   

@@ -19,7 +19,7 @@
              │   Source Language    │
              └──────────────────────┘
                         │
-                  [Parsing → AST]
+                  [Parsing -> AST]
                         │
                         |
         (unique vars & functions, no shadowing)

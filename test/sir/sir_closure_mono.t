@@ -18,8 +18,8 @@ Simple closure with one captured variable:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_simple.result ()
-      store_global syliTest_simple.result = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_simple.result ()
+      store_global syliTest_simple.result = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -27,17 +27,17 @@ Simple closure with one captured variable:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_simple.double_x} () ()
-      %Sy_var1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (%Sy_var0:(i64 -> i64), 10:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_simple.double_x} () ()
+      %Sy_cir_var_1:i64 = #call_direct syliTest_simple.apply_twice__fn_i64_i64__i64_ret_i64 (%Sy_cir_var_0:(i64 -> i64), 10:i64)
+      return %Sy_cir_var_1:i64
   end
   
   public fn syliTest_simple.double_x(%x:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_simple.+" (%x:i64, %x:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_simple.+" (%x:i64, %x:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_simple.+"(%x:i64, %y:i64) -> i64:
@@ -52,9 +52,9 @@ Simple closure with one captured variable:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(i64 -> i64)}  (%x:i64)
-      %Sy_var1:i64 = #call_apply {%f:(i64 -> i64)}  (%Sy_var0:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(i64 -> i64)}  (%x:i64)
+      %Sy_cir_var_1:i64 = #call_apply {%f:(i64 -> i64)}  (%Sy_cir_var_0:i64)
+      return %Sy_cir_var_1:i64
   end
   
   end
@@ -77,8 +77,8 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_multi.result ()
-      store_global syliTest_multi.result = %__init_tmp_0:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_multi.result ()
+      store_global syliTest_multi.result = %__sy_cir_init_tmp_0:i64
       return
   end
   
@@ -86,17 +86,17 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64, i64 -> i64) = #make_closure {syliTest_multi.add} () ()
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_var0:(i64, i64 -> i64), 3:i64, 4:i64)
-      return %Sy_var1:i64
+      %Sy_cir_var_0:(i64, i64 -> i64) = #make_closure {syliTest_multi.add} () ()
+      %Sy_cir_var_1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_cir_var_0:(i64, i64 -> i64), 3:i64, 4:i64)
+      return %Sy_cir_var_1:i64
   end
   
   public fn syliTest_multi.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
@@ -111,8 +111,8 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   end
@@ -135,10 +135,10 @@ No closure (no fn_ptr generated):
     entry: bb0
   
     bb0:
-      %__init_tmp_0:i64 = #call_direct __init_global.syliTest_no_closure.x ()
-      store_global syliTest_no_closure.x = %__init_tmp_0:i64
-      %__init_tmp_1:i64 = #call_direct __init_global.syliTest_no_closure.y ()
-      store_global syliTest_no_closure.y = %__init_tmp_1:i64
+      %__sy_cir_init_tmp_0:i64 = #call_direct __init_global.syliTest_no_closure.x ()
+      store_global syliTest_no_closure.x = %__sy_cir_init_tmp_0:i64
+      %__sy_cir_init_tmp_1:i64 = #call_direct __init_global.syliTest_no_closure.y ()
+      store_global syliTest_no_closure.y = %__sy_cir_init_tmp_1:i64
       return
   end
   
@@ -146,8 +146,8 @@ No closure (no fn_ptr generated):
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_no_closure.+" (%syliTest_no_closure.x:i64, 1:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_no_closure.+" (%syliTest_no_closure.x:i64, 1:i64)
+      return %Sy_cir_var_0:i64
   end
   
   private fn __init_global.syliTest_no_closure.x() -> i64:

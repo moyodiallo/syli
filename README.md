@@ -88,9 +88,9 @@ Running the bechmarks, make sure `hyperfine` is installed.
 $ ./bench/run.sh 
 ```
 
-## Roadmap
+## PLAN
 
-See [ROADMAP.md](ROADMAP.md)
+See [PLAN.md](PLAN.md)
 
 ## Contributions
 

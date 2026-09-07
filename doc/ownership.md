@@ -20,13 +20,13 @@ A `Borrow_Ref` is only produced by `borrow()` or by a local `get` that returns a
 
 ### 2. The Five Primitives
 
-| Operation | Meaning | Input → Output | RC Change |
+| Operation | Meaning | Input -> Output | RC Change |
 |:---|:---|:---|:---|
-| `borrow(x)` | Create a borrowed view. | Any → `Borrow_Ref` | None |
-| `transfer(x)` | Move a reference unchanged. | Own → Own, Borrow → Borrow | None |
-| `own(x)` | Promote to `Own_Ref` if needed. | Borrow → Own (RC++)<br>Own → Own (no‑op) | Only if Borrowed |
-| `share(x)` | Create an independent owner. | Any → `Own_Ref` | **Always** RC++ |
-| `release(x)` | Drop this reference. | Own → RC-- (free if 0)<br>Borrow → nothing | Only if Owned |
+| `borrow(x)` | Create a borrowed view. | Any -> `Borrow_Ref` | None |
+| `transfer(x)` | Move a reference unchanged. | Own -> Own, Borrow -> Borrow | None |
+| `own(x)` | Promote to `Own_Ref` if needed. | Borrow -> Own (RC++)<br>Own -> Own (no‑op) | Only if Borrowed |
+| `share(x)` | Create an independent owner. | Any -> `Own_Ref` | **Always** RC++ |
+| `release(x)` | Drop this reference. | Own -> RC-- (free if 0)<br>Borrow -> nothing | Only if Owned |
 
 The algorithms could be seeing at the end of the document.
 
@@ -71,7 +71,7 @@ This pass uses functions **escape analysis** and **lifetime containment** to dow
 
 | Condition | Replacement | RC saved |
 |:---|:---|:---|
-| `v` does **not escape** **and** `obj` **outlives** `v` | `share` → `borrow` | removes RC++ |
+| `v` does **not escape** **and** `obj` **outlives** `v` | `share` -> `borrow` | removes RC++ |
 | `v` escapes **and** `obj` does not escape |`v = share(raw_get(obj, f))` becomes `v = own(raw_get(obj, f));`<br>`raw_set(obj, f, borrow(v));` | if field was Owned, avoids RC++ (share would have incremented) |
 | `v` does not escapes **and** v outlive `obj` |`v = share(raw_get(obj, f))` becomes `v = transfer(raw_get(obj, f));`<br>`raw_set(obj, f, borrow(v));` | removes RC++ |
 
@@ -79,12 +79,12 @@ This pass uses functions **escape analysis** and **lifetime containment** to dow
 
 | `val` liveness | `obj` escapes? | Lifetime relation | Replacement | RC change | Release `val`? |
 |:---|:---|:---|:---|:---|:---|
-| **Dead** | No | any | `own(val)` → **`transfer(val)`** | 0 | **No** – dead, responsibility moved to field |
+| **Dead** | No | any | `own(val)` -> **`transfer(val)`** | 0 | **No** – dead, responsibility moved to field |
 | **Dead** | Yes | (any) | Keep **`own(val)`** | if borrowed | **No** |
-| **Live** | No | `obj` dies before `val` | `share(val)` → **`borrow(val)`** | 0 | **Yes** – `val` stays alive, released later |
-| **Live** | No | `obj` outlives `val` | `share(val)` → **`transfer(val)`** | 0 | **No**- reponsability moves |
+| **Live** | No | `obj` dies before `val` | `share(val)` -> **`borrow(val)`** | 0 | **Yes** – `val` stays alive, released later |
+| **Live** | No | `obj` outlives `val` | `share(val)` -> **`transfer(val)`** | 0 | **No**- reponsability moves |
 | **Live** | Yes | `val` also | Keep **`share(val)`** | RC++ | **Yes** |
-| **Live** | Yes | `val` does not escape | `share(val)` → **`own(val)`**| RC++ if val is borrowed | **No**-responsability moves |
+| **Live** | Yes | `val` does not escape | `share(val)` -> **`own(val)`**| RC++ if val is borrowed | **No**-responsability moves |
 
 ---
 
@@ -116,7 +116,7 @@ Here are the algorithms with explicit bit operations.
 
 ```
 borrow(x):
-    return x & ~1                 // clear bit 0 → Borrow_Ref
+    return x & ~1                 // clear bit 0 -> Borrow_Ref
 ```
 
 ---
@@ -134,10 +134,10 @@ transfer(x):
 
 ```
 own(x):
-    if (x & 1) == 0:              // test bit 0 → Borrow_Ref
+    if (x & 1) == 0:              // test bit 0 -> Borrow_Ref
         ptr = x & ~1              // untag to get object pointer
         obj_atomic_inc(rc)           
-        return x | 1              // set bit 0 → Own_Ref
+        return x | 1              // set bit 0 -> Own_Ref
     else:
         return x                  // already Own_Ref, no-op
 ```
@@ -150,7 +150,7 @@ own(x):
 share(x):
     ptr = x & ~1                  // untag to get object pointer
     obj_atomic_inc(ptr)
-    return x | 1                  // set bit 0 → Own_Ref
+    return x | 1                  // set bit 0 -> Own_Ref
 ```
 
 ---
@@ -159,7 +159,7 @@ share(x):
 
 ```
 release(x):
-    if (x & 1) == 1:              // test bit 0 → Own_Ref
+    if (x & 1) == 1:              // test bit 0 -> Own_Ref
         ptr = x & ~1              // untag
         new_rc = obj_atomic_dec(ptr)
         if new_rc == 0:
@@ -174,7 +174,7 @@ release(x):
 
 ```
 reuse_if(x):
-    if (x & 1) == 1:              // test bit 0 → Own_Ref
+    if (x & 1) == 1:              // test bit 0 -> Own_Ref
         ptr = x & ~1              // untag
         if obj_atomic_ref(ptr) == 1:
             return x              // yes, safe to mutate in place

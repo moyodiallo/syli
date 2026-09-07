@@ -20,8 +20,8 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64, i64 -> i64) = #make_closure {syliTest_multi.add} () ()
-      %Sy_var1:i64 = #call_direct syliTest_multi.apply (%Sy_var0:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_0:(i64, i64 -> i64) = #make_closure {syliTest_multi.add} () ()
+      %Sy_cir_var_1:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_0:(i64, i64 -> i64), 3:i64, 4:i64)
       return
   end
   
@@ -37,8 +37,8 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:?55 = #call_apply {%f:(?49, ?51 -> ?55)}  (%x:?49, %y:?51)
-      return %Sy_var0:?55
+      %Sy_cir_var_0:?55 = #call_apply {%f:(?49, ?51 -> ?55)}  (%x:?49, %y:?51)
+      return %Sy_cir_var_0:?55
   end
   
   end
@@ -67,11 +67,11 @@ Closure as an argument with partial polymorphic closure:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
-      %Sy_var2:i64 = #call_direct syliTest_multi.apply (%Sy_var1:(i64, i64 -> i64), 3:i64, 4:i64)
-      %Sy_var3:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
-      %Sy_var4:i64 = #call_direct syliTest_multi.apply (%Sy_var3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64, i64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (i64, i64 -> i64))
+      %Sy_cir_var_2:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_1:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_3:(f64, f64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (f64, f64 -> i64))
+      %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
       return
   end
   
@@ -87,8 +87,8 @@ Closure as an argument with partial polymorphic closure:
     entry: bb0
   
     bb0:
-      %Sy_var0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
-      return %Sy_var0:?78
+      %Sy_cir_var_0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
+      return %Sy_cir_var_0:?78
   end
   
   end
@@ -117,11 +117,11 @@ Closure as an argument with partial polymorphic closure:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
-      %Sy_var2:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_var1:(i64, i64 -> i64), 3:i64, 4:i64)
-      %Sy_var3:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
-      %Sy_var4:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (%Sy_var3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64, i64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (i64, i64 -> i64))
+      %Sy_cir_var_2:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_cir_var_1:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_3:(f64, f64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (f64, f64 -> i64))
+      %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (%Sy_cir_var_3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
       return
   end
   
@@ -129,16 +129,16 @@ Closure as an argument with partial polymorphic closure:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(f64, f64 -> i64)}  (%x:f64, %y:f64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(f64, f64 -> i64)}  (%x:f64, %y:f64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:(i64, i64 -> i64), %x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:
@@ -183,11 +183,11 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
-      %Sy_var2:i64 = #call_direct syliTest_multi.apply (%Sy_var1:(i64, i64 -> i64), 3:i64, 4:i64)
-      %Sy_var3:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
-      %Sy_var4:i64 = #call_direct syliTest_multi.apply (%Sy_var3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64, i64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (i64, i64 -> i64))
+      %Sy_cir_var_2:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_1:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_3:(f64, f64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (f64, f64 -> i64))
+      %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
       return
   end
   
@@ -203,8 +203,8 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
-      return %Sy_var0:?78
+      %Sy_cir_var_0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
+      return %Sy_cir_var_0:?78
   end
   
   end
@@ -257,11 +257,11 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
-      %Sy_var2:i64 = #call_direct syliTest_multi.apply (%Sy_var1:(i64, i64 -> i64), 3:i64, 4:i64)
-      %Sy_var3:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
-      %Sy_var4:i64 = #call_direct syliTest_multi.apply (%Sy_var3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64, i64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (i64, i64 -> i64))
+      %Sy_cir_var_2:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_1:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_3:(f64, f64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (f64, f64 -> i64))
+      %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply (%Sy_cir_var_3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
       return
   end
   
@@ -277,8 +277,8 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
-      return %Sy_var0:?78
+      %Sy_cir_var_0:?78 = #call_apply {%f:(?72, ?74 -> ?78)}  (%x:?72, %y:?74)
+      return %Sy_cir_var_0:?78
   end
   
   end
@@ -308,11 +308,11 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64, i64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (i64, i64 -> i64))
-      %Sy_var2:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_var1:(i64, i64 -> i64), 3:i64, 4:i64)
-      %Sy_var3:(f64, f64 -> i64) = cast(%Sy_var0:(?89, ?90 -> i64) as (f64, f64 -> i64))
-      %Sy_var4:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (%Sy_var3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
+      %Sy_cir_var_0:(?89, ?90 -> i64) = #make_closure {syliTest_multi.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64, i64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (i64, i64 -> i64))
+      %Sy_cir_var_2:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (%Sy_cir_var_1:(i64, i64 -> i64), 3:i64, 4:i64)
+      %Sy_cir_var_3:(f64, f64 -> i64) = cast(%Sy_cir_var_0:(?89, ?90 -> i64) as (f64, f64 -> i64))
+      %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (%Sy_cir_var_3:(f64, f64 -> i64), 1.0f:f64, 2.0f:f64)
       return
   end
   
@@ -320,16 +320,16 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(f64, f64 -> i64)}  (%x:f64, %y:f64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(f64, f64 -> i64)}  (%x:f64, %y:f64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(%f:(i64, i64 -> i64), %x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_apply {%f:(i64, i64 -> i64)}  (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_multi.add__i64__i64__i64_ret_i64(%x:i64, %y:i64, %z:i64) -> i64:

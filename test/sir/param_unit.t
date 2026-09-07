@@ -23,7 +23,7 @@ Closure with unit as arguments:
     entry: bb0
   
     bb0:
-      %__init_tmp_0:void = #call_direct __init_global.syliTest_multi.sy3_any_pat ()
+      %__sy_cir_init_tmp_0:void = #call_direct __init_global.syliTest_multi.sy3_any_pat ()
       return
   end
   
@@ -31,7 +31,7 @@ Closure with unit as arguments:
     entry: bb0
   
     bb0:
-      %Sy_var0:void = #call_direct syliTest_multi.main (0:i64)
+      %Sy_cir_var_0:void = #call_direct syliTest_multi.main (0:i64)
       return
   end
   
@@ -39,26 +39,26 @@ Closure with unit as arguments:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64, ?110, i64 -> ?110) = #make_closure {syliTest_multi.add} () ( captured_args=[0:i64])
-      %Sy_var1:bool = cast(false:bool as bool)
-      cond_br %Sy_var1:bool, bb1, bb2
+      %Sy_cir_var_0:(i64, ?110, i64 -> ?110) = #make_closure {syliTest_multi.add} () ( captured_args=[0:i64])
+      %Sy_cir_var_1:bool = cast(false:bool as bool)
+      cond_br %Sy_cir_var_1:bool, bb1, bb2
   
     bb1:
-      %Sy_var3:(i64, i64, i64 -> i64) = cast(%Sy_var0:(i64, ?110, i64 -> ?110) as (i64, i64, i64 -> i64))
-      %Sy_var4:(i64 -> i64) = #call_direct syliTest_multi.apply (%Sy_var3:(i64, i64, i64 -> i64), 0:i64, 4:i64)
-      %Sy_var5:i64 = #call_apply {%Sy_var4:(i64 -> i64)}  (0:i64)
-      %Sy_var2:i64 = move(%Sy_var5:i64)
+      %Sy_cir_var_3:(i64, i64, i64 -> i64) = cast(%Sy_cir_var_0:(i64, ?110, i64 -> ?110) as (i64, i64, i64 -> i64))
+      %Sy_cir_var_4:(i64 -> i64) = #call_direct syliTest_multi.apply (%Sy_cir_var_3:(i64, i64, i64 -> i64), 0:i64, 4:i64)
+      %Sy_cir_var_5:i64 = #call_apply {%Sy_cir_var_4:(i64 -> i64)}  (0:i64)
+      %Sy_cir_var_2:i64 = move(%Sy_cir_var_5:i64)
       goto bb3
   
     bb2:
-      %Sy_var6:(i64, i64, i64 -> i64) = cast(%Sy_var0:(i64, ?110, i64 -> ?110) as (i64, i64, i64 -> i64))
-      %Sy_var7:(i64 -> i64) = #call_direct syliTest_multi.apply (%Sy_var6:(i64, i64, i64 -> i64), 0:i64, 2:i64)
-      %Sy_var8:i64 = #call_apply {%Sy_var7:(i64 -> i64)}  (0:i64)
-      %Sy_var2:i64 = move(%Sy_var8:i64)
+      %Sy_cir_var_6:(i64, i64, i64 -> i64) = cast(%Sy_cir_var_0:(i64, ?110, i64 -> ?110) as (i64, i64, i64 -> i64))
+      %Sy_cir_var_7:(i64 -> i64) = #call_direct syliTest_multi.apply (%Sy_cir_var_6:(i64, i64, i64 -> i64), 0:i64, 2:i64)
+      %Sy_cir_var_8:i64 = #call_apply {%Sy_cir_var_7:(i64 -> i64)}  (0:i64)
+      %Sy_cir_var_2:i64 = move(%Sy_cir_var_8:i64)
       goto bb3
   
     bb3:
-      %Sy_var9:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_var2:i64)
+      %Sy_cir_var_9:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_cir_var_2:i64)
       return
   end
   
@@ -74,8 +74,8 @@ Closure with unit as arguments:
     entry: bb0
   
     bb0:
-      %Sy_var0:?101 = #call_apply {%f:(?95, ?97 -> ?101)}  (%x:?95, %y:?97)
-      return %Sy_var0:?101
+      %Sy_cir_var_0:?101 = #call_apply {%f:(?95, ?97 -> ?101)}  (%x:?95, %y:?97)
+      return %Sy_cir_var_0:?101
   end
   
   end

@@ -33,7 +33,7 @@
     entry: bb0
   
     bb0:
-      %Sy_var0:void = #call_direct syliTest_binary.syli_print_i64 (42:i64)
+      %Sy_cir_var_0:void = #call_direct syliTest_binary.syli_print_i64 (42:i64)
       return
   end
   

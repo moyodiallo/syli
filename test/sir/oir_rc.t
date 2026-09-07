@@ -28,13 +28,13 @@ Record object with ref variable death:
   
     bb0:
       gc_cycle
-      %Sy_var0:syliTest_rc1.person{{card=2 [0:i64; 1:i64]} tag=- unknow_cyclic} = object_create{size=2:i64}
+      %Sy_cir_var_0:syliTest_rc1.person{{card=2 [0:i64; 1:i64]} tag=- unknow_cyclic} = object_create{size=2:i64}
       
-      obj_set(%Sy_var0:obj_ptr, 0:i64, 10:i64):i64
-      obj_set(%Sy_var0:obj_ptr, 1:i64, 30:i64):i64
-      %Sy_var1:i64 = obj_get(%Sy_var0:obj_ptr, 1:i64):i64
-      release(%Sy_var0:obj_ptr)
-      %Sy_var2:void = #call_direct syliTest_rc1.syli_print_i64 (%Sy_var1:i64)
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 10:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 30:i64):i64
+      %Sy_cir_var_1:i64 = obj_get(%Sy_cir_var_0:obj_ptr, 1:i64):i64
+      release(%Sy_cir_var_0:obj_ptr)
+      %Sy_cir_var_2:void = #call_direct syliTest_rc1.syli_print_i64 (%Sy_cir_var_1:i64)
       return
   end
   
@@ -65,18 +65,18 @@ Multiple ref variables with independent lifetimes:
   
     bb0:
       gc_cycle
-      %Sy_var0:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_cir_var_0:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
       
-      obj_set(%Sy_var0:obj_ptr, 0:i64, 1:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 1:i64):i64
       gc_cycle
-      %Sy_var1:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_cir_var_1:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
       
-      obj_set(%Sy_var1:obj_ptr, 0:i64, 2:i64):i64
-      %Sy_var2:i64 = obj_get(%Sy_var0:obj_ptr, 0:i64):i64
-      release(%Sy_var0:obj_ptr)
-      %Sy_var3:i64 = obj_get(%Sy_var1:obj_ptr, 0:i64):i64
-      release(%Sy_var1:obj_ptr)
-      %Sy_var4:i64 = #call_direct "syliTest_rc2.+" (%Sy_var2:i64, %Sy_var3:i64)
+      obj_set(%Sy_cir_var_1:obj_ptr, 0:i64, 2:i64):i64
+      %Sy_cir_var_2:i64 = obj_get(%Sy_cir_var_0:obj_ptr, 0:i64):i64
+      release(%Sy_cir_var_0:obj_ptr)
+      %Sy_cir_var_3:i64 = obj_get(%Sy_cir_var_1:obj_ptr, 0:i64):i64
+      release(%Sy_cir_var_1:obj_ptr)
+      %Sy_cir_var_4:i64 = #call_direct "syliTest_rc2.+" (%Sy_cir_var_2:i64, %Sy_cir_var_3:i64)
       return
   end
   
@@ -114,13 +114,13 @@ Closure with captured variable:
   
     bb0:
       gc_cycle
-      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc3.add.78_ret_i64)
-      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:obj_ptr, 1:i32, 10:i64):i64
+      %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc3.add.75_ret_i64)
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 10:i64):i64
       
-      %Sy_var1:i64 = #call_direct syliTest_rc3.apply__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 20:i64)
+      %Sy_cir_var_1:i64 = #call_direct syliTest_rc3.apply__fn_i64_i64__i64_ret_i64 (@transfer %Sy_cir_var_0:obj_ptr, 20:i64)
       return
   end
   
@@ -128,8 +128,8 @@ Closure with captured variable:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_rc3.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc3.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_rc3.+"(%x:i64, %y:i64) -> i64:
@@ -144,30 +144,28 @@ Closure with captured variable:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, @transfer %f:obj_ptr, 0:i64)
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, @transfer %f:obj_ptr, 0:i64)
       
-      return %Sy_var0:i64
+      return %Sy_cir_var_0:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc3.add.78_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc3.add.75_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct __wrapper.syliTest_rc3.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
-      return %Sy_rst:i64
+      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc3.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      return %Sy_oir_rst:i64
   end
   
-  private fn __wrapper.syliTest_rc3.add.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+  private fn __wrapper.syliTest_rc3.add.i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
-      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc3.add (%Sy_s0:i64, %Sy_s1:i64)
-      return %Sy_rst:i64
+      %Sy_oir_rst:i64 = #call_direct syliTest_rc3.add (%Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      return %Sy_oir_rst:i64
   end
   
   end
@@ -196,9 +194,9 @@ Closure returned from function — verifies the returned closure is NOT released
     entry: bb0
   
     bb0:
-      %Sy_var0:obj_ptr = #call_direct syliTest_rc_returned.make_adder (10:i64)
-      %Sy_accum_ptr_0:fn_ptr = obj_get(%Sy_var0:obj_ptr, 0:i32):fn_ptr
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (5:i64, @transfer %Sy_var0:obj_ptr, 0:i64)
+      %Sy_cir_var_0:obj_ptr = #call_direct syliTest_rc_returned.make_adder (10:i64)
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%Sy_cir_var_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (5:i64, @transfer %Sy_cir_var_0:obj_ptr, 0:i64)
       
       return
   end
@@ -208,21 +206,21 @@ Closure returned from function — verifies the returned closure is NOT released
   
     bb0:
       gc_cycle
-      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_returned.add.47_ret_i64)
-      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:obj_ptr, 1:i32, %n:i64):i64
+      %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_returned.add.44_ret_i64)
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, %n:i64):i64
       
-      return @own %Sy_var0:obj_ptr
+      return @own %Sy_cir_var_0:obj_ptr
   end
   
   public fn syliTest_rc_returned.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_rc_returned.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc_returned.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_rc_returned.+"(%x:i64, %y:i64) -> i64:
@@ -233,24 +231,22 @@ Closure returned from function — verifies the returned closure is NOT released
       return %Sy_prim_result:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_returned.add.47_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_returned.add.44_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct __wrapper.syliTest_rc_returned.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
-      return %Sy_rst:i64
+      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_returned.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      return %Sy_oir_rst:i64
   end
   
-  private fn __wrapper.syliTest_rc_returned.add.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+  private fn __wrapper.syliTest_rc_returned.add.i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
-      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc_returned.add (%Sy_s0:i64, %Sy_s1:i64)
-      return %Sy_rst:i64
+      %Sy_oir_rst:i64 = #call_direct syliTest_rc_returned.add (%Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      return %Sy_oir_rst:i64
   end
   
   end
@@ -279,20 +275,20 @@ Closure compose — two closures passed as borrowed parameters, released in call
   
     bb0:
       gc_cycle
-      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.95_ret_i64)
-      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:obj_ptr, 1:i32, 10:i64):i64
+      %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.92_ret_i64)
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 10:i64):i64
       
       gc_cycle
-      %Sy_var1:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_1:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.102_ret_i64)
-      obj_set(%Sy_var1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_var1:obj_ptr, 1:i32, 20:i64):i64
+      %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_compose.add.99_ret_i64)
+      obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_1:obj_ptr, 1:i32, 20:i64):i64
       
-      %Sy_var2:i64 = #call_direct syliTest_rc_compose.compose__fn_i64_i64__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, @transfer %Sy_var1:obj_ptr, 5:i64)
+      %Sy_cir_var_2:i64 = #call_direct syliTest_rc_compose.compose__fn_i64_i64__fn_i64_i64__i64_ret_i64 (@transfer %Sy_cir_var_0:obj_ptr, @transfer %Sy_cir_var_1:obj_ptr, 5:i64)
       return
   end
   
@@ -300,8 +296,8 @@ Closure compose — two closures passed as borrowed parameters, released in call
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_rc_compose.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc_compose.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_rc_compose.+"(%x:i64, %y:i64) -> i64:
@@ -316,43 +312,41 @@ Closure compose — two closures passed as borrowed parameters, released in call
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_2:fn_ptr = obj_get(%g:obj_ptr, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (%x:i64, @transfer %g:obj_ptr, 0:i64)
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%g:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, @transfer %g:obj_ptr, 0:i64)
       
-      %Sy_accum_ptr_3:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_3:fn_ptr)  (%Sy_var0:i64, @transfer %f:obj_ptr, 0:i64)
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_0:i64, @transfer %f:obj_ptr, 0:i64)
       
-      return %Sy_var1:i64
+      return %Sy_cir_var_1:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_compose.add.102_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_compose.add.92_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
-      return %Sy_rst:i64
+      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      return %Sy_oir_rst:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_compose.add.95_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_compose.add.99_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
-      return %Sy_rst:i64
+      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      return %Sy_oir_rst:i64
   end
   
-  private fn __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+  private fn __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
-      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc_compose.add (%Sy_s0:i64, %Sy_s1:i64)
-      return %Sy_rst:i64
+      %Sy_oir_rst:i64 = #call_direct syliTest_rc_compose.add (%Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      return %Sy_oir_rst:i64
   end
   
   end
@@ -382,13 +376,13 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
   
     bb0:
       gc_cycle
-      %Sy_var0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
       
-      %Sy_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_twice.add.110_ret_i64)
-      obj_set(%Sy_var0:obj_ptr, 0:i32, %Sy_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_var0:obj_ptr, 1:i32, 1:i64):i64
+      %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_rc_twice.add.107_ret_i64)
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
-      %Sy_var1:i64 = #call_direct syliTest_rc_twice.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_var0:obj_ptr, 10:i64)
+      %Sy_cir_var_1:i64 = #call_direct syliTest_rc_twice.apply_twice__fn_i64_i64__i64_ret_i64 (@transfer %Sy_cir_var_0:obj_ptr, 10:i64)
       return
   end
   
@@ -396,8 +390,8 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_rc_twice.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc_twice.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_rc_twice.+"(%x:i64, %y:i64) -> i64:
@@ -412,33 +406,31 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
     entry: bb0
   
     bb0:
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, @borrow %f:obj_ptr, 0:i64)
+      
       %Sy_accum_ptr_1:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
-      %Sy_var0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%x:i64, @borrow %f:obj_ptr, 0:i64)
+      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_0:i64, @transfer %f:obj_ptr, 0:i64)
       
-      %Sy_accum_ptr_2:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
-      %Sy_var1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_2:fn_ptr)  (%Sy_var0:i64, @transfer %f:obj_ptr, 0:i64)
-      
-      return %Sy_var1:i64
+      return %Sy_cir_var_1:i64
   end
   
-  private fn __make_closure_accum.syliTest_rc_twice.add.110_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __make_closure_accum.syliTest_rc_twice.add.107_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct __wrapper.syliTest_rc_twice.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_x0:i64)
-      return %Sy_rst:i64
+      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_twice.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      return %Sy_oir_rst:i64
   end
   
-  private fn __wrapper.syliTest_rc_twice.add.i64_i64_ret_i64(%Sy_x0:i64, %Sy_x1:i64) -> i64:
+  private fn __wrapper.syliTest_rc_twice.add.i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_s0:i64 = cast(%Sy_x0:i64 as i64)
-      %Sy_s1:i64 = cast(%Sy_x1:i64 as i64)
-      %Sy_rst:i64 = #call_direct syliTest_rc_twice.add (%Sy_s0:i64, %Sy_s1:i64)
-      return %Sy_rst:i64
+      %Sy_oir_rst:i64 = #call_direct syliTest_rc_twice.add (%Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      return %Sy_oir_rst:i64
   end
   
   end

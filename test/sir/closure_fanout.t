@@ -25,38 +25,38 @@ Closure fan-out through if-then-else with dispatch:
     entry: bb0
   
     bb0:
-      %Sy_var0:(i64 -> i64) = #make_closure {syliTest_fanout.add} () ( captured_args=[1:i64])
-      %Sy_var1:(i64 -> i64) = #make_closure {syliTest_fanout.sub} () ( captured_args=[1:i64])
-      %Sy_var2:bool = cast(true:bool as bool)
-      cond_br %Sy_var2:bool, bb1, bb2
+      %Sy_cir_var_0:(i64 -> i64) = #make_closure {syliTest_fanout.add} () ( captured_args=[1:i64])
+      %Sy_cir_var_1:(i64 -> i64) = #make_closure {syliTest_fanout.sub} () ( captured_args=[1:i64])
+      %Sy_cir_var_2:bool = cast(true:bool as bool)
+      cond_br %Sy_cir_var_2:bool, bb1, bb2
   
     bb2:
-      %Sy_var3:(i64 -> i64) = move(%Sy_var1:(i64 -> i64))
+      %Sy_cir_var_3:(i64 -> i64) = move(%Sy_cir_var_1:(i64 -> i64))
       goto bb3
   
     bb1:
-      %Sy_var3:(i64 -> i64) = move(%Sy_var0:(i64 -> i64))
+      %Sy_cir_var_3:(i64 -> i64) = move(%Sy_cir_var_0:(i64 -> i64))
       goto bb3
   
     bb3:
-      %Sy_var4:i64 = #call_apply {%Sy_var3:(i64 -> i64)}  (2:i64)
-      return %Sy_var4:i64
+      %Sy_cir_var_4:i64 = #call_apply {%Sy_cir_var_3:(i64 -> i64)}  (2:i64)
+      return %Sy_cir_var_4:i64
   end
   
   public fn syliTest_fanout.sub(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_fanout.-" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_fanout.-" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn syliTest_fanout.add(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_var0:i64 = #call_direct "syliTest_fanout.+" (%x:i64, %y:i64)
-      return %Sy_var0:i64
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_fanout.+" (%x:i64, %y:i64)
+      return %Sy_cir_var_0:i64
   end
   
   public fn "syliTest_fanout.+"(%x:i64, %y:i64) -> i64:
