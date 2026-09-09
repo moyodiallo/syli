@@ -56,17 +56,26 @@ typedef enum ObjectMetaFlags {
 } ObjectMetaFlags;
 
 /*
-    A tagged pointer at the lowest bit for onwership:
-        1 -> Own the object, have responsibility to release
-        0 -> Borrowed the release is no-op
+    A tagged pointer with the lowest two bits for ownership (object pointers
+    are 8-byte aligned, so bits 0-1 are free):
+
+        00 -> Borrow_Ref       : borrowed, release is a no-op
+        01 -> Own_Ref          : owns the object, release decrements/frees
+        10 -> AlwaysBorrow_Ref : a permanent borrow of an immortal value; it
+                                 can never be owned, released, or freed.
+        11 -> Reserved         : must never appear
+
+    `syli_ownership_untag` clears both tag bits to recover the real pointer.
 */
 typedef void* obj_ptr;
 
-#define OWN_REF_TAG 1ULL
+#define OWN_REF_TAG        1ULL
+#define ALWAYS_BORROW_TAG  (1ULL << 1)
+#define OWN_TAG_MASK       (OWN_REF_TAG | ALWAYS_BORROW_TAG)
 
 static inline obj_ptr syli_ownership_untag(obj_ptr ptr)
 {
-    return (obj_ptr)((uintptr_t)ptr & ~OWN_REF_TAG);
+    return (obj_ptr)((uintptr_t)ptr & ~OWN_TAG_MASK);
 }
 
 static inline Object* syli_object_of_obj_ptr(obj_ptr ptr)
@@ -77,6 +86,11 @@ static inline Object* syli_object_of_obj_ptr(obj_ptr ptr)
 static inline bool syli_ownership_is_own_ref(obj_ptr ptr)
 {
     return ((uintptr_t)ptr & OWN_REF_TAG) != 0;
+}
+
+static inline bool syli_ownership_is_always_borrow(obj_ptr ptr)
+{
+    return ((uintptr_t)ptr & ALWAYS_BORROW_TAG) != 0;
 }
 
 static inline obj_ptr syli_ownership_set_own(obj_ptr ptr)
