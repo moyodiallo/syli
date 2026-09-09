@@ -226,7 +226,7 @@ obj_ptr syli_rt_ownership_alloc_object(
 
 obj_ptr syli_rt_ownership_share(obj_ptr ptr)
 {
-    assert(syli_ownership_untag(ptr) != NULL);
+    assert(!syli_ownership_is_always_borrow(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
     syli_rt_object_incr(obj);
@@ -235,6 +235,7 @@ obj_ptr syli_rt_ownership_share(obj_ptr ptr)
 
 void syli_rt_ownership_decr(obj_ptr ptr)
 {
+    assert(!syli_ownership_is_always_borrow((obj_ptr)ptr));
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
@@ -248,6 +249,7 @@ obj_ptr syli_rt_ownership_untag(obj_ptr ptr)
 
 void syli_rt_ownership_incr(obj_ptr ptr)
 {
+    assert(!syli_ownership_is_always_borrow((obj_ptr)ptr));
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
@@ -273,8 +275,8 @@ void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr)
 
 void syli_rt_ownership_release(void* ptr)
 {
+    assert(!syli_ownership_is_always_borrow((obj_ptr)ptr));
     if (syli_ownership_is_own_ref(ptr)) {
-        assert(syli_ownership_is_own_ref(ptr));
         Object* obj = (Object*)syli_ownership_untag(ptr);
         assert(obj != NULL);
         syli_rt_object_decr(obj, ptr);
@@ -283,6 +285,7 @@ void syli_rt_ownership_release(void* ptr)
 
 obj_ptr syli_rt_ownership_own(obj_ptr ptr)
 {
+    assert(!syli_ownership_is_always_borrow(ptr));
     if (syli_ownership_is_own_ref(ptr)) {
         return ptr;
     }
@@ -294,5 +297,6 @@ obj_ptr syli_rt_ownership_own(obj_ptr ptr)
 
 obj_ptr syli_rt_ownership_borrow(obj_ptr ptr)
 {
+    assert(!syli_ownership_is_always_borrow(ptr));
     return syli_ownership_untag(ptr);
 }
