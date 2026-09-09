@@ -34,7 +34,7 @@ let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
   | RR_Obj_Ptr cp -> lltype_of_obj_cyclic_prop cp
   | RR_FnPtr -> LV_Ptr
   | RR_Char -> LV_I8
-  | RR_Str -> LV_Struct [ LV_Ptr; LV_I64 ]
+  | RR_String -> gc_ptr_ty
   | RR_Arrow (args, ret) ->
       LV_Func (List.map lltype_of_ir_type args, lltype_of_ir_type ret)
 
@@ -101,12 +101,35 @@ let fresh_global_id =
     incr counter;
     !counter
 
-let str_ty = LV_Struct [ LV_Ptr; LV_I64 ]
+let static_string_zone : int64 = Int64.shift_left 2L 62
+
+let static_string_header (len : int) : int64 =
+  Int64.logor static_string_zone (Int64.of_int len)
+
+let string_object_ty (len : int) : lltype =
+  LV_Struct [ LV_I64; LV_I64; LV_Array (len, LV_I8) ]
+
+(** Static string literal object: one contiguous block laid out exactly like a
+    runtime object
+
+    - header_word (zone=static, mono, payload=len)
+    - refcount word (INITIAL_REFCOUNT=0)
+    - then the bytes
+
+    The string value is a pointer to this block (its object base). *)
+let string_object_init (s : string) : constant =
+  let len = String.length s in
+  LV_StructValue
+    [
+      (LV_I64, LV_Integer (static_string_header len));
+      (LV_I64, LV_Integer 0L);
+      (LV_Array (len, LV_I8), LV_StringLit s);
+    ]
 
 let rec lower_operand (ctx : lower_ctx) (op : Rir.operand) :
     lower_ctx * operand * instruction list =
   match op with
-  | RR_OConstant (RR_StringLit s, ty) when ty.ty = RR_Str ->
+  | RR_OConstant (RR_StringLit s, ty) when ty.ty = RR_String ->
       let ctx, str_name =
         match StringMap.find_opt s ctx.str_data with
         | Some name -> (ctx, name)
@@ -114,40 +137,20 @@ let rec lower_operand (ctx : lower_ctx) (op : Rir.operand) :
             let name = "__str." ^ string_of_int (fresh_global_id ()) in
             ({ ctx with str_data = StringMap.add s name ctx.str_data }, name)
       in
-      let global_op = LV_Global (str_name, LV_Array (String.length s, LV_I8)) in
-      let ctx, gep_tmp = fresh_reg ctx LV_Ptr in
-      let ctx, s1 = fresh_reg ctx str_ty in
-      let ctx, s2 = fresh_reg ctx str_ty in
-      let len = Int64.of_int (String.length s) in
+      let global_op =
+        LV_Global (str_name, string_object_ty (String.length s))
+      in
+      let ctx, pi = fresh_reg ctx LV_I64 in
+      let ctx, pt = fresh_reg ctx LV_I64 in
+      let ctx, ptr = fresh_reg ctx gc_ptr_ty in
+      (* Static literals are immortal: encode the value as an ALWAYS_BORROW (tag 2)*)
+      let always_borrow_tag = LV_Constant (LV_Integer 2L, LV_I64) in
       ( ctx,
-        s2,
+        ptr,
         [
-          LV_Assign
-            ( gep_tmp,
-              LV_GEP
-                {
-                  base = global_op;
-                  indices = [ LV_Constant (LV_Integer 0L, LV_I32) ];
-                  result_ty = LV_I8;
-                } );
-          LV_Assign
-            ( s1,
-              LV_InsertValue
-                {
-                  agg = LV_Constant (LV_ZeroInitializer, str_ty);
-                  value = gep_tmp;
-                  index = 0;
-                  ty = str_ty;
-                } );
-          LV_Assign
-            ( s2,
-              LV_InsertValue
-                {
-                  agg = s1;
-                  value = LV_Constant (LV_Integer len, LV_I64);
-                  index = 1;
-                  ty = str_ty;
-                } );
+          LV_Assign (pi, LV_Cast (LV_PtrToInt, global_op, LV_I64));
+          LV_Assign (pt, LV_IBinOp (LV_IAdd, pi, always_borrow_tag));
+          LV_Assign (ptr, LV_Cast (LV_IntToPtr, pt, gc_ptr_ty));
         ] )
   | RR_OConstant (c, ty) -> (ctx, llconst_of_ir_constant c ty, [])
   | RR_OVar v -> (
@@ -795,8 +798,8 @@ let lower_program (prog : Rir.program_rir) : module_ =
         (fun s name acc ->
           {
             g_name = name;
-            g_type = LV_Array (String.length s, LV_I8);
-            g_init = Some (LV_StringLit s);
+            g_type = string_object_ty (String.length s);
+            g_init = Some (string_object_init s);
             g_linkage = Private;
           }
           :: acc)

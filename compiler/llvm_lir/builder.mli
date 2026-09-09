@@ -3,7 +3,7 @@
     Provides imperative-style construction of LLVM IR modules with register
     allocation, basic block management, and instruction emission. *)
 
-type module_ = Types.module_llvm
+type module_llvm = Types.module_llvm
 
 type gen_state = {
   next_reg : int;
@@ -11,7 +11,7 @@ type gen_state = {
   current_block : string option;
 }
 
-type builder = { module_ : module_; state : gen_state }
+type builder = { module_llvm : module_llvm; state : gen_state }
 
 val init_state : unit -> gen_state
 
@@ -22,7 +22,7 @@ val create_module :
   unit ->
   Types.module_llvm
 
-val create_builder : module_ -> builder
+val create_builder : module_llvm -> builder
 val fresh_reg : builder -> Types.lltype -> builder * Types.operand
 val emit : builder -> Types.instruction -> builder
 val set_terminator : builder -> Types.terminator -> builder

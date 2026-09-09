@@ -25,7 +25,7 @@ let rec string_of_ty (ty : ty) : string =
   | Ty_Constant Ty_Unit -> "unit"
   | Ty_Constant Ty_F32 -> "f32"
   | Ty_Constant Ty_F64 -> "f64"
-  | Ty_Constant Ty_String -> "str"
+  | Ty_Constant Ty_String -> "string"
   | Ty_Constant Ty_Char -> "char"
   | Ty_Any -> "_"
   | Ty_Var s -> "'" ^ s

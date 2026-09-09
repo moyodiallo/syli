@@ -15,7 +15,7 @@ let rec string_of_ir_type = function
   | RR_Obj_Ptr _ -> "obj_ptr"
   | RR_FnPtr -> "fn_ptr"
   | RR_Char -> "char"
-  | RR_Str -> "str"
+  | RR_String -> "string"
   | RR_Void -> "void"
   | RR_Arrow (param_tys, ret_ty) ->
       let params_str =

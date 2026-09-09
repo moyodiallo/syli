@@ -113,7 +113,7 @@ let func_to_string (f : func) =
   Printf.bprintf buf "}\n";
   Buffer.contents buf
 
-let module_to_string (m : module_) =
+let module_to_string (m : module_llvm) =
   let buf = Buffer.create 1024 in
   (match m.target_triple with
   | Some t -> Printf.bprintf buf "target triple = \"%s\"\n" t

@@ -19,7 +19,6 @@
 
 #include "header_object.h"
 #include "object.h"
-#include "syli_primitives.h"
 
 /************************************************
  * Object Creation Functions

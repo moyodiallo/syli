@@ -1,4 +1,5 @@
-#include "syli/syli_primitives.h"
+#include "syli/syli_foreign_primitives.h"
+#include "syli/object.h"
 #include "syli/syli_state.h"
 #include <inttypes.h>
 #include <stdint.h>
@@ -8,9 +9,15 @@ void syli_print_i64(int64_t value) { printf("%" PRId64, value); }
 
 void syli_print_f64(double value) { printf("%f", value); }
 
-void syli_print_str(SyliStr s) { fwrite(s.ptr, 1, s.len, stdout); }
+void syli_print_string(obj_ptr ptr)
+{
+    Object* obj      = syli_object_of_obj_ptr(ptr);
+    size_t len       = syli_object_mono_length(obj);
+    const char* data = (const char*)syli_object_data(obj);
+    fwrite(data, 1, len, stdout);
+}
 
-void syli_print_char(char value) { fputc(value, stdout); }
+void syli_print_char(int value) { fputc(value, stdout); }
 
 static const char* tracing_state_name(Tracing_state_machine state)
 {

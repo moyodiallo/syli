@@ -41,7 +41,17 @@ let string_of_float_literal f =
   let s = string_of_float f in
   if String.contains s '.' then s else s ^ ".0"
 
-let string_of_operand = function
+let escape_c_string (s : string) : string =
+  let buf = Buffer.create (String.length s) in
+  String.iter
+    (fun c ->
+      if c >= ' ' && c <= '~' && c <> '"' && c <> '\\' then
+        Buffer.add_char buf c
+      else Buffer.add_string buf (Printf.sprintf "\\%02x" (Char.code c)))
+    s;
+  Buffer.contents buf
+
+let rec string_of_operand = function
   | LV_Constant (LV_Integer n, LV_I1) -> if n = 0L then "false" else "true"
   | LV_Constant (LV_Integer n, _) -> Int64.to_string n
   | LV_Constant (LV_Float f, _) -> string_of_float_literal f
@@ -49,15 +59,16 @@ let string_of_operand = function
   | LV_Constant (LV_Null, _) -> "null"
   | LV_Constant (LV_ZeroInitializer, _) -> "zeroinitializer"
   | LV_Constant (LV_StringLit s, _) ->
-      let buf = Buffer.create (String.length s) in
-      String.iter
-        (fun c ->
-          if c >= ' ' && c <= '~' && c <> '"' && c <> '\\' then
-            Buffer.add_char buf c
-          else Buffer.add_string buf (Printf.sprintf "\\%02x" (Char.code c)))
-        s;
-      Printf.sprintf "c\"%s\"" (Buffer.contents buf)
+      Printf.sprintf "c\"%s\"" (escape_c_string s)
   | LV_Constant (LV_Array _, _) -> "<array_const>"
+  | LV_Constant (LV_StructValue fields, _) ->
+      Printf.sprintf "{ %s }"
+        (String.concat ", "
+           (List.map
+              (fun (ty, c) ->
+                Printf.sprintf "%s %s" (string_of_lltype ty)
+                  (string_of_operand (LV_Constant (c, ty))))
+              fields))
   | LV_Local (n, _) -> "%" ^ n
   | LV_Global (n, _) -> "@" ^ n
 

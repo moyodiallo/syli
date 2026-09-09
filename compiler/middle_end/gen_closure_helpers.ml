@@ -19,7 +19,7 @@ let operand_ty (op : operand) : ty =
   match op with OR_OConstant (_, ty) -> ty | OR_OVar v -> v.ty
 
 let is_ref_ty (t : ty) : bool =
-  match t.ir_type with OR_Obj _ | OR_Obj_Ptr -> true | _ -> false
+  match t.ir_type with OR_Obj _ | OR_Obj_Ptr | OR_String -> true | _ -> false
 
 (** Trampoline functions load ref slot and scalar slot, so to avoid having same
     function with different loads we use this to differenciate the signature of
@@ -101,7 +101,7 @@ let rec type_key_of_ty (t : ty) : string =
   | OR_F64 -> "f64"
   | OR_FnPtr -> "fn_ptr"
   | OR_Char -> "char"
-  | OR_String -> "str"
+  | OR_String -> "string"
   | OR_Void -> "void"
   | OR_Obj_Ptr -> "obj_ptr"
   | OR_Obj { named; obj_kind; _ } -> (

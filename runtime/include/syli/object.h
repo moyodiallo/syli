@@ -37,16 +37,6 @@ typedef struct GCObject {
     uint64_t value[];
 } GCObject;
 
-typedef struct StaticObject {
-    uint64_t header_word;
-    uint64_t value[];
-} StaticObject;
-
-typedef struct StackObject {
-    uint32_t length;
-    uint64_t value[];
-} StackObject;
-
 typedef enum ObjectMetaFlags {
     Meta_Flags_None               = 0,
     Meta_Flags_Suspect_Lost_Cycle = 1ULL << 56,
@@ -358,11 +348,10 @@ static inline uint64_t* syli_object_data(Object* obj)
     assert(obj != NULL);
     const ObjectZone zone = syli_object_get_zone(obj);
     switch (zone) {
+    case Zone_Static:
     case Zone_GcLocal:
     case Zone_GcShared:
         return as_gc_object(obj)->value;
-    case Zone_Static:
-        return ((StaticObject*)obj)->value;
     default:
         return NULL;
     }

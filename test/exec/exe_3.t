@@ -54,11 +54,11 @@ Closure as an argument with multiple captured variables:
   $ ./test_multi.exe
   7
 
-String literal prints via syli_print_str:
+String literal prints via syli_print_string:
   $ cat >test_str.sy <<EOF
-  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > foreign syli_print_string : string -> unit = "syli_print_string"
   > let s = "hello"
-  > let main () = syli_print_str s
+  > let main () = syli_print_string s
   > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_str.sy
@@ -77,13 +77,13 @@ Empty string literal compiles and runs:
   $ ./test_empty.exe
   42
 
-Empty string printed via syli_print_str:
+Empty string printed via syli_print_string:
   $ cat >test_empty2.sy <<EOF
-  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > foreign syli_print_string : string -> unit = "syli_print_string"
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > let s = ""
   > let main () =
-  >   syli_print_str s
+  >   syli_print_string s
   >   syli_print_i64 42
   > let _ = main ()
   > EOF
@@ -104,9 +104,9 @@ Global int64 value read inside a function body:
 
 Global str value read inside a function body:
   $ cat >test_global_str.sy <<EOF
-  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > foreign syli_print_string : string -> unit = "syli_print_string"
   > let s = "global str"
-  > let main () = syli_print_str s
+  > let main () = syli_print_string s
   > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_global_str.sy
@@ -115,12 +115,12 @@ Global str value read inside a function body:
 
 String escape sequences:
   $ cat >test_esc_str.sy <<EOF
-  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > foreign syli_print_string : string -> unit = "syli_print_string"
   > let main () =
-  >   syli_print_str "hello\nworld"
-  >   syli_print_str "\x41\x42\x43"
-  >   syli_print_str "quot\"here"
-  >   syli_print_str "back\\\\slash"
+  >   syli_print_string "hello\nworld"
+  >   syli_print_string "\x41\x42\x43"
+  >   syli_print_string "quot\"here"
+  >   syli_print_string "back\\\\slash"
   > let _ = main ()
   > EOF
   $ dune exec sylic -- build test_esc_str.sy
@@ -137,3 +137,32 @@ Char literal printed via syli_print_char:
   $ dune exec sylic -- build test_char.sy
   $ ./test_char.exe
   A
+
+String passed to a function parameter and returned:
+  $ cat >test_str_fn.sy <<EOF
+  > foreign syli_print_string : string -> unit = "syli_print_string"
+  > let id (s: string) = s
+  > let main () =
+  >   let s = "hello"
+  >   let r = id s
+  >   syli_print_string r
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_str_fn.sy
+  $ ./test_str_fn.exe
+  hello
+
+String returned from a closure capturing it:
+  $ cat >test_str_closure.sy <<EOF
+  > foreign syli_print_string : string -> unit = "syli_print_string"
+  > let main () =
+  >   let s = "hi"
+  >   let f () = s
+  >   let r = f ()
+  >   syli_print_string r
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_str_closure.sy
+  $ ./test_str_closure.exe
+  hi
+

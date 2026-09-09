@@ -1,7 +1,7 @@
 open Types
 open Helpers
 
-type module_ = Types.module_
+type module_llvm = Types.module_llvm
 
 type gen_state = {
   next_reg : int;
@@ -9,7 +9,7 @@ type gen_state = {
   current_block : string option;
 }
 
-type builder = { module_ : module_; state : gen_state }
+type builder = { module_llvm : module_llvm; state : gen_state }
 
 let init_state () =
   { next_reg = 0; blocks = Hashtbl.create 16; current_block = None }
@@ -24,7 +24,7 @@ let create_module ?target_triple ?data_layout:_ ?(source_filename = "") () =
     source_filename;
   }
 
-let create_builder module_ = { module_; state = init_state () }
+let create_builder module_llvm = { module_llvm; state = init_state () }
 
 let fresh_reg builder ty =
   let n = builder.state.next_reg in

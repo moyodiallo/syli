@@ -52,9 +52,9 @@ let is_reference_ty = function
   | RR_U8 | RR_Float | RR_Double | RR_Void | RR_Arrow _ ->
       false
   | RR_Obj_Ptr _ -> true
+  | RR_String -> true
   | RR_FnPtr -> false
   | RR_Char -> false
-  | RR_Str -> false
 
 (* ------------------------------------------------------------- *)
 (* Object header construction                                    *)
@@ -211,7 +211,7 @@ let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   | OR_Obj { cyclic_prop; _ } -> RR_Obj_Ptr cyclic_prop
   | OR_Obj_Ptr -> RR_Obj_Ptr Oir.Unknown_cyclic_prop
   | OR_Char -> RR_Char
-  | OR_String -> RR_Str
+  | OR_String -> RR_String
   | OR_Void -> RR_Void
 
 let lower_ty (t : Oir.ty) : Rir.ty =
@@ -367,7 +367,7 @@ let runtime_call_of_object_create (dst : Oir.var) (size : Rir.operand) :
    boundary (so an i64 <-> that type cast needs inttoptr/ptrtoint). *)
 let oir_is_ptr (t : Oir.ir_type) : bool =
   match t with
-  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr | Oir.OR_FnPtr -> true
+  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr | Oir.OR_String | Oir.OR_FnPtr -> true
   | _ -> false
 
 let oir_operand_ir (op : Oir.operand) : Oir.ir_type =
@@ -433,10 +433,14 @@ let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
   (ctx, { id = fresh_global_id (); node; ty = rir_ty })
 
 let is_var_ref (var : Oir.var) =
-  match var.ty.ir_type with Oir.OR_Obj _ | Oir.OR_Obj_Ptr -> true | _ -> false
+  match var.ty.ir_type with
+  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr | Oir.OR_String -> true
+  | _ -> false
 
 let is_ty_ref (ty : Oir.ty) =
-  match ty.ir_type with Oir.OR_Obj _ | Oir.OR_Obj_Ptr -> true | _ -> false
+  match ty.ir_type with
+  | Oir.OR_Obj _ | Oir.OR_Obj_Ptr | Oir.OR_String -> true
+  | _ -> false
 
 let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
     ctx * Rir.statement list =
@@ -518,8 +522,9 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
           } as rv;
       }
     when is_var_ref dst
-         && (not (ownership_get = OR_Ownership_transfer))
-         && not (ownership_get = OR_Ownership_constant) ->
+         && (ownership_get = OR_Ownership_own
+            || ownership_get = OR_Ownership_share
+            || ownership_get = OR_Ownership_borrow) ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, rv' = rvalue_of_oir ctx rv in
       let raw_tmp = fresh_var ctx "Sy_rir_raw_tmp" dst'.ty in
@@ -716,7 +721,10 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
         ] )
   | OR_Store_global
       { global; value = Oir.OR_OVar var as value; ownership_store }
-    when is_var_ref var ->
+    when is_var_ref var
+         && (ownership_store = OR_Ownership_own
+            || ownership_store = OR_Ownership_share
+            || ownership_store = OR_Ownership_borrow) ->
       let ctx, value' = lower_operand ctx value in
       let rir_ty =
         match value' with RR_OVar v -> v.ty | RR_OConstant (_, ty) -> ty
