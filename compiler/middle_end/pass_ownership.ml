@@ -69,7 +69,7 @@ let annotate_function (fn : function_oir) : function_oir =
     let dst =
       {
         id = fresh_id ();
-        name = "Sy_release_tmp_" ^ string_of_int !release_tmp_counter;
+        name = "Sy_oir_release_tmp_" ^ string_of_int !release_tmp_counter;
         ty = value_ty;
       }
     in
@@ -118,7 +118,7 @@ let annotate_function (fn : function_oir) : function_oir =
                                 obj = OR_OVar src;
                                 field_idx;
                                 value_ty;
-                                ownership_get = _;
+                                ownership_get = OR_Ownership_unknown;
                               };
                           _;
                         } as rv_node;
@@ -146,8 +146,14 @@ let annotate_function (fn : function_oir) : function_oir =
                     in
                     ( [ { stmt with node = OR_Assign { dst; rvalue } } ],
                       IntSet.empty )
-                | OR_Object_set ({ obj; field_idx; value; value_ty; _ } as os)
-                  ->
+                | OR_Object_set
+                    ({
+                       obj;
+                       field_idx;
+                       value;
+                       value_ty;
+                       ownership_set = OR_Ownership_unknown;
+                     } as os) ->
                     if is_ref_ty value_ty then
                       let live_after, ownership_set =
                         match value with
@@ -199,8 +205,12 @@ let annotate_function (fn : function_oir) : function_oir =
                     let args', no_release =
                       List.fold_left
                         (fun (acc_args, acc_nr) a ->
-                          match a.operand with
-                          | OR_OVar v when is_ref_ty v.ty ->
+                          match a with
+                          | {
+                           operand = OR_OVar v;
+                           ownership_arg = OR_Ownership_unknown;
+                          }
+                            when is_ref_ty v.ty ->
                               let live_after =
                                 match
                                   IntMap.find_opt stmt.id live_map.stmts
@@ -217,10 +227,11 @@ let annotate_function (fn : function_oir) : function_oir =
                                 else IntSet.add v.id acc_nr
                               in
                               ({ a with ownership_arg } :: acc_args, acc_nr)
-                          | _ ->
+                          | { ownership_arg = OR_Ownership_unknown } ->
                               ( { a with ownership_arg = OR_Ownership_constant }
                                 :: acc_args,
-                                acc_nr ))
+                                acc_nr )
+                          | _ -> (a :: acc_args, acc_nr))
                         ([], IntSet.empty) args
                     in
                     ( [
@@ -230,7 +241,9 @@ let annotate_function (fn : function_oir) : function_oir =
                         };
                       ],
                       no_release )
-                | OR_Store_global ({ value; _ } as store_global) ->
+                | OR_Store_global
+                    ({ value; ownership_store = OR_Ownership_unknown } as
+                     store_global) ->
                     let live_after, ownership_store =
                       match value with
                       | OR_OVar v when is_ref_ty v.ty ->
@@ -269,7 +282,12 @@ let annotate_function (fn : function_oir) : function_oir =
                       dst;
                       rvalue =
                         {
-                          node = OR_Cast ({ src = OR_OVar v; _ } as cast_node);
+                          node =
+                            OR_Cast
+                              ({
+                                 src = OR_OVar v;
+                                 ownership = OR_Ownership_unknown;
+                               } as cast_node);
                           _;
                         } as rvalue_node;
                       _;
@@ -304,8 +322,13 @@ let annotate_function (fn : function_oir) : function_oir =
                     {
                       dst;
                       rvalue =
-                        { node = OR_Cast ({ src; _ } as cast_node); _ } as
-                        rvalue_node;
+                        {
+                          node =
+                            OR_Cast
+                              ({ src; ownership = OR_Ownership_unknown } as
+                               cast_node);
+                          _;
+                        } as rvalue_node;
                       _;
                     } ->
                     (* Other casts (int -> int, word -> ref widening, fn-ptr, bitcast,
@@ -328,7 +351,8 @@ let annotate_function (fn : function_oir) : function_oir =
         in
         let terminator =
           match block.terminator.node with
-          | OR_Return { operand = Some op; ownership_ret = _ } ->
+          | OR_Return
+              { operand = Some op; ownership_ret = OR_Ownership_unknown } ->
               {
                 block.terminator with
                 node =

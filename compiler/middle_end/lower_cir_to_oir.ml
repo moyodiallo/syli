@@ -512,7 +512,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
                 field_idx = int_operand (1 + i);
                 value;
                 value_ty;
-                ownership_set = Oir.OR_Ownership_constant;
+                ownership_set = Oir.OR_Ownership_unknown;
               };
           ty = fn_ptr_ty ();
         })
@@ -705,7 +705,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
                 field_idx = int_operand (args_idx + i);
                 value;
                 value_ty;
-                ownership_set = Oir.OR_Ownership_constant;
+                ownership_set = Oir.OR_Ownership_unknown;
               };
           ty = fn_ptr_ty ();
         })

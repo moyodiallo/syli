@@ -27,6 +27,7 @@ type runtime_op_name =
   | RR_RT_object_own
   | RR_RT_object_release
   | RR_RT_object_alloc
+  | RR_RT_object_make_always_borrow
 
 let runtime_op_name_to_string = function
   | RR_RT_get_object_length -> "syli_rt_get_object_length"
@@ -40,6 +41,7 @@ let runtime_op_name_to_string = function
   | RR_RT_object_own -> "syli_rt_ownership_own"
   | RR_RT_object_release -> "syli_rt_ownership_release"
   | RR_RT_object_alloc -> "syli_rt_ownership_alloc_object"
+  | RR_RT_object_make_always_borrow -> "syli_rt_ownership_make_always_borrow"
 
 type id = Cir.id
 type qualified_name = Cir.qualified_name

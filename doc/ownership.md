@@ -6,13 +6,19 @@ This **memory management** system concept is based on **reference counting** and
 
 ### 1. The Core Idea
 
-Every object pointer carries a **one‑bit tag** in its lowest bit:
+Every object pointer carries a **two‑bit tag** in its two lowest bits (object
+pointers are 8‑byte aligned, so those bits are free):
 
-- **`Own_Ref`** (bit = 1) – owns the object; responsible for decrementing the reference count on `release`.
-- **`Borrow_Ref`** (bit = 0) – a non‑owning view; `release` is a no‑op.
+| tag | state | meaning |
+|:---:|:---|:---|
+| `00` | **`Borrow_Ref`** | a non‑owning view; `release` is a no‑op |
+| `01` | **`Own_Ref`** | owns the object; responsible for decrementing the reference count on `release` |
+| `10` | **`AlwaysBorrow_Ref`** | a permanent borrow of an immortal/eternal object; **fully inert** — `borrow`/`own`/`share`/`release` are all no‑ops, so it can never be promoted or released |
+| `11` | **Reserved** | must never appear; abort if seen |
 
 Variables **default to `Own_Ref`** (freshly created objects, results of `share`, incoming owned parameters).  
 A `Borrow_Ref` is only produced by `borrow()` or by a local `get` that returns a borrow.
+An `AlwaysBorrow_Ref` is a permanent, non-owning borrow of an immortal value .
 
 **“Viewership is on one view”** – borrows never track counts; the object stays alive because the owning `Own_Ref`(s) outlive them. Liveness analysis statically guarantees an owner is never released while any borrow is still alive.
 
@@ -22,11 +28,11 @@ A `Borrow_Ref` is only produced by `borrow()` or by a local `get` that returns a
 
 | Operation | Meaning | Input -> Output | RC Change |
 |:---|:---|:---|:---|
-| `borrow(x)` | Create a borrowed view. | Any -> `Borrow_Ref` | None |
+| `borrow(x)` | Create a borrowed view. | Any -> `Borrow_Ref`; an `AlwaysBorrow_Ref` stays as is | None |
 | `transfer(x)` | Move a reference unchanged. | Own -> Own, Borrow -> Borrow | None |
-| `own(x)` | Promote to `Own_Ref` if needed. | Borrow -> Own (RC++)<br>Own -> Own (no‑op) | Only if Borrowed |
-| `share(x)` | Create an independent owner. | Any -> `Own_Ref` | **Always** RC++ |
-| `release(x)` | Drop this reference. | Own -> RC-- (free if 0)<br>Borrow -> nothing | Only if Owned |
+| `own(x)` | Promote to `Own_Ref` if needed. | Borrow -> Own (RC++)<br>Own -> Own (no-op)<br>AlwaysBorrow -> AlwaysBorrow (**no-op**) | Only if plain Borrowed |
+| `share(x)` | Create an independent owner. | Any -> `Own_Ref` | **Always** RC++, except AlwaysBorrow (**no-op**) |
+| `release(x)` | Drop this reference. | Own -> RC-- (free if 0)<br>Borrow / AlwaysBorrow -> nothing | Only if Owned |
 
 The algorithms could be seeing at the end of the document.
 
@@ -117,6 +123,7 @@ Here are the algorithms with explicit bit operations.
 ```
 borrow(x):
     return x & ~1                 // clear bit 0 -> Borrow_Ref
+                                  // an AlwaysBorrow_Ref (10) keeps bit 1
 ```
 
 ---
@@ -134,12 +141,12 @@ transfer(x):
 
 ```
 own(x):
-    if (x & 1) == 0:              // test bit 0 -> Borrow_Ref
-        ptr = x & ~1              // untag to get object pointer
-        obj_atomic_inc(rc)           
+    if (x & 3) == 0:              // test both bits -> plain Borrow_Ref
+        ptr = x & ~3              // untag to get object pointer
+        obj_atomic_inc(rc)
         return x | 1              // set bit 0 -> Own_Ref
     else:
-        return x                  // already Own_Ref, no-op
+        return x                  // Own_Ref or AlwaysBorrow_Ref: no-op
 ```
 
 ---
@@ -148,7 +155,9 @@ own(x):
 
 ```
 share(x):
-    ptr = x & ~1                  // untag to get object pointer
+    if (x & 2) != 0:              // AlwaysBorrow_Ref (10): cannot be owned
+        return x                  // no-op
+    ptr = x & ~3                  // untag to get object pointer
     obj_atomic_inc(ptr)
     return x | 1                  // set bit 0 -> Own_Ref
 ```
@@ -159,13 +168,13 @@ share(x):
 
 ```
 release(x):
-    if (x & 1) == 1:              // test bit 0 -> Own_Ref
-        ptr = x & ~1              // untag
+    if (x & 3) == 1:              // exactly Own_Ref (01)
+        ptr = x & ~3              // untag
         new_rc = obj_atomic_dec(ptr)
         if new_rc == 0:
             free(ptr)              // free the whole block (rc + object)
     else:
-        nothing                   // Borrow_Ref, bit 0 is 0
+        nothing                   // Borrow_Ref (00) or AlwaysBorrow_Ref (10)
 ```
 
 ---

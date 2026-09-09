@@ -102,6 +102,7 @@ and ownership_op =
   | OR_Ownership_own
   | OR_Ownership_share
   | OR_Ownership_constant
+  | OR_Ownership_always_borrow
   | OR_Ownership_unknown
 
 type arg = { operand : operand; ownership_arg : ownership_op }

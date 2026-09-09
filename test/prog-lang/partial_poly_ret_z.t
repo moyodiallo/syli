@@ -119,16 +119,16 @@
     entry: bb-1
   
     bb-1:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
       switch %Sy_oir_dp_id:i64 [0: bb0, 1: bb1]
   
     bb0:
-      %Sy_oir_case_result0:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_case_result0:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_case_result0:i64
   
     bb1:
-      %Sy_oir_case_result1:i64 = #call_direct __wrapper.syliTest_multi.add.i64_f64_cast_f64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_case_result1:i64 = #call_direct __wrapper.syliTest_multi.add.i64_f64_cast_f64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_case_result1:i64
   end
   
