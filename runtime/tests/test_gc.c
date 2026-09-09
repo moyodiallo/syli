@@ -8,7 +8,7 @@
 #include "syli/header_object.h"
 #include "syli/object.h"
 #include "syli/syli.h"
-#include "syli/syli_primitives.h"
+#include "syli/syli_foreign_primitives.h"
 #include "syli/syli_state.h"
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"

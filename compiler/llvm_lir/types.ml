@@ -23,6 +23,7 @@ type constant =
   | LV_ZeroInitializer
   | LV_Array of constant list
   | LV_StringLit of string
+  | LV_StructValue of (lltype * constant) list
 
 type const = constant
 
@@ -149,5 +150,3 @@ type module_llvm = {
   functions : func list;
   source_filename : string;
 }
-
-type module_ = module_llvm

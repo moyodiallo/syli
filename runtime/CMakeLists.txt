@@ -54,7 +54,7 @@ add_library(syliruntime STATIC
     src/syli_state_gc_tracing.c
     src/syli_state_gc_roots.c
     src/main.c
-    src/syli_primitives.c
+    src/syli_foreign_primitives.c
     src/syli.c
     src/env.c
 )

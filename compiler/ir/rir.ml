@@ -71,7 +71,7 @@ type ir_type =
   | RR_Obj_Ptr of cyclic_prop
   | RR_FnPtr
   | RR_Char
-  | RR_Str
+  | RR_String
   | RR_Void
   | RR_Arrow of ir_type list * ir_type
 

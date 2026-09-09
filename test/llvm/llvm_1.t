@@ -223,8 +223,8 @@ String literal emits an i8* return:
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  @syliTest_str.s = global { ptr, i64 } zeroinitializer
-  @__str.1 = global [5 x i8] c"hello"
+  @syliTest_str.s = global ptr addrspace(1) zeroinitializer
+  @__str.1 = global { i64, i64, [5 x i8] } { i64 -9223372036854775803, i64 0, [5 x i8] c"hello" }
   
   define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
@@ -240,17 +240,17 @@ String literal emits an i8* return:
   
   define void @__init.Test_str() gc "statepoint-example" {
   bb0:
-    %__sy_cir_init_tmp_0 = call { ptr, i64 } @__init_global.syliTest_str.s()
-    store { ptr, i64 } %__sy_cir_init_tmp_0, ptr @syliTest_str.s
+    %__sy_cir_init_tmp_0 = call ptr addrspace(1) @__init_global.syliTest_str.s()
+    store ptr addrspace(1) %__sy_cir_init_tmp_0, ptr @syliTest_str.s
     ret void
   }
   
-  define { ptr, i64 } @__init_global.syliTest_str.s() gc "statepoint-example" {
+  define ptr addrspace(1) @__init_global.syliTest_str.s() gc "statepoint-example" {
   bb0:
-    %Sy_llvm_tmp_0 = getelementptr i8, ptr @__str.1, i32 0
-    %Sy_llvm_tmp_1 = insertvalue { ptr, i64 } zeroinitializer, ptr %Sy_llvm_tmp_0, 0
-    %Sy_llvm_tmp_2 = insertvalue { ptr, i64 } %Sy_llvm_tmp_1, i64 5, 1
-    ret { ptr, i64 } %Sy_llvm_tmp_2
+    %Sy_llvm_tmp_0 = ptrtoint ptr @__str.1 to i64
+    %Sy_llvm_tmp_1 = add i64 %Sy_llvm_tmp_0, 2
+    %Sy_llvm_tmp_2 = inttoptr i64 %Sy_llvm_tmp_1 to ptr addrspace(1)
+    ret ptr addrspace(1) %Sy_llvm_tmp_2
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {

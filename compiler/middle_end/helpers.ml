@@ -15,7 +15,7 @@ let rec type_key_of_ty (t : ty) : string =
   | CR_F64 -> "f64"
   | CR_FnPtr -> "fn_ptr"
   | CR_Char -> "char"
-  | CR_String -> "str"
+  | CR_String -> "string"
   | CR_Void -> "void"
   | CR_GenericTyp { type_var } -> "gen" ^ string_of_int type_var
   | CR_Obj_Ptr -> "obj_ptr"

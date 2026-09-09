@@ -17,7 +17,7 @@ let string_of_constant_ty = function
   | CTy_Bool -> "bool"
   | CTy_F32 -> "f32"
   | CTy_F64 -> "f64"
-  | CTy_String -> "str"
+  | CTy_String -> "string"
   | CTy_Char -> "char"
 
 let rec string_of_ty ty =
