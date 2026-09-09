@@ -117,6 +117,7 @@ let string_of_ownership_op = function
   | OR_Ownership_own -> "own"
   | OR_Ownership_share -> "share"
   | OR_Ownership_constant -> "constant"
+  | OR_Ownership_always_borrow -> "always_borrow"
   | OR_Ownership_unknown -> "unknown"
 
 let own_str (op : ownership_op) (ir_type : ir_type) : string =

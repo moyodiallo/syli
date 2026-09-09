@@ -104,8 +104,8 @@ Closure as an argument with multiple captured variables:
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_5:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_5:obj_ptr, 1:i32, 1:i64):i64
-      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_5:obj_ptr, 2:i32):obj_ptr
-      release(%Sy_release_tmp_1:obj_ptr)
+      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_5:obj_ptr, 2:i32):obj_ptr
+      release(%Sy_oir_release_tmp_1:obj_ptr)
       obj_set(%Sy_cir_var_5:obj_ptr, 2:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
       
       %Sy_cir_var_6:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (@transfer %Sy_cir_var_5:obj_ptr, 1.0f:f64, 2.0f:f64)
@@ -118,8 +118,8 @@ Closure as an argument with multiple captured variables:
       
       %Sy_oir_accum_fn_2:fn_ptr = addr_fn(__partial_closure_accum.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_3:obj_ptr, 0:i32, %Sy_oir_accum_fn_2:fn_ptr):fn_ptr
-      %Sy_release_tmp_2:obj_ptr = @transfer obj_get(%Sy_cir_var_3:obj_ptr, 1:i32):obj_ptr
-      release(%Sy_release_tmp_2:obj_ptr)
+      %Sy_oir_release_tmp_2:obj_ptr = @transfer obj_get(%Sy_cir_var_3:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_oir_release_tmp_2:obj_ptr)
       obj_set(%Sy_cir_var_3:obj_ptr, 1:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
       
       %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_cir_var_3:obj_ptr, 3:i64, 4:i64)
@@ -173,41 +173,41 @@ Closure as an argument with multiple captured variables:
     entry: bb-1
   
     bb-1:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
       switch %Sy_oir_dp_id:i64 [1: bb1, 0: bb0]
   
     bb1:
-      %Sy_oir_case_result1:i64 = #call_direct __wrapper.syliTest_multi.add.i64_f64_f64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      %Sy_oir_case_result1:i64 = #call_direct __wrapper.syliTest_multi.add.i64_f64_f64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
       return %Sy_oir_case_result1:i64
   
     bb0:
-      %Sy_oir_case_result0:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      %Sy_oir_case_result0:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
       return %Sy_oir_case_result0:i64
   end
   
-  private fn __partial_closure_accum.clos0_arg2_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos0_arg2_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
-      release(%Sy_clos:obj_ptr)
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_x0:i64, %Sy_x1:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
-      return %Sy_rst:i64
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_x0:i64, %Sy_oir_x1:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_dp_id:i64)
+      return %Sy_oir_rst:i64
   end
   
-  private fn __partial_closure_accum.dispatch.clos0_arg2_ret_i64(%Sy_x0:i64, %Sy_x1:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.dispatch.clos0_arg2_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_dp_clos:i64 = obj_get(%Sy_clos:obj_ptr, 1:i64):i64
-      %Sy_accum_dp_id:i64 = %Sy_dp_id:i64 + %Sy_dp_clos:i64
-      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 2:i64):obj_ptr
-      release(%Sy_clos:obj_ptr)
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_x0:i64, %Sy_x1:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_accum_dp_id:i64)
-      return %Sy_rst:i64
+      %Sy_oir_dp_clos:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_accum_dp_id:i64 = %Sy_oir_dp_id:i64 + %Sy_oir_dp_clos:i64
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 2:i64):obj_ptr
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_x0:i64, %Sy_oir_x1:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_accum_dp_id:i64)
+      return %Sy_oir_rst:i64
   end
   
   private fn __wrapper.syliTest_multi.add.i64_f64_f64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64, %Sy_oir_x2:i64) -> i64:

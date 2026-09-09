@@ -205,8 +205,8 @@ Closure with multipble chains of captured variables:
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_1:obj_ptr, 1:i32):obj_ptr
-      release(%Sy_release_tmp_1:obj_ptr)
+      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_1:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_oir_release_tmp_1:obj_ptr)
       obj_set(%Sy_cir_var_1:obj_ptr, 1:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
       obj_set(%Sy_cir_var_1:obj_ptr, 2:i32, 2:i64):i64
       
@@ -237,22 +237,22 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
       return %Sy_oir_rst:i64
   end
   
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
-      return %Sy_rst:i64
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 2:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_dp_id:i64)
+      return %Sy_oir_rst:i64
   end
   
   private fn __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64, %Sy_oir_x2:i64) -> i64:
@@ -302,8 +302,8 @@ Closure with multipble chains of captured variables:
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_1:obj_ptr, 1:i32):obj_ptr
-      release(%Sy_release_tmp_1:obj_ptr)
+      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_1:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_oir_release_tmp_1:obj_ptr)
       obj_set(%Sy_cir_var_1:obj_ptr, 1:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
       obj_set(%Sy_cir_var_1:obj_ptr, 2:i32, 2:i64):i64
       
@@ -331,22 +331,22 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
       return %Sy_oir_rst:i64
   end
   
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
-      return %Sy_rst:i64
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 2:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_dp_id:i64)
+      return %Sy_oir_rst:i64
   end
   
   private fn __wrapper.syliTest_multi.add.i64_i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64, %Sy_oir_x2:i64) -> i64:
@@ -411,9 +411,9 @@ TODO: fix the bug
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.__sy_cir_lambda_22.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.__sy_cir_lambda_22.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   
@@ -466,8 +466,8 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_1:obj_ptr, 1:i32):obj_ptr
-      release(%Sy_release_tmp_1:obj_ptr)
+      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_1:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_oir_release_tmp_1:obj_ptr)
       obj_set(%Sy_cir_var_1:obj_ptr, 1:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
       obj_set(%Sy_cir_var_1:obj_ptr, 2:i32, 10:i64):i64
       
@@ -498,22 +498,22 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_chain.add.i64_i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_chain.add.i64_i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, %Sy_oir_x1:i64)
       return %Sy_oir_rst:i64
   end
   
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_p_clos:obj_ptr = @share obj_get(%Sy_clos:obj_ptr, 1:i64):obj_ptr
-      %Sy_p_accum:fn_ptr = obj_get(%Sy_p_clos:obj_ptr, 0:i64):fn_ptr
-      %Sy_val0:i64 = obj_get(%Sy_clos:obj_ptr, 2:i64):i64
-      release(%Sy_clos:obj_ptr)
-      %Sy_rst:i64 = #call_direct_fn_ptr(%Sy_p_accum:fn_ptr)  (%Sy_val0:i64, %Sy_x0:i64, @transfer %Sy_p_clos:obj_ptr, %Sy_dp_id:i64)
-      return %Sy_rst:i64
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 2:i64):i64
+      release(%Sy_oir_clos:obj_ptr)
+      %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_imm0:i64, %Sy_oir_x0:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_dp_id:i64)
+      return %Sy_oir_rst:i64
   end
   
   private fn __wrapper.syliTest_chain.add.i64_i64_i64_ret_i64(%Sy_oir_x0:i64, %Sy_oir_x1:i64, %Sy_oir_x2:i64) -> i64:

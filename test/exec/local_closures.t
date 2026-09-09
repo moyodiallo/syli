@@ -124,8 +124,8 @@ Local closure capturing another local closure:
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.sy3_g.75_ret_i64)
       obj_set(%sy3_g:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
-      %Sy_release_tmp_1:obj_ptr = @transfer obj_get(%sy3_g:obj_ptr, 1:i32):obj_ptr
-      release(%Sy_release_tmp_1:obj_ptr)
+      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%sy3_g:obj_ptr, 1:i32):obj_ptr
+      release(%Sy_oir_release_tmp_1:obj_ptr)
       obj_set(%sy3_g:obj_ptr, 1:i32, @own %sy2_f:obj_ptr):obj_ptr
       
       %Sy_accum_ptr_2:fn_ptr = obj_get(%sy3_g:obj_ptr, 0:i32):fn_ptr
@@ -168,16 +168,16 @@ Local closure capturing another local closure:
     entry: bb-1
   
     bb-1:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
       switch %Sy_oir_dp_id:i64 [0: bb0, 1: bb1]
   
     bb0:
-      %Sy_oir_case_result0:i64 = #call_direct __wrapper.sy2_f.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_case_result0:i64 = #call_direct __wrapper.sy2_f.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_case_result0:i64
   
     bb1:
-      %Sy_oir_case_result1:i64 = #call_direct __wrapper.sy2_f.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_case_result1:i64 = #call_direct __wrapper.sy2_f.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_case_result1:i64
   end
   
@@ -185,9 +185,9 @@ Local closure capturing another local closure:
     entry: bb0
   
     bb0:
-      %Sy_obj0:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_oir_obj0:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.sy3_g.obj_ptr_i64_ret_i64 (@transfer %Sy_obj0:obj_ptr, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.sy3_g.obj_ptr_i64_ret_i64 (@transfer %Sy_oir_obj0:obj_ptr, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   

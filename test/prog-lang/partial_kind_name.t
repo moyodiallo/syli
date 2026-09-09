@@ -12,8 +12,8 @@ Partial-apply nodes with the same shape but different stored kinds get distinct 
   > let _ = main ()
   > EOF
   $ dune exec sylic -- oir pk.sy | grep -E 'private fn __partial_closure_accum'
-  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
-  private fn __partial_closure_accum.dispatch.clos1_ko_arg1_ret_i64(%Sy_x0:i64, %Sy_clos:obj_ptr, %Sy_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.clos1_arg1_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
+  private fn __partial_closure_accum.dispatch.clos1_ko_arg1_ret_i64(%Sy_oir_x0:i64, %Sy_oir_clos:obj_ptr, %Sy_oir_dp_id:i64) -> i64:
   $ dune exec sylic -- build pk.sy
   $ ./pk.exe
   7

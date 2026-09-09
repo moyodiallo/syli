@@ -1,48 +1,16 @@
-  $ cat >test_binary.sy <<EOF
-  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
-  > let main () = syli_print_i64(42)
+String:
+  $ cat >test_esc_str.sy <<EOF
+  > foreign syli_print_str : string -> unit = "syli_print_str"
+  > let main () =
+  >   syli_print_str "helloworld"
+  > let _ = main ()
   > EOF
-  $ dune exec sylic -- core test_binary.sy > test_binary.core
-  $ dune exec sylic -- cir_raw test_binary.sy > test_binary.ir
-  $ dune exec sylic -- llvm test_binary.sy > test_binary.ll
-
-  $ cat test_binary.core
-  module Test_binary
-  extern syliTest_binary.syli_print_i64 : (i64) -> unit
-  
-  let syliTest_binary.main = fun () : unit ->
-      syliTest_binary.syli_print_i64(42 : i64) : unit
-  
-
-  $ cat test_binary.ir
-  module Test_binary :
-  ffi_external_functions:
-  extern fn syli_print_i64(i64) -> void
-  
-  
-  functions:
-  public fn __init.Test_binary() -> void:
-    entry: bb0
-  
-    bb0:
-  
-      return
-  end
-  
-  public fn syliTest_binary.main(%__unit.0:i64) -> void:
-    entry: bb0
-  
-    bb0:
-      %Sy_cir_var_0:void = #call_direct syliTest_binary.syli_print_i64 (42:i64)
-      return
-  end
-  
-  end
-
-  $ cat test_binary.ll
-  declare void @syli_print_i64(i64)
+  $ dune exec sylic -- llvm test_esc_str.sy
+  declare void @syli_print_str({ ptr, i64 })
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
+  
+  @__str.1 = global [10 x i8] c"helloworld"
   
   define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
@@ -52,18 +20,28 @@
   
   define void @syli_modules_init() gc "statepoint-example" {
   bb0:
-    call void @__init.Test_binary()
+    call void @__init.Test_esc_str()
     ret void
   }
   
-  define void @__init.Test_binary() gc "statepoint-example" {
+  define void @__init.Test_esc_str() gc "statepoint-example" {
   bb0:
+    call void @__init_global.syliTest_esc_str.sy1_any_pat()
     ret void
   }
   
-  define void @syliTest_binary.main() gc "statepoint-example" {
+  define void @__init_global.syliTest_esc_str.sy1_any_pat() gc "statepoint-example" {
   bb0:
-    call void @syli_print_i64(i64 42)
+    call void @syliTest_esc_str.main()
+    ret void
+  }
+  
+  define void @syliTest_esc_str.main() gc "statepoint-example" {
+  bb0:
+    %Sy_llvm_tmp_0 = getelementptr i8, ptr @__str.1, i32 0
+    %Sy_llvm_tmp_1 = insertvalue { ptr, i64 } zeroinitializer, ptr %Sy_llvm_tmp_0, 0
+    %Sy_llvm_tmp_2 = insertvalue { ptr, i64 } %Sy_llvm_tmp_1, i64 10, 1
+    call void @syli_print_str({ ptr, i64 } %Sy_llvm_tmp_2)
     ret void
   }
   

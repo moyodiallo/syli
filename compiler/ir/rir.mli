@@ -17,6 +17,7 @@ type runtime_op_name =
   | RR_RT_object_own
   | RR_RT_object_release
   | RR_RT_object_alloc
+  | RR_RT_object_make_always_borrow
 
 val runtime_op_name_to_string : runtime_op_name -> string
 

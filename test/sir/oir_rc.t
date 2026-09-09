@@ -154,9 +154,9 @@ Closure with captured variable:
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc3.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc3.add.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   
@@ -235,9 +235,9 @@ Closure returned from function — verifies the returned closure is NOT released
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_returned.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_returned.add.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   
@@ -325,9 +325,9 @@ Closure compose — two closures passed as borrowed parameters, released in call
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   
@@ -335,9 +335,9 @@ Closure compose — two closures passed as borrowed parameters, released in call
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_compose.add.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   
@@ -419,9 +419,9 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
     entry: bb0
   
     bb0:
-      %Sy_val0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_twice.add.i64_i64_ret_i64 (%Sy_val0:i64, %Sy_oir_x0:i64)
+      %Sy_oir_rst:i64 = #call_direct __wrapper.syliTest_rc_twice.add.i64_i64_ret_i64 (%Sy_oir_imm0:i64, %Sy_oir_x0:i64)
       return %Sy_oir_rst:i64
   end
   

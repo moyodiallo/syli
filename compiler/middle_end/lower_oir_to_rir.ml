@@ -472,6 +472,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
         | Oir.OR_Ownership_borrow -> RR_RT_object_borrow
         | Oir.OR_Ownership_own -> RR_RT_object_own
         | Oir.OR_Ownership_share -> RR_RT_object_share
+        | Oir.OR_Ownership_always_borrow -> RR_RT_object_make_always_borrow
         | Oir.OR_Ownership_transfer | Oir.OR_Ownership_constant
         | Oir.OR_Ownership_unknown ->
             assert false
@@ -516,7 +517,9 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             _;
           } as rv;
       }
-    when is_var_ref dst && not (ownership_get = OR_Ownership_transfer) ->
+    when is_var_ref dst
+         && (not (ownership_get = OR_Ownership_transfer))
+         && not (ownership_get = OR_Ownership_constant) ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, rv' = rvalue_of_oir ctx rv in
       let raw_tmp = fresh_var ctx "Sy_rir_raw_tmp" dst'.ty in
@@ -682,7 +685,11 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             | { ownership_arg = Oir.OR_Ownership_unknown } ->
                 failwith "unexpected call arg ownership: @unknown"
             | { ownership_arg = Oir.OR_Ownership_own } ->
-                failwith "unexpected call arg ownership: @own")
+                failwith "unexpected call arg ownership: @own"
+            | { ownership_arg = Oir.OR_Ownership_always_borrow } ->
+                failwith
+                  "unexpected call arg ownership: @always_borrow is only on \
+                   casts")
           (ctx, [], []) args
       in
       let call_stmt =
