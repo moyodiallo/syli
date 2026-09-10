@@ -224,7 +224,7 @@ String literal emits an i8* return:
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
   @syliTest_str.s = global ptr addrspace(1) zeroinitializer
-  @__str.1 = global { i64, i64, [5 x i8] } { i64 -9223372036854775803, i64 0, [5 x i8] c"hello" }
+  @__str.1 = global { i64, i64, [8 x i8] } { i64 -9223372036854775807, i64 0, [8 x i8] c"hello\00\00\02" }
   
   define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:

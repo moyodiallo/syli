@@ -103,27 +103,38 @@ let fresh_global_id =
 
 let static_string_zone : int64 = Int64.shift_left 2L 62
 
+(** String is counted in words of length, so a padding is added at the end of a
+    string *)
+let string_word_count (len : int) : int = (len + 8) / 8
+
+let string_padded_bytes (len : int) : int = string_word_count len * 8
+
 let static_string_header (len : int) : int64 =
-  Int64.logor static_string_zone (Int64.of_int len)
+  Int64.logor static_string_zone (Int64.of_int (string_word_count len))
 
 let string_object_ty (len : int) : lltype =
-  LV_Struct [ LV_I64; LV_I64; LV_Array (len, LV_I8) ]
+  LV_Struct [ LV_I64; LV_I64; LV_Array (string_padded_bytes len, LV_I8) ]
 
 (** Static string literal object: one contiguous block laid out exactly like a
     runtime object
 
-    - header_word (zone=static, mono, payload=len)
+    - header_word (zone=static, mono, payload=word count)
     - refcount word (INITIAL_REFCOUNT=0)
-    - then the bytes
+    - content bytes, a NUL terminator, zero padding, and a trailing marker byte
+      [7 - (len mod 8)] used to recover the length in [O(1)].
 
-    The string value is a pointer to this block (its object base). *)
+    A technique from [OCaml string representation] *)
 let string_object_init (s : string) : constant =
   let len = String.length s in
+  let total = string_padded_bytes len in
+  let buf = Bytes.make total '\000' in
+  Bytes.blit_string s 0 buf 0 len;
+  Bytes.set buf (total - 1) (Char.chr (total - 1 - len));
   LV_StructValue
     [
       (LV_I64, LV_Integer (static_string_header len));
       (LV_I64, LV_Integer 0L);
-      (LV_Array (len, LV_I8), LV_StringLit s);
+      (LV_Array (total, LV_I8), LV_StringLit (Bytes.to_string buf));
     ]
 
 let rec lower_operand (ctx : lower_ctx) (op : Rir.operand) :
