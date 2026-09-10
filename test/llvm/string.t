@@ -172,7 +172,6 @@ String passed to a function parameter and returned:
   
   define ptr addrspace(1) @syliTest_str_fn.id(ptr addrspace(1) %s) gc "statepoint-example" {
   bb0:
-    call void @syli_inlinable_ownership_release(ptr addrspace(1) %s)
     %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %s)
     ret ptr addrspace(1) %Sy_rir_tmp_0
   }
@@ -321,7 +320,6 @@ String returned from a closure capturing it:
   
   define ptr addrspace(1) @sy2_f(ptr addrspace(1) %sy1_s) gc "statepoint-example" {
   bb0:
-    call void @syli_inlinable_ownership_release(ptr addrspace(1) %sy1_s)
     %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %sy1_s)
     ret ptr addrspace(1) %Sy_rir_tmp_0
   }
