@@ -3,6 +3,7 @@ String:
   > foreign syli_print_string : string -> unit = "syli_print_string"
   > let main () =
   >   syli_print_string "helloworld"
+  >   syli_print_string "1234567"
   > let _ = main ()
   > EOF
   $ dune exec sylic -- llvm test_esc_str.sy
@@ -10,7 +11,8 @@ String:
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  @__str.1 = global { i64, i64, [10 x i8] } { i64 -9223372036854775798, i64 0, [10 x i8] c"helloworld" }
+  @__str.1 = global { i64, i64, [16 x i8] } { i64 -9223372036854775806, i64 0, [16 x i8] c"helloworld\00\00\00\00\00\05" }
+  @__str.2 = global { i64, i64, [8 x i8] } { i64 -9223372036854775807, i64 0, [8 x i8] c"1234567\00" }
   
   define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
@@ -42,6 +44,10 @@ String:
     %Sy_llvm_tmp_1 = add i64 %Sy_llvm_tmp_0, 2
     %Sy_llvm_tmp_2 = inttoptr i64 %Sy_llvm_tmp_1 to ptr addrspace(1)
     call void @syli_print_string(ptr addrspace(1) %Sy_llvm_tmp_2)
+    %Sy_llvm_tmp_3 = ptrtoint ptr @__str.2 to i64
+    %Sy_llvm_tmp_4 = add i64 %Sy_llvm_tmp_3, 2
+    %Sy_llvm_tmp_5 = inttoptr i64 %Sy_llvm_tmp_4 to ptr addrspace(1)
+    call void @syli_print_string(ptr addrspace(1) %Sy_llvm_tmp_5)
     ret void
   }
   
@@ -128,7 +134,7 @@ String passed to a function parameter and returned:
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  @__str.1 = global { i64, i64, [5 x i8] } { i64 -9223372036854775803, i64 0, [5 x i8] c"hello" }
+  @__str.1 = global { i64, i64, [8 x i8] } { i64 -9223372036854775807, i64 0, [8 x i8] c"hello\00\00\02" }
   
   define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:
@@ -257,7 +263,7 @@ String returned from a closure capturing it:
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
   
-  @__str.1 = global { i64, i64, [2 x i8] } { i64 -9223372036854775806, i64 0, [2 x i8] c"hi" }
+  @__str.1 = global { i64, i64, [8 x i8] } { i64 -9223372036854775807, i64 0, [8 x i8] c"hi\00\00\00\00\00\05" }
   
   define i32 @syli_startup_program() gc "statepoint-example" {
   bb0:

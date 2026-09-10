@@ -9,12 +9,32 @@ void syli_print_i64(int64_t value) { printf("%" PRId64, value); }
 
 void syli_print_f64(double value) { printf("%f", value); }
 
+/* The bytes length is recovered using the marker in the last byte.
+
+Example: c"helloworld\00\00\00\00\00\05"
+    the marker is 5, the length words is encoded inside the header, the
+    formula would be:
+
+    length_words(from header) * size_word - marker(last byte) - 1
+
+A technique from OCaml string representation. */
+static size_t syli_string_bytes_length(Object* obj)
+{
+    assert(obj != NULL);
+    assert(syli_object_is_mono_imm(obj));
+    size_t word_bytes = syli_object_mono_length(obj) * sizeof(uint64_t);
+    assert(word_bytes > 0);
+    const unsigned char* data = (const unsigned char*)syli_object_data(obj);
+    size_t marker             = data[word_bytes - 1];
+    assert(marker < sizeof(uint64_t));
+    return word_bytes - 1 - marker;
+}
+
 void syli_print_string(obj_ptr ptr)
 {
     Object* obj      = syli_object_of_obj_ptr(ptr);
-    size_t len       = syli_object_mono_length(obj);
     const char* data = (const char*)syli_object_data(obj);
-    fwrite(data, 1, len, stdout);
+    fwrite(data, 1, syli_string_bytes_length(obj), stdout);
 }
 
 void syli_print_char(int value) { fputc(value, stdout); }
