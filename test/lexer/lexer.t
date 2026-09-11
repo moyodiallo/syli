@@ -550,3 +550,23 @@ pattern match
   NEWLINE
   DEDENT
   EOF
+
+Successive newlines collapse to a single NEWLINE:
+  $ cat >test_newlines.sy <<'EOF'
+  > let x = 10
+  > 
+  > 
+  > let y = 20
+  > EOF
+  $ dune exec sylic lex test_newlines.sy
+  LET
+  IDENT(x)
+  =
+  INT(10)
+  NEWLINE
+  LET
+  IDENT(y)
+  =
+  INT(20)
+  NEWLINE
+  EOF
