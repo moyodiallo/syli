@@ -37,10 +37,10 @@ rule token = parse
                 acc + identation) 0 s)
       }
 
-  (* --- Newlines (always emit NEWLINE) --- *)
-  | '\n'
+  (* --- Newlines (collapse into a single NEWLINE) --- *)
+  | '\n'+ as s
     {
-      Lexing.new_line lexbuf;
+      String.iter (fun _ -> Lexing.new_line lexbuf) s;
       NEWLINE
     }
 
