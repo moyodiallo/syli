@@ -349,7 +349,7 @@ args:
 %inline uident:
   | UIDENT { mk_ident $startpos $endpos $1 }
 
-pattern_desc:
+%inline pattern_desc_simple:
   | UNDERSCORE                          { Pat_Any }
   | INT                                 { Pat_IntLit $1 }
   | STRING                              { Pat_StringLit $1 }
@@ -359,15 +359,18 @@ pattern_desc:
   | LPAREN RPAREN                       { Pat_Unit }
   | LPAREN pattern_tuple RPAREN         { Pat_Tuple { elements = $2} }
   | LBRACE record_pattern_list RBRACE   { Pat_Record { fields = $2} }
-  | name = uident pattern_desc
-    { Pat_Constructor
-        { name; value = Some (mk_pattern $startpos $endpos $2)} }
-  | name = uident
-    { Pat_Constructor { name; value = None} }
   | name = ident { Pat_Ident name }
 
 pattern:
-  | pattern_desc { mk_pattern $startpos $endpos $1 }
+  | name = uident pattern_desc_simple
+    {  mk_pattern $startpos $endpos (Pat_Constructor
+        { name; value = Some (mk_pattern $startpos $endpos $2)}) }
+  | name = uident uident
+    {  mk_pattern $startpos $endpos (Pat_Constructor
+        { name; value = Some (mk_pattern $startpos $endpos (Pat_Ident $2))}) }
+  | name = uident
+    { mk_pattern $startpos $endpos (Pat_Constructor { name; value = None}) }
+  | pattern_desc_simple { mk_pattern $startpos $endpos $1 }
 
 pattern_tuple:
   | pattern                     { [$1] }
@@ -401,6 +404,8 @@ record_pattern_list:
 pattern_case:
   | pattern ARROW body_sequence
     { mk_pattern_case $startpos $endpos $1 $3 None }
+  | pattern WHEN guard = expr ARROW body_sequence
+    { mk_pattern_case $startpos $endpos $1 $5 (Some guard) }
 
 match_pattern:
   |                                         { [] }

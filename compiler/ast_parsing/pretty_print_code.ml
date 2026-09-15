@@ -62,7 +62,7 @@ let rec string_of_pattern (p : pattern) : string =
       ^ " }"
   | Pat_Constructor { name; value = None } -> name.name
   | Pat_Constructor { name; value = Some p' } ->
-      name.name ^ "(" ^ string_of_pattern p' ^ ")"
+      name.name ^ " " ^ string_of_pattern p'
 
 let string_of_constant (c : constant_desc) : string =
   match c with
