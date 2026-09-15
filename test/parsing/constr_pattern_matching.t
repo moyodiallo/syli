@@ -41,7 +41,7 @@ pattern match Any
   Parsed test_pattern.sy
   let m = match x {
     | None -> 2
-    | Some(_) -> 3
+    | Some _ -> 3
   }
 
 variant constructors and pattern match
@@ -59,7 +59,7 @@ variant constructors and pattern match
   type shape = Circle of { radius: double } | Rect of { w: double; h: double }
   let w = Simple(Other(Some(3)))
   let r = match Circle({ radius = 1.0 }) {
-    | Circle({ radius = x }) -> x
+    | Circle { radius = x } -> x
   }
 
 variant constructors and pattern match and when condition
@@ -73,12 +73,50 @@ variant constructors and pattern match and when condition
   >   | Circle { radius = x } when s == 0 -> x
   > EOF
   $ dune exec sylic parse test_variant_match.sy
+  Parsed test_variant_match.sy
+  type opt = None | Some of int64
+  type shape = Circle of { radius: double } | Rect of { w: double; h: double }
+  let w = Simple(Other(Some(3)))
+  let s = 0
+  let r = match Circle({ radius = 1.0 }) {
+    | Circle { radius = x } when (==) s 0 -> x
+  }
+
+
+composed pattern match: syntax error
+  $ cat >test_pattern.sy <<'EOF'
+  > let m = match x with None -> 2 | Some Other 2 -> 3
+  > EOF
+  $ dune exec sylic parse test_pattern.sy
   
-  Parse error in test_variant_match.sy at line 7, column 26
+  Parse error in test_pattern.sy at line 1, column 44
   
-    7 |   | Circle { radius = x } when s == 0 -> x
-                                   ^^^^
+    1 | let m = match x with None -> 2 | Some Other 2 -> 3
+                                                     ^^^^^^
   
-  Unexpected token: 'WHEN'
+  Unexpected token: 'INT(2)'
   
   [1]
+
+composed pattern match
+  $ cat >test_pattern.sy <<'EOF'
+  > let m = match x with None -> 2 | Some (Other 2) -> 3
+  > EOF
+  $ dune exec sylic parse test_pattern.sy
+  Parsed test_pattern.sy
+  let m = match x {
+    | None -> 2
+    | Some (Other 2) -> 3
+  }
+
+
+composed pattern match
+  $ cat >test_pattern.sy <<'EOF'
+  > let m = match x with None -> 2 | Some (Other, 2) -> 3
+  > EOF
+  $ dune exec sylic parse test_pattern.sy
+  Parsed test_pattern.sy
+  let m = match x {
+    | None -> 2
+    | Some (Other, 2) -> 3
+  }

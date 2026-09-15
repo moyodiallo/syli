@@ -20,6 +20,12 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.5.0
+    
+      - name: Install OCamlforamt
+        run: opam install ocamlformat.0.29.0
+
+      - name: Install menhir
+        run: opam install menhir
 
       - name: Install LLVM + Ninja (Ubuntu)
         if: matrix.os == 'ubuntu-26.04' || matrix.os == 'ubuntu-26.04-arm'
@@ -41,12 +47,6 @@ jobs:
           echo "Linking $LLVM_FORMULA"
           brew link "$LLVM_FORMULA"
           echo "$(brew --prefix "$LLVM_FORMULA")/bin" >> "$GITHUB_PATH"
-
-      - name: Install OCamlforamt
-        run: opam install ocamlformat.0.29.0
-
-      - name: Install menhir
-        run: opam install menhir
 
       - name: Format
         run: opam exec -- dune fmt
