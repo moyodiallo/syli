@@ -180,7 +180,7 @@
   let add (a) = a + 5
   $ dune exec sylic parse parse0.sy
   Parsed parse0.sy
-  let add = lambda((a)) {
+  let add = lambda(a) {
     (+) a 5
   }
 

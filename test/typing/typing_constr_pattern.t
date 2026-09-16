@@ -114,3 +114,43 @@ applying a constructed variant value
   $ dune exec sylic typing test_ctor_apply.sy
   Fatal error: exception Syli_typing__Env.Type_error("variant constructor 'Some' is not a function")
   [2]
+
+Composed pattern-match cases
+  $ cat > test_composed.sy <<'EOF'
+  > type option = None | Some of i64
+  > type wrapper = Wrap of option | Nil
+  > let x = Some 3
+  > let z = None
+  > let w = Wrap x
+  > let m =
+  >   match w with
+  >   | Wrap (Some y) -> y
+  >   | Wrap None -> 0
+  >   | Nil -> 1
+  > EOF
+  $ dune exec sylic typing test_composed.sy
+  Typed test_composed.sy successfully: module Test_composed with 6 top-level typed items
+  Type Environment:
+  {
+    m : i64
+    w : wrapper
+    x : option
+    z : option
+  }
+
+Composed pattern-match cases
+  $ cat > test_composed.sy <<'EOF'
+  > type option = None | Some of i64
+  > type wrapper = Wrap of option | Nil
+  > let x = Some 3
+  > let z = None
+  > let w = Wrap x
+  > let m =
+  >   match w with
+  >   | Wrap (Some y) -> 2.0
+  >   | Wrap None -> 0
+  >   | Nil -> 1
+  > EOF
+  $ dune exec sylic typing test_composed.sy
+  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: i64 vs f64")
+  [2]
