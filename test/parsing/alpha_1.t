@@ -220,7 +220,7 @@
   let _ =
     print_int (add(10))
   $ dune exec sylic alpha parse0.src
-  let add#2 = lambda((a#1)) {
+  let add#2 = lambda(a#1) {
     (+) a#1 5
   }
   let _#3 = print_int (add#2 10)

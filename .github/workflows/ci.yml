@@ -28,7 +28,7 @@ jobs:
         run: opam install menhir
 
       - name: Install LLVM + Ninja (Ubuntu)
-        if: matrix.os == 'ubuntu-26.04' || matrix.os == 'ubuntu-26.04-arm'
+        if: startsWith(matrix.os, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y llvm-18 clang-18 ninja-build libunwind-dev
@@ -36,7 +36,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Install LLVM + Ninja (macOS)
-        if: matrix.os == 'macos-latest'
+        if: startsWith(matrix.os, 'macos-')
         run: |
           LLVM_FORMULA=$(
             brew list --formula |
@@ -55,26 +55,12 @@ jobs:
         run: |
           opam exec -- dune build
 
-      - name: Build runtime (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Build runtime
         run: |
           make -C runtime all
           make -C runtime test
 
-      - name: Build runtime (Ubuntu)
-        if: matrix.os == 'ubuntu-26.04'
-        run: |
-          make -C runtime all
-          make -C runtime test
-
-      - name: Run all tests on (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          source setup.sh
-          opam exec -- dune test
-
-      - name: Run all tests (Ubuntu)
-        if: matrix.os == 'ubuntu-26.04'
+      - name: Run all tests
         run: |
           source setup.sh
           opam exec -- dune test

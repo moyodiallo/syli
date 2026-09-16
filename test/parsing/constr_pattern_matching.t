@@ -41,7 +41,7 @@ pattern match Any
   Parsed test_pattern.sy
   let m = match x {
     | None -> 2
-    | Some _ -> 3
+    | Some (_) -> 3
   }
 
 variant constructors and pattern match
@@ -59,7 +59,7 @@ variant constructors and pattern match
   type shape = Circle of { radius: double } | Rect of { w: double; h: double }
   let w = Simple(Other(Some(3)))
   let r = match Circle({ radius = 1.0 }) {
-    | Circle { radius = x } -> x
+    | Circle ({ radius = x }) -> x
   }
 
 variant constructors and pattern match and when condition
@@ -79,7 +79,7 @@ variant constructors and pattern match and when condition
   let w = Simple(Other(Some(3)))
   let s = 0
   let r = match Circle({ radius = 1.0 }) {
-    | Circle { radius = x } when (==) s 0 -> x
+    | Circle ({ radius = x }) when (==) s 0 -> x
   }
 
 
@@ -106,7 +106,7 @@ composed pattern match
   Parsed test_pattern.sy
   let m = match x {
     | None -> 2
-    | Some (Other 2) -> 3
+    | Some (Other (2)) -> 3
   }
 
 
@@ -118,5 +118,5 @@ composed pattern match
   Parsed test_pattern.sy
   let m = match x {
     | None -> 2
-    | Some (Other, 2) -> 3
+    | Some ((Other, 2)) -> 3
   }

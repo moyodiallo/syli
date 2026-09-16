@@ -77,7 +77,7 @@ signature_items:
   | signature_item sep signature_items { $1 :: $3 }
 
 signature_item:
-  | signature_item_desc 
+  | signature_item_desc
     {
       { id = fresh_id ();
         signature_item_desc = $1;
@@ -93,7 +93,7 @@ signature_item_desc:
       let symbol_name, startpos, endpos = symbol in
       let ext_ident =
         mk_external_fn
-          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Foreign 
+          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Foreign
       in
       mk_signature_external_value $startpos $endpos name value_ty ext_ident
     }
@@ -112,8 +112,8 @@ signature_item_desc:
                (Pretty_print_code.string_of_ty value_ty));
 
       let ext_ident =
-        mk_external_fn 
-          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Primitive 
+        mk_external_fn
+          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Primitive
       in
       mk_signature_external_value $startpos $endpos name value_ty ext_ident
     }
@@ -136,7 +136,7 @@ structure_item_desc:
       let symbol_name, startpos, endpos = symbol in
       let ext_ident =
         mk_external_fn
-          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Foreign 
+          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Foreign
       in
       mk_structure_external_value $startpos $endpos name value_ty ext_ident
     }
@@ -155,8 +155,8 @@ structure_item_desc:
                (Pretty_print_code.string_of_ty value_ty));
 
       let ext_ident =
-        mk_external_fn 
-          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Primitive 
+        mk_external_fn
+          {name = symbol_name; loc = mk_loc startpos endpos } value_ty Primitive
       in
       mk_structure_external_value $startpos $endpos name value_ty ext_ident
     }
@@ -342,7 +342,7 @@ args:
 %inline fn_operator_or_fn_name:
   | LPAREN operator RPAREN { mk_ident ~is_operator:true $startpos $endpos $2 }
   | IDENT
-    { if check_operator $1 then 
+    { if check_operator $1 then
         failwith "defining operator should be in ( ) like (==)"
       else mk_ident $startpos $endpos $1 }
 
@@ -359,22 +359,36 @@ args:
   | LPAREN RPAREN                       { Pat_Unit }
   | LPAREN pattern_tuple RPAREN         { Pat_Tuple { elements = $2} }
   | LBRACE record_pattern_list RBRACE   { Pat_Record { fields = $2} }
-  | name = ident { Pat_Ident name }
+  | name = ident                        { Pat_Ident name }
 
-pattern:
-  | name = uident pattern_desc_simple
-    {  mk_pattern $startpos $endpos (Pat_Constructor
-        { name; value = Some (mk_pattern $startpos $endpos $2)}) }
-  | name = uident uident
-    {  mk_pattern $startpos $endpos (Pat_Constructor
-        { name; value = Some (mk_pattern $startpos $endpos (Pat_Ident $2))}) }
+%inline pattern_simple:
+  | pattern_desc_simple {mk_pattern $startpos $endpos $1}
+
+%inline pattern_single_constructor:
+  | name = uident
+      {mk_pattern $startpos $endpos (Pat_Constructor {name ; value = None})}
+
+%inline pattern_uident:
+  | name = uident pattern_simple
+    {  mk_pattern $startpos $endpos (Pat_Constructor { name; value = Some $2}) }
+  | name = uident LPAREN pattern RPAREN
+    {  mk_pattern $startpos $endpos (Pat_Constructor { name; value = Some $3}) }
+  | name = uident pattern_single_constructor
+    {  mk_pattern $startpos $endpos (Pat_Constructor { name; value = Some $2 }) }
+  | name = uident LPAREN pattern_single_constructor RPAREN
+    {  mk_pattern $startpos $endpos (Pat_Constructor { name; value = Some $3 }) }
   | name = uident
     { mk_pattern $startpos $endpos (Pat_Constructor { name; value = None}) }
-  | pattern_desc_simple { mk_pattern $startpos $endpos $1 }
+
+pattern:
+  | pattern_uident                 { $1 }
+  | LPAREN pattern_uident RPAREN   { $2 }
+  | pattern_simple                 { $1 }
+  | LPAREN pattern_simple RPAREN   { $2 }
 
 pattern_tuple:
-  | pattern                     { [$1] }
-  | pattern COMMA pattern_tuple { $1 :: $3 }
+  | pattern COMMA pattern            { [$1; $3] }
+  | pattern COMMA pattern_tuple      { $1 :: $3 }
 
 record_pattern_list:
   | field_pattern_desc                          { [$1] }

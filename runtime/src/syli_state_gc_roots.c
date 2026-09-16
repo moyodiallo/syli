@@ -89,7 +89,7 @@ static SyliStackMap_Record* advance_record(SyliStackMap_Record* record)
 
     p += 2; // Padding uint16
 
-    uint16_t num_liveouts = *((u_int16_t*)p);
+    uint16_t num_liveouts = *((uint16_t*)p);
 
     p += 2; // NumLiveOuts uint16
     p += 4 * num_liveouts; // LiveOuts[NumLiveOuts]

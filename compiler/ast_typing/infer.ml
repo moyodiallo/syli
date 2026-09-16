@@ -573,6 +573,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       let ctx, cases =
         List.fold_left_map
           (fun ctx (c : Parsing_ast.pattern_case) ->
+            let old_ctx = ctx in
             let ctx, pat = infer_pattern ctx c.pattern in
             let ctx = unify_into ctx target.ty pat.ty in
             let ctx, when_condition =
@@ -594,10 +595,12 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 when_condition;
                 body;
                 loc = loc_of_parsing c.loc;
-                ty = body.ty;
+                ty = apply_ty ctx body.ty;
               }
             in
-            (ctx, tc))
+            let env = old_ctx.env in
+            (* we restore the env everytime after typing the body of the pattern-case *)
+            ({ ctx with env }, tc))
           ctx cases
       in
       ( ctx,
