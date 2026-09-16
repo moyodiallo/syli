@@ -23,5 +23,10 @@ Assigning to an immutable record field is a type error:
   >   p.name := 10
   > EOF
   $ dune exec sylic typing test_fieldset_immutable.sy
-  Fatal error: exception Syli_typing__Env.Type_error("field 'name' is immutable")
-  [2]
+  Type error in test_fieldset_immutable.sy at line 4, column 2
+  
+    4 |   p.name := 10
+          ^^^^^^^^^^^^
+  
+  field 'name' is immutable
+  [1]

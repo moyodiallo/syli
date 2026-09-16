@@ -70,8 +70,13 @@
   > end
   > EOF
   $ dune exec sylic typing parse0.src
-  Fatal error: exception Syli_typing__Env.Type_error("no record has field_name 'something'")
-  [2]
+  Type error in parse0.src at line 11, column 4
+  
+    11 |     record2.something
+             ^^^^^^^^^^^^^^^^^
+  
+  no record has field_name 'something'
+  [1]
 
   $ cat >parse0.src <<EOF
   > type grown_person = { name: string; age: i64; grown: bool }
@@ -88,5 +93,10 @@
   > end
   > EOF
   $ dune exec sylic typing parse0.src
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: f64 vs i64")
-  [2]
+  Type error in parse0.src at line 10, column 36
+  
+    10 |     let record2 = { name = "test2"; age = 10.0 }
+                                             ^^^^^^^^^^
+  
+  type mismatch: f64 vs i64
+  [1]

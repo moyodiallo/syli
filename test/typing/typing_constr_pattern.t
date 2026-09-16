@@ -85,8 +85,13 @@ unknown variant constructor
   > let x = Foo 3
   > EOF
   $ dune exec sylic typing test_unknown_ctor.sy
-  Fatal error: exception Syli_typing__Env.Type_error("unknown variant constructor 'Foo'")
-  [2]
+  Type error in test_unknown_ctor.sy at line 1, column 8
+  
+    1 | let x = Foo 3
+                ^^^
+  
+  unknown variant constructor 'Foo'
+  [1]
 
 nullary constructor applied to an argument
   $ cat >test_nullary_ctor.sy <<'EOF'
@@ -94,8 +99,13 @@ nullary constructor applied to an argument
   > let x = None 3
   > EOF
   $ dune exec sylic typing test_nullary_ctor.sy
-  Fatal error: exception Syli_typing__Env.Type_error("variant constructor 'None' takes no argument")
-  [2]
+  Type error in test_nullary_ctor.sy at line 2, column 8
+  
+    2 | let x = None 3
+                ^^^^
+  
+  variant constructor 'None' takes no argument
+  [1]
 
 constructor argument type mismatch
   $ cat >test_ctor_mismatch.sy <<'EOF'
@@ -103,8 +113,13 @@ constructor argument type mismatch
   > let x = Some "hi"
   > EOF
   $ dune exec sylic typing test_ctor_mismatch.sy
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: string vs i64")
-  [2]
+  Type error in test_ctor_mismatch.sy at line 2, column 16
+  
+    2 | let x = Some "hi"
+                        ^
+  
+  type mismatch: string vs i64
+  [1]
 
 applying a constructed variant value
   $ cat >test_ctor_apply.sy <<'EOF'
@@ -112,8 +127,13 @@ applying a constructed variant value
   > let x = (Some 3) 4
   > EOF
   $ dune exec sylic typing test_ctor_apply.sy
-  Fatal error: exception Syli_typing__Env.Type_error("variant constructor 'Some' is not a function")
-  [2]
+  Type error in test_ctor_apply.sy at line 2, column 9
+  
+    2 | let x = (Some 3) 4
+                 ^^^^
+  
+  variant constructor 'Some' is not a function
+  [1]
 
 Composed pattern-match cases
   $ cat > test_composed.sy <<'EOF'
@@ -152,5 +172,10 @@ Composed pattern-match cases
   >   | Nil -> 1
   > EOF
   $ dune exec sylic typing test_composed.sy
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: i64 vs f64")
-  [2]
+  Type error in test_composed.sy at line 9, column 17
+  
+    9 |   | Wrap None -> 0
+                         ^
+  
+  type mismatch: i64 vs f64
+  [1]

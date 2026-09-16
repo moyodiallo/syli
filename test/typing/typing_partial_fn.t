@@ -39,8 +39,13 @@
   > let z = add 10 20.
   > EOF
   $ dune exec sylic typing parse0.src
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: i64 vs f64")
-  [2]
+  Type error in parse0.src at line 4, column 15
+  
+    4 | let z = add 10 20.
+                       ^^^
+  
+  type mismatch: i64 vs f64
+  [1]
 
 
   $ cat >parse0.src <<EOF

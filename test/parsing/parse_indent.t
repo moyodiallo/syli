@@ -32,14 +32,12 @@
   >     print_int (add ())
   > EOF
   $ dune exec sylic parse parse0.src
-  
   Parse error in parse0.src at line 3, column 0
   
     3 |           let n = record.value
-         ^^^^^^
+        ^^^^^^
   
   Unexpected token: 'INDENT'
-  
   [1]
 
 
@@ -57,14 +55,12 @@
   >     print_int (add ())
   > EOF
   $ dune exec sylic parse parse0.src
-  
   Parse error in parse0.src at line 7, column 0
   
     7 |       record.value = 10
-         ^^^^^^
+        ^^^^^^
   
   Unexpected token: 'INDENT'
-  
   [1]
 
 
@@ -85,14 +81,12 @@
   >     print_int (add ())
   > EOF
   $ dune exec sylic parse parse0.src
-  
   Parse error in parse0.src at line 3, column 4
   
     3 |     [|
-             ^^
+            ^^
   
   Unexpected token: '[|'
-  
   [1]
 
 

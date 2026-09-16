@@ -31,12 +31,10 @@
   >   syli_print_i64 2
   > EOF
   $ dune exec sylic -- core test_file.sy
-  
   Parse error in test_file.sy at line 5, column 7
   
     5 |   let () = apply_twice id 10
-                ^
+               ^
   
   Unexpected token: ')'
-  
   ***** UNREACHABLE *****
