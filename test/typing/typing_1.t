@@ -55,8 +55,13 @@ Arithmetic operations result in integers:
   > let d = 20 / 4
   > EOF
   $ dune exec sylic typing test_arith.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_arith.sy at line 1, column 8
+  
+    1 | let a = 5 + 3
+                ^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
   $ cat >test_arith.sy <<EOF
   > let a = 5.0 + 3.0
@@ -65,8 +70,13 @@ Arithmetic operations result in integers:
   > let d = 20. / 4.
   > EOF
   $ dune exec sylic typing test_arith.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_arith.sy at line 1, column 8
+  
+    1 | let a = 5.0 + 3.0
+                ^^^^^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
 Comparison operations result in booleans:
   $ cat >test_cmp.sy <<EOF
@@ -78,8 +88,13 @@ Comparison operations result in booleans:
   > let ge = 5 >= 5
   > EOF
   $ dune exec sylic typing test_cmp.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '=='")
-  [2]
+  Type error in test_cmp.sy at line 1, column 9
+  
+    1 | let eq = 5 == 5
+                 ^^^^^^
+  
+  Unbound identifier '=='
+  [1]
 
 Tuple types:
   $ cat >test_tuple.sy <<EOF
@@ -119,16 +134,26 @@ Lambda expressions:
   > let double = fun x -> x + x
   > EOF
   $ dune exec sylic typing test_lambda.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_lambda.sy at line 2, column 22
+  
+    2 | let double = fun x -> x + x
+                              ^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
 Curried lambda expressions:
   $ cat >test_curried.sy <<EOF
   > let add = fun x y -> x + y
   > EOF
   $ dune exec sylic typing test_curried.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_curried.sy at line 1, column 21
+  
+    1 | let add = fun x y -> x + y
+                             ^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
 
 Multiple bindings:
@@ -138,22 +163,25 @@ Multiple bindings:
   > let z = x + y
   > EOF
   $ dune exec sylic typing test_multi.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_multi.sy at line 3, column 8
+  
+    3 | let z = x + y
+                ^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
   $ cat >array_list.t <<EOF
   > let arr = [1, 2, 3, 4]
   > let lst = [true, false, true]
   > EOF
   $ dune exec sylic typing array_list.t
-  
   Parse error in array_list.t at line 1, column 10
   
     1 | let arr = [1, 2, 3, 4]
-                   ^
+                  ^
   
   Unexpected token: '['
-  
   [1]
 
 
@@ -182,8 +210,13 @@ Closures as an argument:
   > let result = apply_twice double_x 10
   > EOF
   $ dune exec sylic typing test_closure.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_closure.sy at line 2, column 17
+  
+    2 | let double_x x = x + x
+                         ^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
 main function test with FFI and record types:
   $ cat >test_e2e_print.sy <<EOF
@@ -197,8 +230,13 @@ main function test with FFI and record types:
   >     syli_print_i64(record1.age)
   > EOF
   $ dune exec sylic typing test_e2e_print.sy
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier 'syli_print_i64'")
-  [2]
+  Type error in test_e2e_print.sy at line 8, column 4
+  
+    8 |     syli_print_i64(record1.age)
+            ^^^^^^^^^^^^^^
+  
+  Unbound identifier 'syli_print_i64'
+  [1]
 
 Polymorpic Closures as an argument:
   $ cat >test_closure.sy <<EOF
@@ -227,8 +265,13 @@ need more work to do, extend closure_graph or adapt it.
   > let result = apply_both id
   > EOF
   $ dune exec sylic typing test_closure.sy
-  Fatal error: exception Syli_typing__Env.Type_error("type mismatch: i64 vs string")
-  [2]
+  Type error in test_closure.sy at line 2, column 34
+  
+    2 | let apply_both f = (f 10, f "hello")
+                                          ^
+  
+  type mismatch: i64 vs string
+  [1]
 
 
   $ cat >test_closure.sy <<EOF

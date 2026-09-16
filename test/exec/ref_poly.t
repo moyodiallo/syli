@@ -9,14 +9,12 @@ TODO: fix when parametric will be supported.
   >   syli_print_i64(g 21)
   > EOF
   $ dune exec sylic -- oir test_ref.sy
-  
   Parse error in test_ref.sy at line 5, column 10
   
     5 |   let g = *f
-                   ^
+                  ^
   
   Unexpected token: '*'
-  
   ***** UNREACHABLE *****
   $ dune exec sylic -- build test_ref.sy
   ***** UNREACHABLE *****

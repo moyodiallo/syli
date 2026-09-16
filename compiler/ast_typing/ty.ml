@@ -21,24 +21,28 @@ let ensure_numeric_ty (t : ty) : unit =
   | TTy_Constant c when not (is_numeric_const_ty c) ->
       raise
         (Type_error
-           (Printf.sprintf "expected numeric type, got %s" (string_of_ty t)))
+           ( None,
+             Printf.sprintf "expected numeric type, got %s" (string_of_ty t) ))
   | TTy_Var _ | TTy_Any | TTy_Constant _ -> ()
   | _ ->
       raise
         (Type_error
-           (Printf.sprintf "expected numeric type, got %s" (string_of_ty t)))
+           ( None,
+             Printf.sprintf "expected numeric type, got %s" (string_of_ty t) ))
 
 let ensure_integer_ty (t : ty) : unit =
   match t.ty_desc with
   | TTy_Constant c when not (is_integer_const_ty c) ->
       raise
         (Type_error
-           (Printf.sprintf "expected integer type, got %s" (string_of_ty t)))
+           ( None,
+             Printf.sprintf "expected integer type, got %s" (string_of_ty t) ))
   | TTy_Var _ | TTy_Any | TTy_Constant _ -> ()
   | _ ->
       raise
         (Type_error
-           (Printf.sprintf "expected integer type, got %s" (string_of_ty t)))
+           ( None,
+             Printf.sprintf "expected integer type, got %s" (string_of_ty t) ))
 
 let rec equal_ty (left : ty) (right : ty) : bool =
   match (left.ty_desc, right.ty_desc) with
@@ -66,7 +70,7 @@ let rec occurs (v : int) (t : ty) : bool =
   | TTy_Defined d -> List.exists (occurs v) d.args
   | TTy_Constant _ | TTy_Any -> false
 
-let rec unify (s : Subst.t) (a : ty) (b : ty) : Subst.t =
+let rec unify ?loc (s : Subst.t) (a : ty) (b : ty) : Subst.t =
   let a = Subst.apply s a in
   let b = Subst.apply s b in
   match (a.ty_desc, b.ty_desc) with
@@ -77,56 +81,61 @@ let rec unify (s : Subst.t) (a : ty) (b : ty) : Subst.t =
       if occurs v b then
         raise
           (Type_error
-             (Printf.sprintf
-                "occurs check failed: cannot bind '%d to %s while unifying %s \
-                 and %s"
-                v (string_of_ty b) (string_of_ty a) (string_of_ty b)))
+             ( loc,
+               Printf.sprintf
+                 "occurs check failed: cannot bind '%d to %s while unifying %s \
+                  and %s"
+                 v (string_of_ty b) (string_of_ty a) (string_of_ty b) ))
       else Subst.bind v b s
   | _, TTy_Var v ->
       if occurs v a then
         raise
           (Type_error
-             (Printf.sprintf
-                "occurs check failed: cannot bind '%d to %s while unifying %s \
-                 and %s"
-                v (string_of_ty a) (string_of_ty a) (string_of_ty b)))
+             ( loc,
+               Printf.sprintf
+                 "occurs check failed: cannot bind '%d to %s while unifying %s \
+                  and %s"
+                 v (string_of_ty a) (string_of_ty a) (string_of_ty b) ))
       else Subst.bind v a s
   | TTy_Constant ca, TTy_Constant cb when ca = cb -> s
   | TTy_Arrow (a1, r1), TTy_Arrow (a2, r2) ->
-      let s = unify s a1 a2 in
-      unify s r1 r2
+      let s = unify ?loc s a1 a2 in
+      unify ?loc s r1 r2
   | TTy_Tuple a1, TTy_Tuple a2 ->
       if List.length a1 <> List.length a2 then
         raise
           (Type_error
-             (Printf.sprintf
-                "tuple arity mismatch: left has %d elems, right has %d elems \
-                 (%s vs %s)"
-                (List.length a1) (List.length a2) (string_of_ty a)
-                (string_of_ty b)))
-      else List.fold_left2 (fun s x y -> unify s x y) s a1 a2
-  | TTy_Array x, TTy_Array y -> unify s x y
+             ( loc,
+               Printf.sprintf
+                 "tuple arity mismatch: left has %d elems, right has %d elems \
+                  (%s vs %s)"
+                 (List.length a1) (List.length a2) (string_of_ty a)
+                 (string_of_ty b) ))
+      else List.fold_left2 (fun s x y -> unify ?loc s x y) s a1 a2
+  | TTy_Array x, TTy_Array y -> unify ?loc s x y
   | TTy_Defined da, TTy_Defined db
     when da.name.name = db.name.name
          && List.length da.args = List.length db.args ->
-      List.fold_left2 (fun s x y -> unify s x y) s da.args db.args
+      List.fold_left2 (fun s x y -> unify ?loc s x y) s da.args db.args
   | TTy_Defined da, TTy_Defined db when da.name.name = db.name.name ->
       raise
         (Type_error
-           (Printf.sprintf
-              "type argument arity mismatch for %s: left has %d args, right \
-               has %d args"
-              da.name.name (List.length da.args) (List.length db.args)))
+           ( loc,
+             Printf.sprintf
+               "type argument arity mismatch for %s: left has %d args, right \
+                has %d args"
+               da.name.name (List.length da.args) (List.length db.args) ))
   | _ ->
       raise
         (Type_error
-           (Printf.sprintf "type mismatch: %s vs %s" (string_of_ty a)
-              (string_of_ty b)))
+           ( loc,
+             Printf.sprintf "type mismatch: %s vs %s" (string_of_ty a)
+               (string_of_ty b) ))
 
 let apply_ty (ctx : Env.infer_ctx) (t : ty) : ty = Subst.apply ctx.subst t
 
-let unify_into (ctx : Env.infer_ctx) (a : ty) (b : ty) : Env.infer_ctx =
-  let s = unify ctx.subst a b in
+let unify_into ?loc (ctx : Env.infer_ctx) (a : ty) (b : ty) : Env.infer_ctx =
+  let s = unify ?loc ctx.subst a b in
   { ctx with subst = Subst.compose s ctx.subst }
 
 let rec ty_vars (t : ty) : int list =

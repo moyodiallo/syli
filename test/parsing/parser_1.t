@@ -114,14 +114,12 @@
   print_int x
   end
   $ dune exec sylic parse parse0.sy
-  
   Parse error in parse0.sy at line 2, column 0
   
     2 | print_int x
-         ^^^^^^^^^^^^^^^^
+        ^^^^^^^^^^^
   
   Unexpected token: 'IDENT(print_int)'
-  
   [1]
 
   $ cat >parse0.sy <<EOF

@@ -98,6 +98,7 @@ let string_of_token = function
 let parse_file filename =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
+  Lexing.set_filename lexbuf filename;
   let current_error_token () =
     let lexeme = Lexing.lexeme lexbuf in
     if lexeme <> "" then lexeme
@@ -128,20 +129,22 @@ let parse_file filename =
   | Syli_parser.Error ->
       close_in ic;
       let pos = Lexing.lexeme_start_p lexbuf in
-      let line = pos.Lexing.pos_lnum in
-      let col = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
+      let start_pos = pos.Lexing.pos_cnum in
       let lexeme = current_error_token () in
-      Error_reporting.show_error_context filename line col lexeme;
+      let end_pos = start_pos + String.length lexeme in
+      Error_reporting.show_error ~kind:"Parse" ~filename ~start_pos ~end_pos
+        ~msg:("Unexpected token: '" ^ lexeme ^ "'");
       exit 1
   | exn
     when String.equal (Printexc.to_string exn)
            "Parsing.Syli_parser.MenhirBasics.Error" ->
       close_in ic;
       let pos = Lexing.lexeme_start_p lexbuf in
-      let line = pos.Lexing.pos_lnum in
-      let col = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
+      let start_pos = pos.Lexing.pos_cnum in
       let lexeme = current_error_token () in
-      Error_reporting.show_error_context filename line col lexeme;
+      let end_pos = start_pos + String.length lexeme in
+      Error_reporting.show_error ~kind:"Parse" ~filename ~start_pos ~end_pos
+        ~msg:("Unexpected token: '" ^ lexeme ^ "'");
       exit 1
   | exn ->
       close_in ic;

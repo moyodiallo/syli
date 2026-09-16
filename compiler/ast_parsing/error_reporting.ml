@@ -1,56 +1,55 @@
-(* Enhanced error reporting for parsing errors *)
-
-let escape_token lexeme =
-  let buf = Buffer.create (String.length lexeme) in
-  String.iter
-    (function
-      | '\n' -> Buffer.add_string buf "\\n"
-      | '\r' -> Buffer.add_string buf "\\r"
-      | '\t' -> Buffer.add_string buf "\\t"
-      | '\\' -> Buffer.add_string buf "\\\\"
-      | '\'' -> Buffer.add_string buf "\\'"
-      | c -> Buffer.add_char buf c)
-    lexeme;
-  Buffer.contents buf
-
-let get_line_content filename line_num =
+let raw_line_content filename =
   try
     let ic = open_in filename in
-    let rec read_to_line n =
-      if n = line_num then (
-        let line = input_line ic in
-        close_in ic;
-        Some line)
-      else if n < line_num then (
-        ignore (input_line ic);
-        read_to_line (n + 1))
-      else (
-        close_in ic;
-        None)
-    in
-    read_to_line 1
-  with End_of_file | Sys_error _ -> None
+    let content = really_input_string ic (in_channel_length ic) in
+    close_in ic;
+    Some content
+  with _ -> None
 
-let show_error_context filename line col lexeme =
-  Printf.eprintf "\n";
-  Printf.eprintf "Parse error in %s at line %d, column %d\n" filename line col;
-  Printf.eprintf "\n";
-  (* Show the line with the error *)
-  (match get_line_content filename line with
-  | Some line_content ->
+let line_col_of_offset content offset =
+  let rec loop line line_start i =
+    if i >= offset then (line, offset - line_start)
+    else if i >= String.length content then (line, offset - line_start)
+    else if content.[i] = '\n' then loop (line + 1) (i + 1) (i + 1)
+    else loop line line_start (i + 1)
+  in
+  loop 1 0 0
+
+let split_line content line_num =
+  let rec split_to n i =
+    if n = 1 then i
+    else if i >= String.length content then i
+    else if content.[i] = '\n' then split_to (n - 1) (i + 1)
+    else split_to n (i + 1)
+  in
+  let rec take_to_nl i =
+    if i >= String.length content then i
+    else if content.[i] = '\n' then i
+    else take_to_nl (i + 1)
+  in
+  let start = split_to line_num 0 in
+  let stop = take_to_nl start in
+  String.sub content start (stop - start)
+
+let show_error ~kind ~filename ~start_pos ~end_pos ~msg =
+  let skipped = start_pos = 0 && end_pos = 0 in
+  match (skipped, raw_line_content filename) with
+  | true, _ -> Printf.eprintf "%s error: %s\n" kind msg
+  | false, None -> Printf.eprintf "%s error: %s\n" kind msg
+  | false, Some content ->
+      let line, col = line_col_of_offset content start_pos in
+      let line_content = split_line content line in
+      Printf.eprintf "%s error in %s at line %d, column %d\n" kind filename line
+        col;
+      Printf.eprintf "\n";
       Printf.eprintf "  %d | %s\n" line line_content;
-      (* Show a caret pointing to the error location *)
       let spaces =
-        String.make (col + String.length (string_of_int line) + 4) ' '
+        String.make (col + String.length (string_of_int line) + 3) ' '
       in
-      let carets = String.make (max 1 (String.length lexeme)) '^' in
-      Printf.eprintf "  %s%s\n" spaces carets
-  | None -> Printf.eprintf "  (unable to read source line)\n");
-  Printf.eprintf "\n";
-  Printf.eprintf "Unexpected token: '%s'\n" (escape_token lexeme);
-  Printf.eprintf "\n"
-
-let show_error_location (expr : Ast.expr) (msg : string) =
-  let pos = expr.loc in
-  Printf.eprintf "%s\n" msg;
-  Printf.eprintf "Error at line %d, column %d\n" pos.start_pos pos.end_pos
+      let span = end_pos - start_pos in
+      let max_carets = String.length line_content - col in
+      let caret_len = max 1 (min span max_carets) in
+      let carets = String.make caret_len '^' in
+      Printf.eprintf "  %s%s\n" spaces carets;
+      Printf.eprintf "\n";
+      Printf.eprintf "%s\n" msg

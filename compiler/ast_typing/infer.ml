@@ -33,9 +33,13 @@ let unify_record_expr_fields_with_decl (ctx : infer_ctx)
         | None ->
             raise
               (Type_error
-                 (Printf.sprintf "unknown record field '%s'" f.field_name.name))
+                 ( Some f.loc,
+                   Printf.sprintf "unknown record field '%s'" f.field_name.name
+                 ))
         | Some decl_field ->
-            let ctx = unify_into ctx f.field_value.ty decl_field.field_ty in
+            let ctx =
+              unify_into ~loc:f.loc ctx f.field_value.ty decl_field.field_ty
+            in
             (ctx, { f with field_idx = decl_field.field_idx } :: fields))
       (ctx, []) fields
   in
@@ -55,11 +59,13 @@ let unify_record_pattern_fields_with_decl (ctx : infer_ctx)
       match find_decl_field f.name.name with
       | None ->
           raise
-            (Type_error (Printf.sprintf "unknown record field '%s'" f.name.name))
+            (Type_error
+               ( Some f.loc,
+                 Printf.sprintf "unknown record field '%s'" f.name.name ))
       | Some decl_field -> (
           match f.pattern with
           | None -> ctx
-          | Some p -> unify_into ctx p.ty decl_field.field_ty))
+          | Some p -> unify_into ~loc:p.loc ctx p.ty decl_field.field_ty))
     ctx fields
 
 let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
@@ -142,7 +148,9 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
         | None ->
             raise
               (Type_error
-                 (Printf.sprintf "unknown variant constructor '%s'" name.name))
+                 ( Some (loc_of_parsing name.loc),
+                   Printf.sprintf "unknown variant constructor '%s'" name.name
+                 ))
         | Some { constructor = ctor; ty_decl } ->
             let ctx =
               match (ctor.arg, arg_opt) with
@@ -150,15 +158,19 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
               | None, Some _ ->
                   raise
                     (Type_error
-                       (Printf.sprintf
-                          "variant constructor '%s' takes no argument" name.name))
+                       ( Some (loc_of_parsing name.loc),
+                         Printf.sprintf
+                           "variant constructor '%s' takes no argument"
+                           name.name ))
               | Some _, None ->
                   raise
                     (Type_error
-                       (Printf.sprintf
-                          "variant constructor '%s' expects an argument"
-                          name.name))
-              | Some (Constr_ty t), Some pat -> unify_into ctx pat.ty t
+                       ( Some (loc_of_parsing name.loc),
+                         Printf.sprintf
+                           "variant constructor '%s' expects an argument"
+                           name.name ))
+              | Some (Constr_ty t), Some pat ->
+                  unify_into ~loc:pat.loc ctx pat.ty t
               | ( Some (Constr_record fields),
                   Some { pattern_desc = TPat_Record { fields = pat_fields }; _ }
                 ) ->
@@ -166,9 +178,10 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
               | Some (Constr_record _), Some _ ->
                   raise
                     (Type_error
-                       (Printf.sprintf
-                          "variant constructor '%s' expects a record pattern"
-                          name.name))
+                       ( Some (loc_of_parsing name.loc),
+                         Printf.sprintf
+                           "variant constructor '%s' expects a record pattern"
+                           name.name ))
             in
             (ctx, mk_ty (TTy_Defined { name = ty_decl.name; args = [] }))
       in
@@ -205,7 +218,9 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
           | Some s -> instantiate_scheme ctx s
           | None ->
               raise
-                (Type_error (Printf.sprintf "Unbound identifier '%s'" i.name))
+                (Type_error
+                   ( Some (loc_of_parsing i.loc),
+                     Printf.sprintf "Unbound identifier '%s'" i.name ))
       in
       (ctx, { id = e.id; expr_desc = TExp_Ident (ident_of_parsing i); loc; ty })
   | Parsing_ast.Exp_Tuple { elements } ->
@@ -241,13 +256,14 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       | None ->
           raise
             (Type_error
-               (Printf.sprintf
-                  "cannot infer record type for fields {%s}: no matching \
-                   record type"
-                  (String.concat ", "
-                     (List.map
-                        (fun (f : record_field) -> f.field_name.name)
-                        fields)))))
+               ( Some (loc_of_parsing e.loc),
+                 Printf.sprintf
+                   "cannot infer record type for fields {%s}: no matching \
+                    record type"
+                   (String.concat ", "
+                      (List.map
+                         (fun (f : record_field) -> f.field_name.name)
+                         fields)) )))
   | Parsing_ast.Exp_VariantConstructor { name; arg } ->
       let name = ident_of_parsing name in
       let ctx, arg_expr, ty =
@@ -255,7 +271,9 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         | None ->
             raise
               (Type_error
-                 (Printf.sprintf "unknown variant constructor '%s'" name.name))
+                 ( Some name.loc,
+                   Printf.sprintf "unknown variant constructor '%s'" name.name
+                 ))
         | Some { constructor = ctor; ty_decl } -> (
             let variant_ty =
               mk_ty (TTy_Defined { name = ty_decl.name; args = [] })
@@ -269,11 +287,13 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             | None, Some _ ->
                 raise
                   (Type_error
-                     (Printf.sprintf
-                        "variant constructor '%s' takes no argument" name.name))
+                     ( Some name.loc,
+                       Printf.sprintf
+                         "variant constructor '%s' takes no argument" name.name
+                     ))
             | Some (Constr_ty t), Some a ->
                 let ctx, a = infer_expr ctx a in
-                let ctx = unify_into ctx a.ty t in
+                let ctx = unify_into ~loc:a.loc ctx a.ty t in
                 (ctx, Some a, variant_ty)
             | Some (Constr_record fields), Some a -> (
                 match a.expr_desc with
@@ -307,9 +327,11 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 | _ ->
                     raise
                       (Type_error
-                         (Printf.sprintf
-                            "variant constructor '%s' expects a record argument"
-                            name.name))))
+                         ( Some name.loc,
+                           Printf.sprintf
+                             "variant constructor '%s' expects a record \
+                              argument"
+                             name.name ))))
       in
       ( ctx,
         {
@@ -330,7 +352,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
               | None -> fresh_ty ctx
             in
             let ctx, pp = infer_pattern ctx p.pattern in
-            let ctx = unify_into ctx pp.ty pty in
+            let ctx = unify_into ~loc:pp.loc ctx pp.ty pty in
             let pty = apply_ty ctx pty in
             let tp = { pattern = pp; param_ty = Some pty; loc = param_loc } in
             (ctx, (tp, pty)))
@@ -343,7 +365,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         | None -> (ctx, apply_ty ctx body.ty)
         | Some t ->
             let ctx, expected = ty_of_parsing ctx t in
-            let ctx = unify_into ctx body.ty expected in
+            let ctx = unify_into ~loc:body.loc ctx body.ty expected in
             (ctx, apply_ty ctx expected)
       in
       let resolved_ret_ty = Some (apply_ty ctx ret_ty) in
@@ -383,36 +405,41 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             in
             let ctx, ret_ty = fresh_ty ctx in
             let fn_ty = arrow_ty_of_params params ret_ty in
-            let ctx = unify_into ctx fn.ty fn_ty in
+            let ctx = unify_into ~loc:fn.loc ctx fn.ty fn_ty in
             (ctx, apply_ty ctx fn_ty)
         | _ -> (
             match fn.expr_desc with
             | TExp_VariantConstructor { name; _ } ->
                 raise
                   (Type_error
-                     (Printf.sprintf
-                        "variant constructor '%s' is not a function" name.name))
+                     ( Some name.loc,
+                       Printf.sprintf
+                         "variant constructor '%s' is not a function" name.name
+                     ))
             | _ ->
                 raise
                   (Type_error
-                     (Printf.sprintf "expected function type, got %s"
-                        (Pretty_print_code.string_of_ty (apply_ty ctx fn.ty)))))
+                     ( Some fn.loc,
+                       Printf.sprintf "expected function type, got %s"
+                         (Pretty_print_code.string_of_ty (apply_ty ctx fn.ty))
+                     )))
       in
       let fn = { fn with ty = fn_ty } in
       let rec infer_arguments (ctx : infer_ctx) (remaining_ty : ty)
           (args : expr list) (consumed : int) : infer_ctx * ty =
         match (remaining_ty.ty_desc, args) with
         | TTy_Arrow (param, ret), arg :: rest_args ->
-            let ctx = unify_into ctx param arg.ty in
+            let ctx = unify_into ~loc:arg.loc ctx param arg.ty in
             infer_arguments ctx ret rest_args (consumed + 1)
         | _, [] -> (ctx, apply_ty ctx remaining_ty)
         | _, _ ->
             (* remaining_ty is not an arrow here, so all arrows are consumed *)
             raise
               (Type_error
-                 (Printf.sprintf "function expects %d argument(s), got %d"
-                    consumed
-                    (consumed + List.length args)))
+                 ( Some (loc_of_parsing e.loc),
+                   Printf.sprintf "function expects %d argument(s), got %d"
+                     consumed
+                     (consumed + List.length args) ))
       in
       let ctx, ty = infer_arguments ctx fn_ty args 0 in
       ( ctx,
@@ -435,17 +462,19 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         } )
   | Parsing_ast.Exp_If { condition; then_branch; else_branch } ->
       let ctx, cond = infer_expr ctx condition in
-      let ctx = unify_into ctx cond.ty (mk_ty (TTy_Constant TTy_Bool)) in
+      let ctx =
+        unify_into ~loc:cond.loc ctx cond.ty (mk_ty (TTy_Constant TTy_Bool))
+      in
       let ctx, then_branch = infer_expr ctx then_branch in
       let ctx, else_branch, out_ty =
         match else_branch with
         | None ->
             let ty = mk_ty (TTy_Constant TTy_Unit) in
-            let ctx = unify_into ctx then_branch.ty ty in
+            let ctx = unify_into ~loc:then_branch.loc ctx then_branch.ty ty in
             (ctx, None, ty)
         | Some e ->
             let ctx, e = infer_expr ctx e in
-            let ctx = unify_into ctx then_branch.ty e.ty in
+            let ctx = unify_into ~loc:e.loc ctx then_branch.ty e.ty in
             (ctx, Some e, apply_ty ctx then_branch.ty)
       in
       ( ctx,
@@ -457,7 +486,9 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         } )
   | Parsing_ast.Exp_While { condition; body } ->
       let ctx, cond = infer_expr ctx condition in
-      let ctx = unify_into ctx cond.ty (mk_ty (TTy_Constant TTy_Bool)) in
+      let ctx =
+        unify_into ~loc:cond.loc ctx cond.ty (mk_ty (TTy_Constant TTy_Bool))
+      in
       let ctx, body = infer_expr ctx body in
       let ty = mk_ty (TTy_Constant TTy_Unit) in
       ( ctx,
@@ -475,7 +506,9 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       let ctx, element_ty = ty_of_parsing ctx element_ty in
       let ctx, elements = List.fold_left_map infer_expr ctx elements in
       let ctx, size = infer_expr ctx size in
-      let ctx = unify_into ctx size.ty (mk_ty (TTy_Constant TTy_Int64)) in
+      let ctx =
+        unify_into ~loc:size.loc ctx size.ty (mk_ty (TTy_Constant TTy_Int64))
+      in
       let ty = mk_ty (TTy_Array element_ty) in
       ( ctx,
         {
@@ -491,7 +524,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         match find_record_by_field_names ctx [ field_name.name ] with
         | Some ty_record_info -> (
             let ctx =
-              unify_into ctx record.ty
+              unify_into ~loc:record.loc ctx record.ty
                 (mk_ty
                    (TTy_Defined
                       { name = ty_record_info.ty_decl.name; args = [] }))
@@ -507,10 +540,13 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
                 | TImmutable ->
                     raise
                       (Type_error
-                         (Printf.sprintf "field '%s' is immutable"
-                            field_name.name))
+                         ( Some (loc_of_parsing field_name.loc),
+                           Printf.sprintf "field '%s' is immutable"
+                             field_name.name ))
                 | TMutable ->
-                    let ctx = unify_into ctx value.ty field.field_ty in
+                    let ctx =
+                      unify_into ~loc:value.loc ctx value.ty field.field_ty
+                    in
                     ( ctx,
                       {
                         id = e.id;
@@ -528,12 +564,15 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             | None ->
                 raise
                   (Type_error
-                     (Printf.sprintf "field '%s' is not found" field_name.name))
-            )
+                     ( Some (loc_of_parsing field_name.loc),
+                       Printf.sprintf "field '%s' is not found" field_name.name
+                     )))
         | None ->
             raise
               (Type_error
-                 (Printf.sprintf "no record has field_name '%s'" field_name.name))
+                 ( Some (loc_of_parsing field_name.loc),
+                   Printf.sprintf "no record has field_name '%s'"
+                     field_name.name ))
       in
       (ctx, expr')
   | Parsing_ast.Exp_Break { value } ->
@@ -575,19 +614,20 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
           (fun ctx (c : Parsing_ast.pattern_case) ->
             let old_ctx = ctx in
             let ctx, pat = infer_pattern ctx c.pattern in
-            let ctx = unify_into ctx target.ty pat.ty in
+            let ctx = unify_into ~loc:pat.loc ctx target.ty pat.ty in
             let ctx, when_condition =
               match c.when_condition with
               | None -> (ctx, None)
               | Some w ->
                   let ctx, tw = infer_expr ctx w in
                   let ctx =
-                    unify_into ctx tw.ty (mk_ty (TTy_Constant TTy_Bool))
+                    unify_into ~loc:tw.loc ctx tw.ty
+                      (mk_ty (TTy_Constant TTy_Bool))
                   in
                   (ctx, Some tw)
             in
             let ctx, body = infer_expr ctx c.body in
-            let ctx = unify_into ctx body.ty out_ty in
+            let ctx = unify_into ~loc:body.loc ctx body.ty out_ty in
             let tc =
               {
                 id = c.id;
@@ -616,7 +656,7 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
         match find_record_by_field_names ctx [ field_name.name ] with
         | Some ty_record_info -> (
             let ctx =
-              unify_into ctx record.ty
+              unify_into ~loc:record.loc ctx record.ty
                 (mk_ty
                    (TTy_Defined
                       { name = ty_record_info.ty_decl.name; args = [] }))
@@ -631,12 +671,15 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
             | None ->
                 raise
                   (Type_error
-                     (Printf.sprintf "field '%s' is not found" field_name.name))
-            )
+                     ( Some (loc_of_parsing field_name.loc),
+                       Printf.sprintf "field '%s' is not found" field_name.name
+                     )))
         | None ->
             raise
               (Type_error
-                 (Printf.sprintf "no record has field_name '%s'" field_name.name))
+                 ( Some (loc_of_parsing field_name.loc),
+                   Printf.sprintf "no record has field_name '%s'"
+                     field_name.name ))
       in
       ( ctx,
         {
@@ -669,18 +712,18 @@ and infer_letdef (ctx : infer_ctx) (ldef : Parsing_ast.letdef) :
           unless we want to extend it for polymorphic recursion. *)
         in
         let ctx, value = infer_expr ctx ldef.value in
-        let ctx = unify_into ctx fn_ty value.ty in
+        let ctx = unify_into ~loc:value.loc ctx fn_ty value.ty in
         (ctx, value)
     | _ -> infer_expr ctx ldef.value
   in
   let ctx, pattern = infer_pattern ctx ldef.pattern in
-  let ctx = unify_into ctx pattern.ty value.ty in
+  let ctx = unify_into ~loc:pattern.loc ctx pattern.ty value.ty in
   let ctx, ty_opt =
     match ldef.ty_annot with
     | None -> (ctx, None)
     | Some t ->
         let ctx, expected = ty_of_parsing ctx t in
-        let ctx = unify_into ctx expected value.ty in
+        let ctx = unify_into ~loc:value.loc ctx expected value.ty in
         (ctx, Some (apply_ty ctx expected))
   in
   let let_kind =

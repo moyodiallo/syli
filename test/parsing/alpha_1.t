@@ -37,14 +37,12 @@
   $ cat parse0.src
   x = 10
   $ dune exec sylic alpha parse0.src
-  
   Parse error in parse0.src at line 1, column 0
   
     1 | x = 10
-         ^^^^^^^^
+        ^^^^^^
   
   Unexpected token: 'IDENT(x)'
-  
   [1]
 
   $ cat >parse0.src <<EOF
@@ -55,14 +53,12 @@
   4 + 5
   3 / 0
   $ dune exec sylic alpha parse0.src
-  
   Parse error in parse0.src at line 1, column 0
   
     1 | 4 + 5
-         ^^^^^^
+        ^^^^^
   
   Unexpected token: 'INT(4)'
-  
   [1]
 
   $ cat >parse0.src <<EOF
@@ -104,14 +100,12 @@
   end
   print_int(x)
   $ dune exec sylic alpha parse0.src
-  
   Parse error in parse0.src at line 5, column 0
   
     5 | print_int(x)
-         ^^^^^^^^^^^^^^^^
+        ^^^^^^^^^^^^
   
   Unexpected token: 'IDENT(print_int)'
-  
   [1]
 
   $ cat >parse0.src <<EOF
@@ -128,14 +122,12 @@
   end
   print_int(x)
   $ dune exec sylic alpha parse0.src
-  
   Parse error in parse0.src at line 5, column 0
   
     5 | print_int(x)
-         ^^^^^^^^^^^^^^^^
+        ^^^^^^^^^^^^
   
   Unexpected token: 'IDENT(print_int)'
-  
   [1]
 
   $ cat >parse0.src <<EOF
@@ -152,14 +144,12 @@
   end
   print_int(x)
   $ dune exec sylic alpha parse0.src
-  
   Parse error in parse0.src at line 2, column 0
   
     2 | while x < 10
-         ^^^^^
+        ^^^^^
   
   Unexpected token: 'WHILE'
-  
   [1]
 
   $ cat >parse0.src <<EOF

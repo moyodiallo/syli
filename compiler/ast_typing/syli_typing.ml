@@ -1,4 +1,5 @@
 module Typed_ast = Typed_ast
+module Env = Env
 module Infer = Infer
 
 module Pp = struct

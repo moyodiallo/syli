@@ -88,14 +88,12 @@ composed pattern match: syntax error
   > let m = match x with None -> 2 | Some Other 2 -> 3
   > EOF
   $ dune exec sylic parse test_pattern.sy
-  
   Parse error in test_pattern.sy at line 1, column 44
   
     1 | let m = match x with None -> 2 | Some Other 2 -> 3
-                                                     ^^^^^^
+                                                    ^^^^^^
   
   Unexpected token: 'INT(2)'
-  
   [1]
 
 composed pattern match

@@ -302,7 +302,7 @@ Tuple creates an object with two fields:
   > let pair = (1, 2)
   > EOF
   $ dune exec sylic -- cir test_tuple.sy
-  Fatal error: exception Middle_end__Lower_ast_to_core.Desugar_error(":11-17: tuple expressions are not lowered to Core yet")
+  Fatal error: exception Middle_end__Lower_ast_to_core.Desugar_error("test_tuple.sy:11-17: tuple expressions are not lowered to Core yet")
   [2]
 
 Triple tuple creates an object with three fields:
@@ -310,7 +310,7 @@ Triple tuple creates an object with three fields:
   > let triple = (true, 42, "x")
   > EOF
   $ dune exec sylic -- cir test_triple.sy
-  Fatal error: exception Middle_end__Lower_ast_to_core.Desugar_error(":13-28: tuple expressions are not lowered to Core yet")
+  Fatal error: exception Middle_end__Lower_ast_to_core.Desugar_error("test_triple.sy:13-28: tuple expressions are not lowered to Core yet")
   [2]
 
 Type error propagates from typing phase:
@@ -318,22 +318,25 @@ Type error propagates from typing phase:
   > let x = 1 + true
   > EOF
   $ dune exec sylic -- cir test_tyerr.sy 2>&1
-  Fatal error: exception Syli_typing__Env.Type_error("Unbound identifier '+'")
-  [2]
+  Type error in test_tyerr.sy at line 1, column 8
+  
+    1 | let x = 1 + true
+                ^^^^^^^^
+  
+  Unbound identifier '+'
+  [1]
 
 Collection literals are no longer supported (moved to traits):
   $ cat >test_arr.sy <<EOF
   > let arr = [1, 2, 3]
   > EOF
   $ dune exec sylic -- cir test_arr.sy 2>&1
-  
   Parse error in test_arr.sy at line 1, column 10
   
     1 | let arr = [1, 2, 3]
-                   ^
+                  ^
   
   Unexpected token: '['
-  
   [1]
 
 Missing file produces an error:
@@ -341,14 +344,12 @@ Missing file produces an error:
   > let arr = [1, 2, 3]
   > EOF
   $ dune exec sylic -- cir test_arr.sy 2>&1
-  
   Parse error in test_arr.sy at line 1, column 10
   
     1 | let arr = [1, 2, 3]
-                   ^
+                  ^
   
   Unexpected token: '['
-  
   [1]
 
 Closures as an argument:

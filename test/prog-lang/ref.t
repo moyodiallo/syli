@@ -9,14 +9,12 @@ TODO: fix the test
   >   syli_print_i64(g 21)
   > EOF
   $ dune exec sylic -- cir test_ref.sy
-  
   Parse error in test_ref.sy at line 5, column 10
   
     5 |   let g = *f
-                   ^
+                  ^
   
   Unexpected token: '*'
-  
   ***** UNREACHABLE *****
 
   $ dune exec sylic -- oir test_ref.sy

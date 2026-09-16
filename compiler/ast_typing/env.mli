@@ -5,7 +5,8 @@
 open Syli_common
 open Typed_ast
 
-exception Type_error of string
+exception Type_error of location option * string
+(** A typing error, optionally located at some source span in the input. *)
 
 type scheme = { vars : int list; body : Typed_ast.ty }
 (** A type scheme (polymorphic type with quantified variables). *)

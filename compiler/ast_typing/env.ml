@@ -1,7 +1,7 @@
 open Typed_ast
 open Syli_common
 
-exception Type_error of string
+exception Type_error of location option * string
 
 type scheme = { vars : int list; body : ty }
 
