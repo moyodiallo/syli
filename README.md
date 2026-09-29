@@ -52,33 +52,30 @@ dune build
 dune runtest
 ```
 
-## Examples
-
-```sy
-let add x y = x + y
-let apply f x = f x
-let compose f g x = f (g x)
-let _ =
-    let r = compose (add 10) (add 20) 5
-    syli_print_i64 r
-```
+## Example
 
 ```
-$ cat bench/clos4.sy
-let rec add_n n x = n + x
-let rec apply_n f x n =
-  if n == 0 then
-    x
-  else
-    apply_n f (f x) (n - 1)
-let rec stress n acc =
-  if n == 0 then
-    acc
-  else
-    let f = add_n n
-    let r = apply_n f 0 100
-    stress (n - 1) (acc + r)
-let _ = syli_print_i64 (stress 1000 0)
+  type list = Nil | Cons of (i64, list)
+  
+  let rec insert x xs =
+    match xs with
+    | Nil -> Cons (x, Nil)
+    | Cons (y, ys) ->
+        if x < y then
+          Cons (x, Cons (y, ys))
+        else
+          Cons (y, insert x ys)
+  
+  let rec sort xs =
+    match xs with
+    | Nil -> Nil
+    | Cons (x, rest) -> insert x (sort rest)
+  
+  let main () =
+    let xs = Cons (3, Cons (1, Cons (5, Cons (2, Cons (4, Nil)))))
+    sort xs
+  
+  let _ = main ()
 ```
 
 
