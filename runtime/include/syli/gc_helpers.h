@@ -26,6 +26,10 @@ static inline void gc_remove_suspect_at(size_t index)
         Suspected* data      = (Suspected*)vector_at_Suspected(vector, index);
         Suspected* last_data = (Suspected*)vector_at_Suspected(vector, last);
         *data                = *last_data;
+        // The entry previously at `last` now lives at `index`; keep its
+        // object's stored index in sync so it can still be removed later.
+        Object* moved = syli_object_of_obj_ptr(data->obj);
+        syli_object_set_cyclic_index(as_gc_object(moved), (uint32_t)index);
     }
     vector_pop_back_Suspected(vector);
 }
@@ -57,6 +61,24 @@ static inline void gc_tracing_worklist_push(obj_ptr obj_p)
     }
     syli_object_set_flags(child, Meta_Flags_Tracing);
     gc_vector_push_back(&syli_state.tracing_worklist, obj_p);
+}
+
+static inline void gc_releasing_worklist_push(obj_ptr obj_p)
+{
+    Object* obj = syli_object_of_obj_ptr(obj_p);
+    assert(!syli_object_has_flags(obj, Meta_Flags_Releasing));
+    syli_object_set_flags(obj, Meta_Flags_Releasing);
+    gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
+}
+
+static inline void gc_releasing_worklist_push_if_not(obj_ptr obj_p)
+{
+    Object* obj = syli_object_of_obj_ptr(obj_p);
+    if (syli_object_has_flags(obj, Meta_Flags_Releasing)) {
+        return;
+    }
+    syli_object_set_flags(obj, Meta_Flags_Releasing);
+    gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
 }
 
 // ========================

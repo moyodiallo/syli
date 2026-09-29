@@ -14,13 +14,6 @@ let gc_ptr_ty = LV_Ptr_as 1
 let object_struct_ty = LV_Struct [ LV_I64; LV_I64; LV_Array (0, LV_I64) ]
 let object_untag_fn_name = "syli_inlinable_ownership_untag"
 
-let lltype_of_obj_cyclic_prop (cp : Syli_ir.Oir.cyclic_prop) : lltype =
-  match cp with
-  | Syli_ir.Oir.Acyclic -> LV_Ptr
-  | Syli_ir.Oir.Cyclic_n_Trackable | Syli_ir.Oir.Acyclic_n_Trackable
-  | Syli_ir.Oir.Unknown_cyclic_prop ->
-      gc_ptr_ty
-
 let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
   match ty with
   | RR_Bool -> LV_I1
@@ -31,7 +24,7 @@ let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
   | RR_Float -> LV_Float
   | RR_Double -> LV_Double
   | RR_Void -> LV_Void
-  | RR_Obj_Ptr cp -> lltype_of_obj_cyclic_prop cp
+  | RR_Obj_Ptr _ -> gc_ptr_ty
   | RR_FnPtr -> LV_Ptr
   | RR_Char -> LV_I8
   | RR_String -> gc_ptr_ty
