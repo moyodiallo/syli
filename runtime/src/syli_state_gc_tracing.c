@@ -250,14 +250,13 @@ void syli_state_gc_tracing()
 
                 } else {
                     // Object is not reachable, free it
-                    syli_state.total_objects_memory_freed++;
-                    if (syli_object_is_mono(obj)) {
+                    if (syli_object_is_mono_imm(obj)) {
+                        syli_state.total_objects_memory_freed++;
                         free(obj);
                     } else {
-                        syli_object_clear_flags(
-                            obj, Meta_Flags_Suspect_Lost_Cycle);
-                        gc_vector_push_back(
-                            &syli_state.releasing_waitlist, suspected_obj->obj);
+                        // Freed later via free_released_object, which counts
+                        // it.
+                        gc_releasing_worklist_push_if_not(suspected_obj->obj);
                     }
                 }
 

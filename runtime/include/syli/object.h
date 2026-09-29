@@ -42,7 +42,8 @@ typedef enum ObjectMetaFlags {
     Meta_Flags_Suspect_Lost_Cycle = 1ULL << 56,
     Meta_Flags_Releasing          = 1ULL << (56 + 1),
     Meta_Flags_Tracing            = 1ULL << (56 + 2),
-    Meta_Flags_Waiting_Remove     = 1ULL << (56 + 3)
+    Meta_Flags_Waiting_Remove     = 1ULL << (56 + 3),
+    Meta_Flags_Children_Released  = 1ULL << (56 + 4)
 } ObjectMetaFlags;
 
 /*
@@ -105,9 +106,7 @@ static inline void syli_free_ptr(obj_ptr ptr)
 static inline uint64_t make_meta_refcount(
     uint64_t current_state_bit_mark, ObjectMetaFlags flags)
 {
-    assert(flags == Meta_Flags_None || flags == Meta_Flags_Suspect_Lost_Cycle
-        || flags == Meta_Flags_Releasing || flags == Meta_Flags_Tracing
-        || flags == Meta_Flags_Waiting_Remove); // 4-bit flags
+    assert(((uint64_t)flags & ~META_FLAGS_MASK) == 0); // 7-bit flags
     return (current_state_bit_mark) | ((uint64_t)flags) | INITIAL_REFCOUNT;
 }
 
