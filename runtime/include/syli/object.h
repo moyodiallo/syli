@@ -53,14 +53,18 @@ typedef enum ObjectMetaFlags {
         01 -> Own_Ref          : owns the object, release decrements/frees
         10 -> AlwaysBorrow_Ref : a permanent borrow of an immortal value; it
                                  can never be owned, released, or freed.
-        11 -> Reserved         : must never appear
+        11 -> Immediate        : a constant variant constructor; the constructor
+                                 tag sits in bits 2+. It is never a real object
+                                 pointer, so it is inert for ownership: borrow,
+                                 own, share and release are all no-ops.
 
-    `syli_ownership_untag` clears both tag bits to recover the real pointer.
+    `syli_ownership_untag` clears tag bits to recover the real pointer.
 */
 typedef void* obj_ptr;
 
 #define OWN_REF_TAG        1ULL
 #define ALWAYS_BORROW_TAG  (1ULL << 1)
+#define IMMEDIATE_TAG      3ULL
 #define OWN_TAG_MASK       (OWN_REF_TAG | ALWAYS_BORROW_TAG)
 
 static inline obj_ptr syli_ownership_untag(obj_ptr ptr)
@@ -75,12 +79,17 @@ static inline Object* syli_object_of_obj_ptr(obj_ptr ptr)
 
 static inline bool syli_ownership_is_own_ref(obj_ptr ptr)
 {
-    return ((uintptr_t)ptr & OWN_REF_TAG) != 0;
+    return ((uintptr_t)ptr & OWN_TAG_MASK) == OWN_REF_TAG;
 }
 
 static inline bool syli_ownership_is_always_borrow(obj_ptr ptr)
 {
-    return ((uintptr_t)ptr & ALWAYS_BORROW_TAG) != 0;
+    return ((uintptr_t)ptr & OWN_TAG_MASK) == ALWAYS_BORROW_TAG;
+}
+
+static inline bool syli_ownership_is_immediate(obj_ptr ptr)
+{
+    return ((uintptr_t)ptr & OWN_TAG_MASK) == IMMEDIATE_TAG;
 }
 
 static inline obj_ptr syli_ownership_set_own(obj_ptr ptr)

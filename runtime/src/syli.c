@@ -5,6 +5,7 @@
 #include "syli/header_object.h"
 #include "syli/object.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 GCObject* syli_rt_rc_alloc_object(
     object_header_t header, size_t refcount, size_t words)
@@ -104,6 +105,12 @@ uint64_t syli_rt_get_object_length(Object* obj)
     return syli_object_length(obj);
 }
 
+void syli_match_failure(void)
+{
+    fprintf(stderr, "match failure\n");
+    abort();
+}
+
 Object* syli_rt_object_copy(Object* src)
 {
     assert(src != NULL);
@@ -148,7 +155,7 @@ Object* syli_rt_object_copy(Object* src)
             // Bitmap encodes which fields are pointers
             uint32_t bitmap = syli_object_bitmap_bits(src);
             for (size_t i = 0; i < length; i++) {
-                if (bitmap & (1u << i)) {
+                if (syli_bitmap_is_ref(bitmap, i)) {
                     Object* ref = (Object*)data_dst[i];
                     if (ref != NULL) {
                         syli_rt_object_incr(ref);
@@ -227,6 +234,7 @@ obj_ptr syli_rt_ownership_alloc_object(
 obj_ptr syli_rt_ownership_share(obj_ptr ptr)
 {
     assert(!syli_ownership_is_always_borrow(ptr));
+    assert(!syli_ownership_is_immediate(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
     syli_rt_object_incr(obj);
@@ -236,6 +244,7 @@ obj_ptr syli_rt_ownership_share(obj_ptr ptr)
 void syli_rt_ownership_decr(obj_ptr ptr)
 {
     assert(!syli_ownership_is_always_borrow((obj_ptr)ptr));
+    assert(!syli_ownership_is_immediate(ptr));
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
@@ -250,6 +259,7 @@ obj_ptr syli_rt_ownership_untag(obj_ptr ptr)
 void syli_rt_ownership_incr(obj_ptr ptr)
 {
     assert(!syli_ownership_is_always_borrow((obj_ptr)ptr));
+    assert(!syli_ownership_is_immediate(ptr));
     assert(syli_ownership_is_own_ref(ptr));
     Object* obj = (Object*)syli_ownership_untag(ptr);
     assert(obj != NULL);
@@ -264,6 +274,7 @@ void syli_rt_ownership_check_lost_cyclic_release(obj_ptr ptr)
 
 void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr)
 {
+    assert(!syli_ownership_is_immediate(ptr));
     if ((syli_state.tracing_state == Tracing
             || syli_state.tracing_state == Mutation_Prepare)
         && syli_ownership_is_own_ref(ptr)) {
@@ -276,6 +287,7 @@ void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr)
 void syli_rt_ownership_release(void* ptr)
 {
     assert(!syli_ownership_is_always_borrow((obj_ptr)ptr));
+    assert(!syli_ownership_is_immediate((obj_ptr)ptr));
     if (syli_ownership_is_own_ref(ptr)) {
         Object* obj = (Object*)syli_ownership_untag(ptr);
         assert(obj != NULL);
@@ -286,6 +298,7 @@ void syli_rt_ownership_release(void* ptr)
 obj_ptr syli_rt_ownership_own(obj_ptr ptr)
 {
     assert(!syli_ownership_is_always_borrow(ptr));
+    assert(!syli_ownership_is_immediate(ptr));
     if (syli_ownership_is_own_ref(ptr)) {
         return ptr;
     }
@@ -298,5 +311,6 @@ obj_ptr syli_rt_ownership_own(obj_ptr ptr)
 obj_ptr syli_rt_ownership_borrow(obj_ptr ptr)
 {
     assert(!syli_ownership_is_always_borrow(ptr));
+    assert(!syli_ownership_is_immediate(ptr));
     return syli_ownership_untag(ptr);
 }

@@ -21,18 +21,38 @@ open Syli_core.Core_ast
 
 exception Pattern_error of string
 
+(** Shape of a constructor argument. The type system already checked it. *)
+type payload = Payload_None | Payload_One
+
+type occurrence = { id : int; desc : occurrence_desc }
 (** A location in the scrutinee value being matched, a structural path from the
-    root. *)
-type occurrence =
+    root. Each occurrence carries a stable [id] so the lowering can memoise the
+    value (and core type) it denotes instead of re-deriving the whole path. *)
+
+and occurrence_desc =
   | Occ_Scrutinee of expr
   | Occ_Field of occurrence * int  (** record field by [field_idx] *)
   | Occ_Tuple of occurrence * int  (** tuple element at index *)
   | Occ_Payload of occurrence  (** variant constructor argument *)
 
+let occ_counter = ref 0
+
+let fresh_occ_id () =
+  incr occ_counter;
+  !occ_counter
+
+let mk_occ (desc : occurrence_desc) : occurrence =
+  { id = fresh_occ_id (); desc }
+
 (** The discrimination performed by a [DSwitch]. *)
 type pattern_test =
   | Test_Constant of constant
-  | Test_Constructor of { tag : int }
+  | Test_Constructor of {
+      tag : int;
+      payload : payload;
+      payload_occ : occurrence option;
+          (** the constructor argument's occurrence, when it carries one *)
+    }
 
 type action_binds = (ident * occurrence) list
 (** Binds a pattern variable to the occurrence it was matched against. *)
@@ -66,9 +86,6 @@ type decision_tree =
 (* Synthesised patterns never escape the compiler: leaves only bind original
    [Pat_Ident] patterns, so the id of a wildcard is never observed. *)
 let wildcard_pat : pattern = { id = 0; node = Pat_Any }
-
-(** Shape of a constructor argument. The type system already checked it. *)
-type payload = Payload_None | Payload_One
 
 (** The syntactic head of a pattern.
 
@@ -193,7 +210,9 @@ let specialize_constant (occs : occurrence list) (c : constant)
 let specialize_variant (occs : occurrence list) (occ : occurrence) (tag : int)
     (payload : payload) (rows : row list) : occurrence list * row list =
   let sub_occs =
-    match payload with Payload_None -> [] | Payload_One -> [ Occ_Payload occ ]
+    match payload with
+    | Payload_None -> []
+    | Payload_One -> [ mk_occ (Occ_Payload occ) ]
   in
   let rows' =
     List.filter_map
@@ -238,7 +257,7 @@ let specialize_unit (occs : occurrence list) (rows : row list) : row list =
 (** Expand an irrefutable tuple head, one column per element. *)
 let specialize_tuple (occs : occurrence list) (occ : occurrence) (n : int)
     (rows : row list) : occurrence list * row list =
-  let sub_occs = List.init n (fun i -> Occ_Tuple (occ, i)) in
+  let sub_occs = List.init n (fun i -> mk_occ (Occ_Tuple (occ, i))) in
   let rows' =
     List.map
       (fun r ->
@@ -274,7 +293,7 @@ let specialize_record (occs : occurrence list) (occ : occurrence)
     |> List.map (fun p -> p.field_idx)
     |> List.sort_uniq Int.compare
   in
-  let sub_occs = List.map (fun idx -> Occ_Field (occ, idx)) indices in
+  let sub_occs = List.map (fun idx -> mk_occ (Occ_Field (occ, idx))) indices in
   let rows' =
     List.map
       (fun r ->
@@ -387,11 +406,6 @@ let rec compile (occs : occurrence list) (rows : row list) : decision_tree =
               | _ -> acc)
             HeadSet.empty rows
         in
-        let test_of_head = function
-          | H_Constant c -> Test_Constant c
-          | H_Variant { tag; _ } -> Test_Constructor { tag }
-          | _ -> assert false
-        in
         if HeadSet.cardinal refutable_group > 0 then
           let cases =
             HeadSet.fold
@@ -403,7 +417,22 @@ let rec compile (occs : occurrence list) (rows : row list) : decision_tree =
                       specialize_variant occs occ tag payload rows
                   | _ -> assert false
                 in
-                (test_of_head h, compile (sub_occs @ rest_occs) rows') :: acc)
+                let test =
+                  match h with
+                  | H_Constant c -> Test_Constant c
+                  | H_Variant { tag; payload } ->
+                      Test_Constructor
+                        {
+                          tag;
+                          payload;
+                          payload_occ =
+                            (match payload with
+                            | Payload_None -> None
+                            | Payload_One -> Some (List.hd sub_occs));
+                        }
+                  | _ -> assert false
+                in
+                (test, compile (sub_occs @ rest_occs) rows') :: acc)
               refutable_group []
           in
           let default_rows (rows : row list) : row list =
@@ -436,7 +465,7 @@ let rec compile (occs : occurrence list) (rows : row list) : decision_tree =
 
 let compile_match ~(scrutinee : expr) ~(cases : pattern_case list) :
     decision_tree =
-  let occs = [ Occ_Scrutinee scrutinee ] in
+  let occs = [ mk_occ (Occ_Scrutinee scrutinee) ] in
   let rows =
     List.map
       (fun (pat_case : pattern_case) ->

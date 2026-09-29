@@ -153,74 +153,90 @@ let rec infer_pattern (ctx : infer_ctx) (p : Parsing_ast.pattern) :
                    (String.concat ", "
                       (List.map (fun ((name : ident), _, _) -> name.name) infos))
                )))
-  | Parsing_ast.Pat_Constructor { name; value } ->
-      let ctx, arg_opt =
-        match value with
-        | None -> (ctx, None)
-        | Some p ->
-            let ctx, tp = infer_pattern ctx p in
-            (ctx, Some tp)
-      in
-      let ctx, ty, contructor =
-        match find_constructor_by_name ctx name.name with
-        | None ->
-            raise
-              (Type_error
-                 ( Some (loc_of_parsing name.loc),
-                   Printf.sprintf "unknown variant constructor '%s'" name.name
-                 ))
-        | Some { constructor = ctor; ty_decl } ->
-            let ctx =
-              match (ctor.arg, arg_opt) with
-              | None, None -> ctx
-              | None, Some _ ->
-                  raise
-                    (Type_error
-                       ( Some (loc_of_parsing name.loc),
-                         Printf.sprintf
-                           "variant constructor '%s' takes no argument"
-                           name.name ))
-              | Some _, None ->
-                  raise
-                    (Type_error
-                       ( Some (loc_of_parsing name.loc),
-                         Printf.sprintf
-                           "variant constructor '%s' expects an argument"
-                           name.name ))
-              | Some (Constr_ty t), Some pat ->
-                  unify_into ~loc:pat.loc ctx pat.ty t
-              | ( Some (Constr_record fields),
-                  Some { pattern_desc = TPat_Record { fields = pat_fields }; _ }
-                ) ->
-                  let pat_infos =
-                    List.map
-                      (fun (f : pattern_record_field) ->
-                        (f.name, f.pattern, f.loc))
-                      pat_fields
-                  in
-                  let ctx, _ =
-                    unify_record_pattern_fields_with_decl ctx fields pat_infos
-                  in
-                  ctx
-              | Some (Constr_record _), Some _ ->
-                  raise
-                    (Type_error
-                       ( Some (loc_of_parsing name.loc),
-                         Printf.sprintf
-                           "variant constructor '%s' expects a record pattern"
-                           name.name ))
-            in
-            (ctx, mk_ty (TTy_Defined { name = ty_decl.name; args = [] }), ctor)
-      in
-      ( ctx,
-        {
-          id = p.id;
-          pattern_desc =
-            TPat_Constructor
-              { tag = contructor.tag; ident = name.name; pattern = arg_opt };
-          loc;
-          ty;
-        } )
+  | Parsing_ast.Pat_Constructor { name; value } -> (
+      match find_constructor_by_name ctx name.name with
+      | None ->
+          raise
+            (Type_error
+               ( Some (loc_of_parsing name.loc),
+                 Printf.sprintf "unknown variant constructor '%s'" name.name ))
+      | Some { constructor = ctor; ty_decl } ->
+          let ctx, arg_opt =
+            match (ctor.arg, value) with
+            | None, None -> (ctx, None)
+            | None, Some _ ->
+                raise
+                  (Type_error
+                     ( Some (loc_of_parsing name.loc),
+                       Printf.sprintf
+                         "variant constructor '%s' takes no argument" name.name
+                     ))
+            | Some _, None ->
+                raise
+                  (Type_error
+                     ( Some (loc_of_parsing name.loc),
+                       Printf.sprintf
+                         "variant constructor '%s' expects an argument"
+                         name.name ))
+            | Some (Constr_ty t), Some pat ->
+                let ctx, tp = infer_pattern ctx pat in
+                let ctx = unify_into ~loc:tp.loc ctx tp.ty t in
+                (ctx, Some tp)
+            | ( Some (Constr_record decl_fields),
+                Some ({ node = Parsing_ast.Pat_Record { fields }; _ } as rpat) )
+              ->
+                (* An inlined record payload has no named record type: the
+                   field patterns are unified directly against the constructor
+                   declaration. *)
+                let ctx, infos =
+                  List.fold_left_map
+                    (fun ctx (f : Parsing_ast.pattern_record_field) ->
+                      let ctx, pattern =
+                        match f.value with
+                        | None -> (ctx, None)
+                        | Some p ->
+                            let ctx, tp = infer_pattern ctx p in
+                            (ctx, Some tp)
+                      in
+                      ( ctx,
+                        (ident_of_parsing f.name, pattern, loc_of_parsing f.loc)
+                      ))
+                    ctx fields
+                in
+                let ctx, idx_fields =
+                  unify_record_pattern_fields_with_decl ctx decl_fields infos
+                in
+                let pat_fields =
+                  List.map2
+                    (fun (fname, pattern, floc) field_idx ->
+                      { field_idx; name = fname; pattern; loc = floc })
+                    infos idx_fields
+                in
+                ( ctx,
+                  Some
+                    {
+                      id = rpat.id;
+                      pattern_desc = TPat_Record { fields = pat_fields };
+                      loc = loc_of_parsing rpat.loc;
+                      ty = mk_ty TTy_Any;
+                    } )
+            | Some (Constr_record _), Some _ ->
+                raise
+                  (Type_error
+                     ( Some (loc_of_parsing name.loc),
+                       Printf.sprintf
+                         "variant constructor '%s' expects a record pattern"
+                         name.name ))
+          in
+          ( ctx,
+            {
+              id = p.id;
+              pattern_desc =
+                TPat_Constructor
+                  { tag = ctor.tag; ident = name.name; pattern = arg_opt };
+              loc;
+              ty = mk_ty (TTy_Defined { name = ty_decl.name; args = [] });
+            } ))
   | Parsing_ast.Pat_Any ->
       (ctx, { id = p.id; pattern_desc = TPat_Any; loc; ty = mk_ty TTy_Any })
 

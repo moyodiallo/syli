@@ -497,7 +497,7 @@ Closure as an argument with multiple captured variables:
     %Sy_llvm_tmp_10 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_1)
     %Sy_llvm_tmp_11 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_10, i32 0, i32 2, i32 2
     store ptr addrspace(1) %Sy_rir_tmp_0, ptr addrspace(1) %Sy_llvm_tmp_11
-    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_1, ptr addrspace(1) %Sy_rir_tmp_0)
+    call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_1, ptr addrspace(1) %Sy_rir_tmp_0)
     ; nop
     %Sy_cir_var_2 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_cir_var_1, i64 3, i64 4)
     call void @syli_rt_gc_cycle()
@@ -515,7 +515,7 @@ Closure as an argument with multiple captured variables:
     %Sy_llvm_tmp_16 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_3)
     %Sy_llvm_tmp_17 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_16, i32 0, i32 2, i32 1
     store ptr addrspace(1) %Sy_rir_tmp_1, ptr addrspace(1) %Sy_llvm_tmp_17
-    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_3, ptr addrspace(1) %Sy_rir_tmp_1)
+    call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_3, ptr addrspace(1) %Sy_rir_tmp_1)
     ; nop
     %Sy_cir_var_4 = call i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr addrspace(1) %Sy_cir_var_3, double 1., double 2.)
     ret void
@@ -630,7 +630,10 @@ Closure as an argument with multiple captured variables:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -685,5 +688,18 @@ Closure as an argument with multiple captured variables:
     %r = or i64 %u, 2
     %rp = inttoptr i64 %r to ptr addrspace(1)
     ret ptr addrspace(1) %rp
+  }
+  
+  define void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value) {
+  bb0:
+    %vi = ptrtoint ptr addrspace(1) %value to i64
+    %tag = and i64 %vi, 3
+    %imm = icmp eq i64 %tag, 3
+    br i1 %imm, label %done, label %notify
+  notify:
+    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value)
+    ret void
+  done:
+    ret void
   }
   

@@ -21,7 +21,7 @@ let pp_const = function
   | C.CConst_FloatLit s -> "float " ^ s
 
 let rec pp_occ (o : PM.occurrence) =
-  match o with
+  match o.PM.desc with
   | PM.Occ_Scrutinee _ -> "root"
   | PM.Occ_Field (o, idx) -> Printf.sprintf "%s.%d" (pp_occ o) idx
   | PM.Occ_Tuple (o, i) -> Printf.sprintf "%s.%d" (pp_occ o) i
@@ -29,7 +29,7 @@ let rec pp_occ (o : PM.occurrence) =
 
 let pp_test = function
   | PM.Test_Constant c -> pp_const c
-  | PM.Test_Constructor { tag } -> Printf.sprintf "tag(%d)" tag
+  | PM.Test_Constructor { tag; _ } -> Printf.sprintf "tag(%d)" tag
 
 let strip_lebind s = String.split_first ~sep:"_" s |> Option.get |> snd
 

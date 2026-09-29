@@ -114,7 +114,8 @@ let rec type_key_of_ty (t : ty) : string =
           in
           "obj_" ^ name ^ "_" ^ field_keys
       | OR_Array_kind { element_ty } ->
-          "obj_" ^ name ^ "_" ^ type_key_of_ty element_ty)
+          "obj_" ^ name ^ "_" ^ type_key_of_ty element_ty
+      | OR_Variant_kind _ -> "obj_" ^ name)
 
 (* Partial closure accum dispatch name: shared per (stored tys, args) *)
 let partial_closure_accum_dispatch_name ~(stored_tys : ty list)

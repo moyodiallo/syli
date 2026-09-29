@@ -4,6 +4,7 @@ module C = Syli_core.Core_ast
 module I = Syli_ir.Cir
 open Syli_common
 module CA = Syli_core.Closure_analysis
+module PM = Pattern_matching
 
 exception Lowering_error of string
 
@@ -27,10 +28,25 @@ type ctx = {
   pending_merge_id : int option;
   ffi_external_functions : I.ffi_external_function list;
   primitive_fns : I.function_cir list;
+  occ_scrut_var : I.var;
+      (** the materialised root of the match currently being lowered; only
+          meaningful inside [lower_tree], set by [lower_match] *)
+  occ_payloads : C.constructor_arg IntMap.t;
+      (** constructor argument per payload occurrence id *)
+  occ_materialized : I.var IntMap.t;
+      (** occurrence id -> the variable holding its value *)
+  occ_types : C.ty IntMap.t;  (** occurrence id -> its core type *)
 }
 
 let empty_analysis : CA.core_closure_analysis =
   { CA.closure_infos = Hashtbl.create 0 }
+
+let dummy_scrut_var : I.var =
+  {
+    I.id = 0;
+    I.name = "__no_scrutinee";
+    I.ty = { I.id = 0; I.ir_type = I.CR_Void };
+  }
 
 let empty_ctx =
   {
@@ -47,6 +63,10 @@ let empty_ctx =
     pending_merge_id = None;
     ffi_external_functions = [];
     primitive_fns = [];
+    occ_scrut_var = dummy_scrut_var;
+    occ_payloads = IntMap.empty;
+    occ_materialized = IntMap.empty;
+    occ_types = IntMap.empty;
   }
 
 let fresh_id = Syli_ir.Cir.fresh_id
@@ -127,9 +147,9 @@ let assign_cast_var new_v src_v to_ty =
 (*  Type / operator helpers                            *)
 (* =================================================== *)
 
-let mk_ir_ty = Gen_primitives.mk_ir_ty
+let mk_ir_ty = Type_lowering.mk_ir_ty
 
-let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
+let rec arg_type_compatible (a : I.ir_type) (b : I.ir_type) : bool =
   match (a, b) with
   | CR_Bool, CR_Bool -> true
   | CR_I64, CR_I64 -> true
@@ -147,33 +167,30 @@ let rec ir_type_equal (a : I.ir_type) (b : I.ir_type) : bool =
   | CR_GenericTyp { type_var = tv1 }, CR_GenericTyp { type_var = tv2 } ->
       tv1 = tv2
   | CR_Obj a, CR_Obj b ->
-      a.named = b.named
-      && a.tag_variant = b.tag_variant
-      && a.cyclic_prop = b.cyclic_prop
-      && obj_kind_equal a.obj_kind b.obj_kind
+      a.named = b.named && obj_kind_compatible a.obj_kind b.obj_kind
   | CR_String, CR_String -> true
   | CR_Obj_Ptr, CR_Obj_Ptr -> true
   | CR_Arrow (args1, ret1), CR_Arrow (args2, ret2) ->
-      List.for_all2 ty_equal args1 args2 && ty_equal ret1 ret2
+      List.for_all2 arg_ty_compatible args1 args2 && arg_ty_compatible ret1 ret2
   | _, _ -> false
 
-and obj_kind_equal (a : I.obj_kind) (b : I.obj_kind) : bool =
+and obj_kind_compatible (a : I.obj_kind) (b : I.obj_kind) : bool =
   match (a, b) with
-  | ( I.CR_Record_kind { fields = fa; cardinal = ca },
-      I.CR_Record_kind { fields = fb; cardinal = cb } ) ->
-      ca = cb
+  | I.CR_Record_kind { fields = fa }, I.CR_Record_kind { fields = fb } ->
+      List.length fa = List.length fb
       && List.for_all2
            (fun fa fb ->
              fa.field_idx = fb.field_idx
              && fa.field_mut = fb.field_mut
-             && ty_equal fa.field_ty fb.field_ty)
+             && arg_ty_compatible fa.field_ty fb.field_ty)
            fa fb
   | I.CR_Array_kind { element_ty = ea }, I.CR_Array_kind { element_ty = eb } ->
-      ty_equal ea eb
+      arg_ty_compatible ea eb
+  | I.CR_Variant_kind _, I.CR_Variant_kind _ -> true
   | _, _ -> false
 
-and ty_equal (a : I.ty) (b : I.ty) : bool =
-  ir_type_equal a.I.ir_type b.I.ir_type
+and arg_ty_compatible (a : I.ty) (b : I.ty) : bool =
+  arg_type_compatible a.I.ir_type b.I.ir_type
 
 let ir_const_of_core = function
   | CConst_Unit -> I.CR_Null
@@ -197,8 +214,8 @@ let arg_ty_of_operand = function
   | I.CR_OConstant (_, ty) -> ty
   | I.CR_OVar v -> v.I.ty
 
-let get_args_ty = Gen_primitives.get_args_ty
-let get_return_ty = Gen_primitives.get_return_ty
+let get_args_ty = Type_lowering.get_args_ty
+let get_return_ty = Type_lowering.get_return_ty
 
 let is_unit_cty (t : C.ty) : bool =
   match t.ty_desc with C.CTy_Constant C.CTy_Unit -> true | _ -> false
@@ -239,6 +256,291 @@ let collect_toplevel_functions (prog : C.program_core) : int StringMap.t =
           StringMap.add fname.name (List.length (get_args_ty ty)) acc
       | _ -> acc)
     StringMap.empty prog.C.structure_items
+
+(* ================================================================== *)
+(*  Pattern-matching lowering helpers                                 *)
+(* ================================================================== *)
+
+let i64_ir_ty () : I.ty = { I.id = fresh_id (); I.ir_type = I.CR_I64 }
+let immediate_tag = 3L
+
+(** Encoding of a constant constructor as an immediate: the tag sits above the
+    two ownership bits and the reserved tag [11] marks it. A real object pointer
+    is 8-byte aligned and only carries [00]/[01]/[10], so [11] can never be a
+    real pointer *)
+let constant_ctor_value (tag : int) : int64 =
+  Int64.logor (Int64.shift_left (Int64.of_int tag) 2) immediate_tag
+
+let cir_mut_flag = function CMutable -> I.Mutable | CImmutable -> I.Immutable
+
+(** CIR object type of a variant constructor. The payload is flattened into the
+    object's fields:
+    - tuple payload [C of (t0, t1)]               -> fields [0:t0, 1:t1];
+    - inline record payload [C of { a:t0; b:t1 }] -> fields [0:t0, 1:t1];
+    - any other payload [C of t]                  -> a single field [0:t].
+
+    For example
+
+        type point = { x : f64; y : f64 }
+        type shape =
+          | Circle of (f64, f64)
+          | Rect of { w : f64; h : f64 }
+          | Dot of point
+
+    yields [Circle] and [Rect] with two [f64] fields each, and [Dot] with a
+    single field holding a [point] reference. The constructor tag is not a
+    field; it lives in the object header ([tag_variant = Some tag]). *)
+let variant_constructor_ty (type_defs : C.ty_decl StringMap.t)
+    (variant_name : string) (tag : int) (arg : C.constructor_arg) : I.ty =
+  let fields =
+    match arg with
+    | Constr_ty { ty_desc = CTy_Tuple tys; _ } ->
+        List.mapi
+          (fun i t ->
+            {
+              I.field_idx = i;
+              field_ty = mk_ir_ty type_defs t;
+              field_mut = I.Immutable;
+            })
+          tys
+    | Constr_record decl_fields ->
+        List.map
+          (fun (f : C.record_field_ty) ->
+            {
+              I.field_idx = f.field_idx;
+              field_ty = mk_ir_ty type_defs f.field_ty;
+              field_mut = cir_mut_flag f.field_mut;
+            })
+          decl_fields
+    | Constr_ty t ->
+        [
+          {
+            I.field_idx = 0;
+            field_ty = mk_ir_ty type_defs t;
+            field_mut = I.Immutable;
+          };
+        ]
+  in
+  {
+    I.id = fresh_id ();
+    ir_type =
+      I.CR_Obj
+        {
+          named = Some variant_name;
+          obj_kind = I.CR_Variant_kind { constructors = [ { I.tag; fields } ] };
+          tag_variant = Some tag;
+          cyclic_prop = I.Unknown_cyclic_prop;
+        };
+  }
+
+(** Turn an operand into a variable, emitting a move when needed. *)
+let operand_as_var (ctx : ctx) (op : I.operand) (ty : I.ty) : ctx * I.var =
+  match op with
+  | I.CR_OVar v -> (ctx, v)
+  | _ ->
+      let ctx, v = fresh_var ctx ty in
+      let rv : I.rvalue =
+        { I.id = fresh_id (); node = I.CR_Move { src = op }; ty }
+      in
+      let ctx, _ = emit ctx (I.CR_Assign { dst = v; rvalue = rv }) ty in
+      (ctx, v)
+
+let record_field_ty_of_idx (fields : C.record_field_ty list) (idx : int) : C.ty
+    =
+  match
+    List.find_opt (fun (f : C.record_field_ty) -> f.field_idx = idx) fields
+  with
+  | Some f -> f.field_ty
+  | None ->
+      raise
+        (Lowering_error (Printf.sprintf "pattern: record has no field %d" idx))
+
+let nth_tuple_ty (tys : C.ty list) (i : int) : C.ty =
+  match List.nth_opt tys i with
+  | Some t -> t
+  | None ->
+      raise
+        (Lowering_error (Printf.sprintf "pattern: tuple has no element %d" i))
+
+(** Resolve a type alias to its underlying type. *)
+let rec resolve_alias (type_defs : C.ty_decl StringMap.t) (t : C.ty) : C.ty =
+  match t.ty_desc with
+  | CTy_Defined { name; _ } -> (
+      match StringMap.find_opt name.name type_defs with
+      | Some { def = CTydef_Alias inner; _ } -> resolve_alias type_defs inner
+      | _ -> t)
+  | _ -> t
+
+(** Constructor payload descriptor attached to an [Occ_Payload] occurrence. *)
+let payload_arg_of_occ (ctx : ctx) (occ : PM.occurrence) :
+    C.constructor_arg option =
+  IntMap.find_opt occ.PM.id ctx.occ_payloads
+
+(** An anonymous product payload (tuple or record) is flattened into the
+    constructor block, so its occurrence denotes the block itself. *)
+let is_inlined_payload_arg = function
+  | C.Constr_record _ | C.Constr_ty { ty_desc = CTy_Tuple _; _ } -> true
+  | _ -> false
+
+let is_inlined_payload_occ (ctx : ctx) (occ : PM.occurrence) : bool =
+  match payload_arg_of_occ ctx occ with
+  | Some arg -> is_inlined_payload_arg arg
+  | None -> false
+
+(** Core type of the value denoted by an occurrence, memoised per occurrence id.
+*)
+let rec occurrence_ty (ctx : ctx) (occ : PM.occurrence) : ctx * C.ty =
+  match IntMap.find_opt occ.PM.id ctx.occ_types with
+  | Some t -> (ctx, t)
+  | None ->
+      let ctx, t =
+        match occ.PM.desc with
+        | PM.Occ_Scrutinee e -> (ctx, e.ty)
+        | PM.Occ_Tuple (parent, i) -> (
+            let ctx, parent_ty = occurrence_ty ctx parent in
+            match (resolve_alias ctx.type_defs parent_ty).ty_desc with
+            | CTy_Tuple tys -> (ctx, nth_tuple_ty tys i)
+            | _ ->
+                raise
+                  (Lowering_error "pattern: tuple projection on a non-tuple"))
+        | PM.Occ_Payload _ -> (
+            match payload_arg_of_occ ctx occ with
+            | Some (Constr_ty { ty_desc = CTy_Tuple tys; _ }) ->
+                (ctx, { ty_desc = CTy_Tuple tys })
+            | Some (Constr_record fields) ->
+                ( ctx,
+                  {
+                    ty_desc =
+                      CTy_Tuple
+                        (List.map
+                           (fun (f : C.record_field_ty) -> f.field_ty)
+                           fields);
+                  } )
+            | Some (Constr_ty t) -> (ctx, t)
+            | None ->
+                raise (Lowering_error "pattern: untyped payload occurrence"))
+        | PM.Occ_Field (({ PM.desc = PM.Occ_Payload _; _ } as parent), idx) -> (
+            match payload_arg_of_occ ctx parent with
+            | Some (Constr_record fields) ->
+                (ctx, record_field_ty_of_idx fields idx)
+            | Some (Constr_ty t) -> (
+                match (resolve_alias ctx.type_defs t).ty_desc with
+                | CTy_Defined { name; _ } -> (
+                    match StringMap.find_opt name.name ctx.type_defs with
+                    | Some { def = CTydef_Record fields; _ } ->
+                        (ctx, record_field_ty_of_idx fields idx)
+                    | _ ->
+                        raise
+                          (Lowering_error
+                             "pattern: field access on a non-record type"))
+                | _ ->
+                    raise
+                      (Lowering_error
+                         "pattern: field access on a non-record type"))
+            | None ->
+                raise (Lowering_error "pattern: untyped payload occurrence"))
+        | PM.Occ_Field (parent, idx) -> (
+            let ctx, parent_ty = occurrence_ty ctx parent in
+            match (resolve_alias ctx.type_defs parent_ty).ty_desc with
+            | CTy_Defined { name; _ } -> (
+                match StringMap.find_opt name.name ctx.type_defs with
+                | Some { def = CTydef_Record fields; _ } ->
+                    (ctx, record_field_ty_of_idx fields idx)
+                | _ ->
+                    raise
+                      (Lowering_error
+                         "pattern: field access on a non-record type"))
+            | CTy_Tuple tys -> (ctx, nth_tuple_ty tys idx)
+            | _ ->
+                raise
+                  (Lowering_error "pattern: field access on a non-record type"))
+      in
+      let ctx = { ctx with occ_types = IntMap.add occ.PM.id t ctx.occ_types } in
+      (ctx, t)
+
+let emit_object_get (ctx : ctx) (obj : I.var) (idx : int) (value_ty : I.ty) :
+    ctx * I.var =
+  let ctx, dst = fresh_var ctx value_ty in
+  let idx_op : I.operand =
+    I.CR_OConstant (I.CR_IntLit (string_of_int idx), i64_ir_ty ())
+  in
+  let rv : I.rvalue =
+    {
+      I.id = fresh_id ();
+      node =
+        I.CR_Object_get { obj = I.CR_OVar obj; field_idx = idx_op; value_ty };
+      ty = value_ty;
+    }
+  in
+  let ctx, _ = emit ctx (I.CR_Assign { dst; rvalue = rv }) value_ty in
+  (ctx, dst)
+
+(** Materialise an occurrence into a variable, memoised per occurrence id.
+    [Occ_Scrutinee] reuses the scrutinee variable; projections emit an object
+    read. *)
+let rec materialize_occ (ctx : ctx) (occ : PM.occurrence) : ctx * I.var =
+  match IntMap.find_opt occ.PM.id ctx.occ_materialized with
+  | Some v -> (ctx, v)
+  | None ->
+      let ctx, v =
+        match occ.PM.desc with
+        | PM.Occ_Scrutinee _ -> (ctx, ctx.occ_scrut_var)
+        | PM.Occ_Payload parent ->
+            if is_inlined_payload_occ ctx occ then
+              (* Flattened payload: the occurrence denotes the constructor
+                 block. *)
+              materialize_occ ctx parent
+            else
+              let ctx, parent_var = materialize_occ ctx parent in
+              let ctx, occ_ty = occurrence_ty ctx occ in
+              let value_ty = mk_ir_ty ctx.type_defs occ_ty in
+              emit_object_get ctx parent_var 0 value_ty
+        | PM.Occ_Field (parent, idx) | PM.Occ_Tuple (parent, idx) ->
+            let ctx, parent_var = materialize_occ ctx parent in
+            let ctx, occ_ty = occurrence_ty ctx occ in
+            let value_ty = mk_ir_ty ctx.type_defs occ_ty in
+            emit_object_get ctx parent_var idx value_ty
+      in
+      let ctx =
+        {
+          ctx with
+          occ_materialized = IntMap.add occ.PM.id v ctx.occ_materialized;
+        }
+      in
+      (ctx, v)
+
+(** Bind each pattern variable to the occurrence it matched. Unit-typed binders
+    are dropped: they carry no runtime value and the body never reads them. *)
+let bind_occs (ctx : ctx) (binds : PM.action_binds) : ctx =
+  List.fold_left
+    (fun ctx ((id : C.ident), occ) ->
+      let ctx, occ_ty = occurrence_ty ctx occ in
+      if is_unit_cty occ_ty then ctx
+      else
+        let ctx, v = materialize_occ ctx occ in
+        { ctx with env = StringMap.add id.name v ctx.env })
+    ctx binds
+
+(** Payload argument of the constructor with [tag] in the variant type of [occ],
+    if the constructor carries one. *)
+let constructor_arg_of_occ (ctx : ctx) (occ : PM.occurrence) (tag : int) :
+    ctx * C.constructor_arg option =
+  let ctx, occ_ty = occurrence_ty ctx occ in
+  match occ_ty.ty_desc with
+  | CTy_Defined { name; _ } -> (
+      match StringMap.find_opt name.name ctx.type_defs with
+      | Some { def = CTydef_Variant ctors; _ } -> (
+          match
+            List.find_opt (fun (c : C.constructor_decl) -> c.tag = tag) ctors
+          with
+          | Some c -> (ctx, c.arg)
+          | None ->
+              raise
+                (Lowering_error
+                   (Printf.sprintf "pattern: no constructor with tag %d" tag)))
+      | _ -> raise (Lowering_error "pattern: constructor test on a non-variant")
+      )
+  | _ -> raise (Lowering_error "pattern: constructor test on a non-variant")
 
 (* ================================================================== *)
 (*  Expression lowering                                               *)
@@ -572,9 +874,462 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           val_ty
       in
       (ctx, void_null)
-  | CExp_VariantConstructor _ | CExp_Array _ | CExp_Tuple _ | CExp_Loop _
-  | CExp_Break _ | CExp_Continue | CExp_Return _ | CExp_Match _ ->
+  | CExp_Match { expr = scrutinee; cases } ->
+      lower_match ctx scrutinee cases out_ty
+  | CExp_Tuple elements ->
+      let count = List.length elements in
+      let obj_ty = mk_ir_ty ctx.type_defs e.ty in
+      let ctx, obj_var = fresh_var ctx obj_ty in
+      let size_op : I.operand =
+        I.CR_OConstant (I.CR_IntLit (string_of_int count), i64_ir_ty ())
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Object_create { dst = obj_var; size = size_op }) obj_ty
+      in
+      let ctx =
+        List.fold_left
+          (fun (ctx, i) (elem : C.expr) ->
+            let ctx, v = lower_expr ctx elem in
+            let vty = mk_ir_ty ctx.type_defs elem.ty in
+            let idx_op : I.operand =
+              I.CR_OConstant (I.CR_IntLit (string_of_int i), i64_ir_ty ())
+            in
+            let ctx, _ =
+              emit ctx
+                (I.CR_Object_set
+                   {
+                     obj = obj_var;
+                     field_idx = idx_op;
+                     value = v;
+                     value_ty = vty;
+                   })
+                vty
+            in
+            (ctx, i + 1))
+          (ctx, 0) elements
+        |> fst
+      in
+      (ctx, I.CR_OVar obj_var)
+  | CExp_VariantConstructor { tag; arg } ->
+      lower_variant_constructor ctx e tag arg out_ty
+  | CExp_Array _ | CExp_Loop _ | CExp_Break _ | CExp_Continue | CExp_Return _ ->
       raise (Lowering_error "core form not lowered to SIR yet")
+
+and lower_match (ctx : ctx) (scrutinee : C.expr) (cases : C.pattern_case list)
+    (out_ty : I.ty) : ctx * I.operand =
+  let ctx, scrut_op = lower_expr ctx scrutinee in
+  let ctx, scrut_var =
+    match scrut_op with
+    | I.CR_OVar v -> (ctx, v)
+    | I.CR_OConstant _ ->
+        let ty = mk_ir_ty ctx.type_defs scrutinee.ty in
+        let ctx, v = fresh_var ctx ty in
+        if ty.I.ir_type = I.CR_Void then (ctx, v)
+        else
+          let rv : I.rvalue =
+            { I.id = fresh_id (); node = I.CR_Move { src = scrut_op }; ty }
+          in
+          let ctx, _ = emit ctx (I.CR_Assign { dst = v; rvalue = rv }) ty in
+          (ctx, v)
+  in
+  let saved_occ_scrut_var = ctx.occ_scrut_var in
+  let ctx = { ctx with occ_scrut_var = scrut_var } in
+  let tree = PM.compile_match ~scrutinee ~cases in
+  let ctx, result_var = fresh_var ctx out_ty in
+  let merge_id = fresh_id () in
+  let bool_ir_ty () : I.ty = { I.id = fresh_id (); I.ir_type = I.CR_Bool } in
+  let assign_result (ctx : ctx) (op : I.operand) : ctx =
+    if out_ty.I.ir_type = I.CR_Void then ctx
+    else
+      let rv : I.rvalue =
+        { I.id = fresh_id (); node = I.CR_Move { src = op }; ty = out_ty }
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Assign { dst = result_var; rvalue = rv }) out_ty
+      in
+      ctx
+  in
+  let emit_equality (ctx : ctx) (sv : I.var) (cst : I.constant) (cst_ty : I.ty)
+      : ctx * I.var =
+    let bty = bool_ir_ty () in
+    let ctx, dst = fresh_var ctx bty in
+    let rv : I.rvalue =
+      {
+        I.id = fresh_id ();
+        node =
+          I.CR_BinOp
+            {
+              op = I.CR_Eq;
+              lhs = I.CR_OVar sv;
+              rhs = I.CR_OConstant (cst, cst_ty);
+            };
+        ty = bty;
+      }
+    in
+    let ctx, _ = emit ctx (I.CR_Assign { dst; rvalue = rv }) bty in
+    (ctx, dst)
+  in
+  let rec lower_tree (ctx : ctx) (tree : PM.decision_tree) : ctx =
+    match tree with
+    | PM.DFail -> finish_block ctx I.CR_MatchFailure
+    | PM.DLeaf { binds; body } ->
+        let ctx = bind_occs ctx binds in
+        let ctx, body_op = lower_expr ctx body in
+        let ctx = assign_result ctx body_op in
+        finish_block ctx (I.CR_Goto merge_id)
+    | PM.DGuard { binds; condition; on_pass; on_fail } ->
+        let saved_env = ctx.env in
+        let ctx = bind_occs ctx binds in
+        let ctx, cond_op = lower_expr ctx condition in
+        let cond_ty = mk_ir_ty ctx.type_defs condition.ty in
+        let ctx, cond_var =
+          match cond_op with
+          | I.CR_OVar v -> (ctx, v)
+          | I.CR_OConstant _ ->
+              let ctx, v = fresh_var ctx cond_ty in
+              let rv : I.rvalue =
+                {
+                  I.id = fresh_id ();
+                  node = I.CR_Move { src = cond_op };
+                  ty = cond_ty;
+                }
+              in
+              let ctx, _ =
+                emit ctx (I.CR_Assign { dst = v; rvalue = rv }) cond_ty
+              in
+              (ctx, v)
+        in
+        let pass_id = fresh_id () in
+        let fail_id = fresh_id () in
+        let ctx =
+          finish_block ctx
+            (I.CR_CondBr
+               { cond = cond_var; then_block = pass_id; else_block = fail_id })
+        in
+        let ctx = { ctx with pending_merge_id = Some pass_id } in
+        let ctx = lower_tree ctx on_pass in
+        let ctx =
+          { ctx with pending_merge_id = Some fail_id; env = saved_env }
+        in
+        lower_tree ctx on_fail
+    | PM.DSwitch { scrutinee = occ; cases; default } ->
+        lower_switch ctx occ cases default
+  and lower_switch (ctx : ctx) (occ : PM.occurrence)
+      (cases : (PM.pattern_test * PM.decision_tree) list)
+      (default : PM.decision_tree) : ctx =
+    let ctx, sv = materialize_occ ctx occ in
+    let ctx, occ_ty = occurrence_ty ctx occ in
+    let occ_ty = mk_ir_ty ctx.type_defs occ_ty in
+    let is_constant = function PM.Test_Constant _, _ -> true | _ -> false in
+    let constant_cases, ctor_cases = List.partition is_constant cases in
+    (* Literal column: a cond-br chain on the value. Since switch 
+      check only integer and Literal type could vary so switch is not used.*)
+    let lower_literal_chain (ctx : ctx) =
+      let rec chain (ctx : ctx) = function
+        | [] -> lower_tree ctx default
+        | (test, subtree) :: rest ->
+            let cst =
+              match test with
+              | PM.Test_Constant c -> ir_const_of_core c
+              | PM.Test_Constructor _ ->
+                  raise (Lowering_error "pattern: unsupported literal case")
+            in
+            let ctx, cond_var = emit_equality ctx sv cst occ_ty in
+            let case_id = fresh_id () in
+            let next_id = fresh_id () in
+            let ctx =
+              finish_block ctx
+                (I.CR_CondBr
+                   {
+                     cond = cond_var;
+                     then_block = case_id;
+                     else_block = next_id;
+                   })
+            in
+            let ctx = { ctx with pending_merge_id = Some case_id } in
+            let ctx = lower_tree ctx subtree in
+            let ctx = { ctx with pending_merge_id = Some next_id } in
+            chain ctx rest
+      in
+      chain ctx constant_cases
+    in
+    (* Constructor column. An all-constant variant is a plain integer (the
+       tag). A mixed variant is an object: constant constructors are tag-11
+       immediates and payload constructors carry their tag in the object header,
+       so [get_object_tag] yields the plain tag in every case. Either way a
+       single switch on the plain tag discriminates the constructors.
+
+       For [type color = Red | Green | Blue] (plain integer) the switch reads
+       the scrutinee directly:
+
+         switch %c:i64 [2: bb1, 1: bb2, 0: bb3 default: bb4]
+
+       For [type shape = Circle of i64 | Square of i64] (object) the tag is
+       loaded first:
+
+         %Sy_cir_var_1:i64 = get_tag(%s:obj_ptr)
+         switch %Sy_cir_var_1:i64 [1: bb1, 0: bb2 default: bb3]
+
+       A mixed variant such as [type option = None | Some of i64] follows the
+       object shape: [get_tag] normalizes the tag-11 [None] immediate, so a
+       single switch covers both [None] and [Some]. *)
+    let lower_constructor_switch (ctx : ctx) =
+      let ctx, tag_var =
+        if occ_ty.I.ir_type = I.CR_I64 then (ctx, sv)
+        else
+          let tag_ty = i64_ir_ty () in
+          let ctx, tag_var = fresh_var ctx tag_ty in
+          let ctx, _ =
+            let rv : I.rvalue =
+              {
+                I.id = fresh_id ();
+                node = I.CR_Object_get_tag { obj = I.CR_OVar sv };
+                ty = tag_ty;
+              }
+            in
+            emit ctx (I.CR_Assign { dst = tag_var; rvalue = rv }) tag_ty
+          in
+          (ctx, tag_var)
+      in
+      let case_blocks = List.map (fun _ -> fresh_id ()) ctor_cases in
+      let default_id = fresh_id () in
+      let switch_cases =
+        List.map2
+          (fun (test, _) block ->
+            match test with
+            | PM.Test_Constructor { tag; _ } ->
+                { I.value = tag; I.target_block = block }
+            | PM.Test_Constant _ ->
+                raise (Lowering_error "pattern: unsupported constructor case"))
+          ctor_cases case_blocks
+      in
+      let ctx =
+        finish_block ctx
+          (I.CR_Switch
+             {
+               scrutinee = tag_var;
+               cases = switch_cases;
+               default_block = Some default_id;
+             })
+      in
+      let ctx =
+        List.fold_left2
+          (fun ctx (test, subtree) block ->
+            let ctx =
+              match test with
+              | PM.Test_Constructor
+                  { tag; payload = PM.Payload_One; payload_occ = Some pocc }
+                -> (
+                  let ctx, arg = constructor_arg_of_occ ctx occ tag in
+                  match arg with
+                  | Some arg ->
+                      {
+                        ctx with
+                        occ_payloads =
+                          IntMap.add pocc.PM.id arg ctx.occ_payloads;
+                      }
+                  | None -> ctx)
+              | PM.Test_Constant _ | PM.Test_Constructor _ -> ctx
+            in
+            let ctx = { ctx with pending_merge_id = Some block } in
+            lower_tree ctx subtree)
+          ctx ctor_cases case_blocks
+      in
+      let ctx = { ctx with pending_merge_id = Some default_id } in
+      lower_tree ctx default
+    in
+    match (constant_cases, ctor_cases) with
+    | _, [] -> lower_literal_chain ctx
+    | [], _ -> lower_constructor_switch ctx
+    | _ ->
+        raise
+          (Lowering_error "pattern: mixed literal and constructor switch cases")
+  in
+  let ctx = lower_tree ctx tree in
+  let ctx =
+    {
+      ctx with
+      pending_merge_id = Some merge_id;
+      occ_scrut_var = saved_occ_scrut_var;
+    }
+  in
+  (ctx, I.CR_OVar result_var)
+
+and lower_variant_constructor (ctx : ctx) (e : C.expr) (tag : int)
+    (arg : C.expr option) (out_ty : I.ty) : ctx * I.operand =
+  match e.ty.ty_desc with
+  | CTy_Arrow _ ->
+      raise
+        (Lowering_error
+           "variant constructor used as a function is not lowered yet")
+  | CTy_Defined { name; _ } -> (
+      match StringMap.find_opt name.name ctx.type_defs with
+      | Some { def = CTydef_Variant ctors; _ } -> (
+          match
+            List.find_opt (fun (c : C.constructor_decl) -> c.tag = tag) ctors
+          with
+          | None ->
+              raise
+                (Lowering_error
+                   (Printf.sprintf "variant: no constructor with tag %d" tag))
+          | Some ctor -> (
+              match ctor.arg with
+              | None -> (
+                  (* A constant constructor is the plain tag for an
+                     all-constant variant, or a tag-11 immediate for a mixed
+                     variant (the tag sits above the two ownership bits and the
+                     reserved [11] tag marks it, never a real pointer). *)
+                  match out_ty.I.ir_type with
+                  | I.CR_I64 ->
+                      ( ctx,
+                        I.CR_OConstant (I.CR_IntLit (string_of_int tag), out_ty)
+                      )
+                  | I.CR_Obj { obj_kind = I.CR_Variant_kind _; _ } ->
+                      let enc = Int64.to_int (constant_ctor_value tag) in
+                      let ctx, v = fresh_var ctx out_ty in
+                      let rv : I.rvalue =
+                        {
+                          I.id = fresh_id ();
+                          node =
+                            I.CR_Cast
+                              {
+                                src =
+                                  I.CR_OConstant
+                                    ( I.CR_IntLit (string_of_int enc),
+                                      i64_ir_ty () );
+                                to_ty = out_ty;
+                              };
+                          ty = out_ty;
+                        }
+                      in
+                      let ctx, _ =
+                        emit ctx (I.CR_Assign { dst = v; rvalue = rv }) out_ty
+                      in
+                      (ctx, I.CR_OVar v)
+                  | _ ->
+                      raise
+                        (Lowering_error
+                           "variant: constant constructor with unexpected type")
+                  )
+              | Some ctor_arg -> (
+                  match arg with
+                  | Some a -> lower_variant_payload ctx name.name tag ctor_arg a
+                  | None ->
+                      raise
+                        (Lowering_error
+                           "variant constructor used as a function is not \
+                            lowered yet"))))
+      | _ -> raise (Lowering_error "variant constructor: not a variant type"))
+  | _ -> raise (Lowering_error "variant constructor: unexpected type")
+
+and lower_variant_payload (ctx : ctx) (variant_name : string) (tag : int)
+    (ctor_arg : C.constructor_arg) (arg : C.expr) : ctx * I.operand =
+  let i64_const n : I.operand =
+    I.CR_OConstant (I.CR_IntLit (string_of_int n), i64_ir_ty ())
+  in
+  let obj_ty = variant_constructor_ty ctx.type_defs variant_name tag ctor_arg in
+  let field_count =
+    match obj_ty.I.ir_type with
+    | I.CR_Obj { obj_kind = I.CR_Variant_kind { constructors = [ c ] }; _ } ->
+        List.length c.I.fields
+    | _ ->
+        raise
+          (Lowering_error "variant: constructor object is not a variant kind")
+  in
+  let ctx, obj_var = fresh_var ctx obj_ty in
+  let ctx, _ =
+    emit ctx
+      (I.CR_Object_create { dst = obj_var; size = i64_const field_count })
+      obj_ty
+  in
+  let set_field (ctx : ctx) (idx : int) (v : I.operand) (vty : I.ty) : ctx =
+    let ctx, _ =
+      emit ctx
+        (I.CR_Object_set
+           {
+             obj = obj_var;
+             field_idx = i64_const idx;
+             value = v;
+             value_ty = vty;
+           })
+        vty
+    in
+    ctx
+  in
+  let ctx =
+    match ctor_arg with
+    | Constr_ty { ty_desc = CTy_Tuple tys; _ } -> (
+        match arg.node with
+        | CExp_Tuple elements ->
+            (* Anonymous tuple literal: flatten its elements straight into the
+                 block (see [P (1, 2)] below), without materialising an
+                 intermediate tuple. *)
+            List.fold_left2
+              (fun (ctx : ctx) (i, elem) t ->
+                let ctx, v = lower_expr ctx elem in
+                set_field ctx i v (mk_ir_ty ctx.type_defs t))
+              ctx
+              (List.mapi (fun i elem -> (i, elem)) elements)
+              tys
+        | _ ->
+            (* A tuple value: project each element into the block. Reached
+                 when the payload argument is a tuple-typed expression that is
+                 not a tuple literal, e.g. a variable/parameter [P v], a call
+                 [P (make_pair x y)], a projection [P r.pair], or an [if]/[match]
+                 yielding a tuple.
+
+                 For example, given [type t = P of (i64, i64)]:
+
+                     let mk (v : (i64, i64)) = P v   (* [v] is projected *)
+                     let lit = P (1, 2)              (* literal, flattened directly *)
+
+                 The tuple already exists, so each field is read with [obj_get]
+                 and copied into the constructor block. *)
+            let src_ty = mk_ir_ty ctx.type_defs arg.ty in
+            let ctx, src = lower_expr ctx arg in
+            let ctx, src_var = operand_as_var ctx src src_ty in
+            let ctx, _ =
+              List.fold_left
+                (fun ((ctx : ctx), i) t ->
+                  let fty = mk_ir_ty ctx.type_defs t in
+                  let ctx, dst = fresh_var ctx fty in
+                  let rv : I.rvalue =
+                    {
+                      I.id = fresh_id ();
+                      node =
+                        I.CR_Object_get
+                          {
+                            obj = I.CR_OVar src_var;
+                            field_idx = i64_const i;
+                            value_ty = fty;
+                          };
+                      ty = fty;
+                    }
+                  in
+                  let ctx, _ =
+                    emit ctx (I.CR_Assign { dst; rvalue = rv }) fty
+                  in
+                  (set_field ctx i (I.CR_OVar dst) fty, i + 1))
+                (ctx, 0) tys
+            in
+            ctx)
+    | Constr_record _ -> (
+        match arg.node with
+        | CExp_Record fields ->
+            List.fold_left
+              (fun ctx (f : C.record_field) ->
+                let ctx, v = lower_expr ctx f.field_value in
+                set_field ctx f.field_idx v (mk_ir_ty ctx.type_defs f.field_ty))
+              ctx fields
+        | _ ->
+            raise
+              (Lowering_error "variant: record payload must be a record literal")
+        )
+    | Constr_ty t ->
+        let ctx, v = lower_expr ctx arg in
+        set_field ctx 0 v (mk_ir_ty ctx.type_defs t)
+  in
+  (ctx, I.CR_OVar obj_var)
 
 and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
     (lam_ty : C.ty) (lambda_expr_id : int) : ctx * I.function_cir =
@@ -661,7 +1416,9 @@ and lower_args_to_slots (ctx : ctx) (args : C.expr list) (slot_tys : I.ty list)
               let ctx, op =
                 match op with
                 | I.CR_OVar v
-                  when not (ir_type_equal v.I.ty.I.ir_type slot_ty.I.ir_type) ->
+                  when not
+                         (arg_type_compatible v.I.ty.I.ir_type slot_ty.I.ir_type)
+                  ->
                     let ctx, new_v = fresh_var ctx slot_ty in
                     let ctx, _ =
                       emit ctx (assign_cast_var new_v v slot_ty) slot_ty

@@ -45,7 +45,10 @@ Integer literal emits an i64 function:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -157,7 +160,10 @@ Boolean literals emit i1 functions:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -264,7 +270,10 @@ String literal emits an i8* return:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -426,7 +435,10 @@ Arithmetic operations emit the corresponding LLVM instructions:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -555,7 +567,10 @@ Comparison operations emit icmp instructions:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -663,7 +678,10 @@ Simple Function:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }
@@ -726,23 +744,292 @@ Tuple emits syli_object_create and syli_object_set runtime calls:
   > let pair = (1, 2)
   > EOF
   $ dune exec sylic -- llvm test_tuple.sy
-  Fatal error: exception Middle_end__Lower_core_to_cir.Lowering_error("core form not lowered to SIR yet")
-  ***** UNREACHABLE *****
+  declare void @syli_rt_gc_cycle()
+  declare ptr addrspace(1) @syli_rt_ownership_alloc_object(i64, i32, i64)
+  declare void @syli_rt_ownership_decr(ptr addrspace(1))
+  declare void @syli_rt_ownership_incr(ptr addrspace(1))
+  declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
+  
+  @syliTest_tuple.pair = global ptr addrspace(1) zeroinitializer
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_tuple()
+    ret void
+  }
+  
+  define void @__init.Test_tuple() gc "statepoint-example" {
+  bb0:
+    %__sy_cir_init_tmp_0 = call ptr addrspace(1) @__init_global.syliTest_tuple.pair()
+    store ptr addrspace(1) %__sy_cir_init_tmp_0, ptr @syliTest_tuple.pair
+    %Sy_llvm_tmp_0 = load ptr addrspace(1), ptr @syliTest_tuple.pair
+    call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_llvm_tmp_0, ptr addrspace(1) %__sy_cir_init_tmp_0)
+    ret void
+  }
+  
+  define ptr addrspace(1) @__init_global.syliTest_tuple.pair() gc "statepoint-example" {
+  bb0:
+    call void @syli_rt_gc_cycle()
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i64 2)
+    ; nop
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
+    store i64 1, ptr addrspace(1) %Sy_llvm_tmp_1
+    %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i64 1
+    store i64 2, ptr addrspace(1) %Sy_llvm_tmp_3
+    %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_cir_var_0)
+    ret ptr addrspace(1) %Sy_rir_tmp_0
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {
+  bb0:
+    %i = ptrtoint ptr addrspace(1) %p to i64
+    %u = and i64 %i, -4
+    %r = inttoptr i64 %u to ptr addrspace(1)
+    ret ptr addrspace(1) %r
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
+  bb0:
+    %i = ptrtoint ptr addrspace(1) %p to i64
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
+    %r = inttoptr i64 %u to ptr addrspace(1)
+    ret ptr addrspace(1) %r
+  }
+  
+  define void @syli_inlinable_ownership_release(ptr addrspace(1) %p) {
+  bb0:
+    %pi = ptrtoint ptr addrspace(1) %p to i64
+    %tag = and i64 %pi, 3
+    %is_own = icmp eq i64 %tag, 1
+    br i1 %is_own, label %own, label %done
+  own:
+    call void @syli_rt_ownership_decr(ptr addrspace(1) %p)
+    ret void
+  done:
+    ret void
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %p) {
+  bb0:
+    %pi = ptrtoint ptr addrspace(1) %p to i64
+    %tag = and i64 %pi, 3
+    %is_borrow = icmp eq i64 %tag, 0
+    br i1 %is_borrow, label %promote, label %done
+  promote:
+    %r = or i64 %pi, 1
+    %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
+    ret ptr addrspace(1) %rp
+  done:
+    ret ptr addrspace(1) %p
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_share(ptr addrspace(1) %p) {
+  bb0:
+    %pi = ptrtoint ptr addrspace(1) %p to i64
+    %tag = and i64 %pi, 2
+    %is_always = icmp ne i64 %tag, 0
+    br i1 %is_always, label %done, label %promote
+  promote:
+    %r = or i64 %pi, 1
+    %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
+    ret ptr addrspace(1) %rp
+  done:
+    ret ptr addrspace(1) %p
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_make_always_borrow(ptr addrspace(1) %p) {
+  bb0:
+    %i = ptrtoint ptr addrspace(1) %p to i64
+    %u = and i64 %i, -4
+    %r = or i64 %u, 2
+    %rp = inttoptr i64 %r to ptr addrspace(1)
+    ret ptr addrspace(1) %rp
+  }
+  
+  define void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value) {
+  bb0:
+    %vi = ptrtoint ptr addrspace(1) %value to i64
+    %tag = and i64 %vi, 3
+    %imm = icmp eq i64 %tag, 3
+    br i1 %imm, label %done, label %notify
+  notify:
+    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value)
+    ret void
+  done:
+    ret void
+  }
+  
 
 Triple tuple emits three object_set calls:
   $ cat >test_triple.sy <<EOF
   > let triple = (true, 42, "x")
   > EOF
-  ***** UNREACHABLE *****
   $ dune exec sylic -- llvm test_triple.sy
-  ***** UNREACHABLE *****
+  declare void @syli_rt_gc_cycle()
+  declare ptr addrspace(1) @syli_rt_ownership_alloc_object(i64, i32, i64)
+  declare void @syli_rt_ownership_decr(ptr addrspace(1))
+  declare void @syli_rt_ownership_incr(ptr addrspace(1))
+  declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
+  
+  @syliTest_triple.triple = global ptr addrspace(1) zeroinitializer
+  @__str.1 = global { i64, i64, [8 x i8] } { i64 -9223372036854775807, i64 0, [8 x i8] c"x\00\00\00\00\00\00\06" }
+  
+  define i32 @syli_startup_program() gc "statepoint-example" {
+  bb0:
+    call void @syli_modules_init()
+    ret i32 0
+  }
+  
+  define void @syli_modules_init() gc "statepoint-example" {
+  bb0:
+    call void @__init.Test_triple()
+    ret void
+  }
+  
+  define void @__init.Test_triple() gc "statepoint-example" {
+  bb0:
+    %__sy_cir_init_tmp_0 = call ptr addrspace(1) @__init_global.syliTest_triple.triple()
+    store ptr addrspace(1) %__sy_cir_init_tmp_0, ptr @syliTest_triple.triple
+    %Sy_llvm_tmp_0 = load ptr addrspace(1), ptr @syliTest_triple.triple
+    call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_llvm_tmp_0, ptr addrspace(1) %__sy_cir_init_tmp_0)
+    ret void
+  }
+  
+  define ptr addrspace(1) @__init_global.syliTest_triple.triple() gc "statepoint-example" {
+  bb0:
+    call void @syli_rt_gc_cycle()
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748355, i32 1, i64 3)
+    ; nop
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
+    store i1 true, ptr addrspace(1) %Sy_llvm_tmp_1
+    %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i64 1
+    store i64 42, ptr addrspace(1) %Sy_llvm_tmp_3
+    %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i64 2
+    %Sy_oir_release_tmp_1 = load ptr addrspace(1), ptr addrspace(1) %Sy_llvm_tmp_5
+    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_oir_release_tmp_1)
+    %Sy_llvm_tmp_6 = ptrtoint ptr @__str.1 to i64
+    %Sy_llvm_tmp_7 = add i64 %Sy_llvm_tmp_6, 2
+    %Sy_llvm_tmp_8 = inttoptr i64 %Sy_llvm_tmp_7 to ptr addrspace(1)
+    %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_llvm_tmp_8)
+    %Sy_llvm_tmp_9 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_llvm_tmp_10 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_9, i32 0, i32 2, i64 2
+    store ptr addrspace(1) %Sy_rir_tmp_0, ptr addrspace(1) %Sy_llvm_tmp_10
+    %Sy_rir_tmp_1 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_cir_var_0)
+    ret ptr addrspace(1) %Sy_rir_tmp_1
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {
+  bb0:
+    %i = ptrtoint ptr addrspace(1) %p to i64
+    %u = and i64 %i, -4
+    %r = inttoptr i64 %u to ptr addrspace(1)
+    ret ptr addrspace(1) %r
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
+  bb0:
+    %i = ptrtoint ptr addrspace(1) %p to i64
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
+    %r = inttoptr i64 %u to ptr addrspace(1)
+    ret ptr addrspace(1) %r
+  }
+  
+  define void @syli_inlinable_ownership_release(ptr addrspace(1) %p) {
+  bb0:
+    %pi = ptrtoint ptr addrspace(1) %p to i64
+    %tag = and i64 %pi, 3
+    %is_own = icmp eq i64 %tag, 1
+    br i1 %is_own, label %own, label %done
+  own:
+    call void @syli_rt_ownership_decr(ptr addrspace(1) %p)
+    ret void
+  done:
+    ret void
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %p) {
+  bb0:
+    %pi = ptrtoint ptr addrspace(1) %p to i64
+    %tag = and i64 %pi, 3
+    %is_borrow = icmp eq i64 %tag, 0
+    br i1 %is_borrow, label %promote, label %done
+  promote:
+    %r = or i64 %pi, 1
+    %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
+    ret ptr addrspace(1) %rp
+  done:
+    ret ptr addrspace(1) %p
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_share(ptr addrspace(1) %p) {
+  bb0:
+    %pi = ptrtoint ptr addrspace(1) %p to i64
+    %tag = and i64 %pi, 2
+    %is_always = icmp ne i64 %tag, 0
+    br i1 %is_always, label %done, label %promote
+  promote:
+    %r = or i64 %pi, 1
+    %rp = inttoptr i64 %r to ptr addrspace(1)
+    call void @syli_rt_ownership_incr(ptr addrspace(1) %rp)
+    ret ptr addrspace(1) %rp
+  done:
+    ret ptr addrspace(1) %p
+  }
+  
+  define ptr addrspace(1) @syli_inlinable_ownership_make_always_borrow(ptr addrspace(1) %p) {
+  bb0:
+    %i = ptrtoint ptr addrspace(1) %p to i64
+    %u = and i64 %i, -4
+    %r = or i64 %u, 2
+    %rp = inttoptr i64 %r to ptr addrspace(1)
+    ret ptr addrspace(1) %rp
+  }
+  
+  define void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value) {
+  bb0:
+    %vi = ptrtoint ptr addrspace(1) %value to i64
+    %tag = and i64 %vi, 3
+    %imm = icmp eq i64 %tag, 3
+    br i1 %imm, label %done, label %notify
+  notify:
+    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value)
+    ret void
+  done:
+    ret void
+  }
+  
 
 Type error propagates from typing phase:
   $ cat >test_tyerr.sy <<EOF
   > let x = 1 + true
   > EOF
-  ***** UNREACHABLE *****
   $ dune exec sylic -- llvm test_tyerr.sy 2>&1
+  Type error in test_tyerr.sy at line 1, column 8
+  
+    1 | let x = 1 + true
+                ^^^^^^^^
+  
+  Unbound identifier '+'
   ***** UNREACHABLE *****
 
 Collection literals are not yet lowered (unsupported):

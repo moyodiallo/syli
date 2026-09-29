@@ -74,6 +74,13 @@ uint64_t syli_rt_get_object_tag(Object* obj);
 uint64_t syli_rt_get_object_length(Object* obj);
 
 /************************************************
+ * Match Failure
+ ************************************************/
+
+/* Called by generated code when no pattern-match case matched. */
+void syli_match_failure(void);
+
+/************************************************
  * GC Trigger Function
  ************************************************/
 

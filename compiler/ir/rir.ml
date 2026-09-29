@@ -28,6 +28,7 @@ type runtime_op_name =
   | RR_RT_object_release
   | RR_RT_object_alloc
   | RR_RT_object_make_always_borrow
+  | RR_RT_match_failure
 
 let runtime_op_name_to_string = function
   | RR_RT_get_object_length -> "syli_rt_get_object_length"
@@ -42,6 +43,7 @@ let runtime_op_name_to_string = function
   | RR_RT_object_release -> "syli_rt_ownership_release"
   | RR_RT_object_alloc -> "syli_rt_ownership_alloc_object"
   | RR_RT_object_make_always_borrow -> "syli_rt_ownership_make_always_borrow"
+  | RR_RT_match_failure -> "syli_match_failure"
 
 type id = Cir.id
 type qualified_name = Cir.qualified_name
@@ -137,6 +139,8 @@ and terminator_node =
     }
   | RR_CondBr of { cond : var; then_block : id; else_block : id }
   | RR_Return of operand option
+  | RR_MatchFailure
+      (** Pattern-match failure: aborts at runtime and has no successors. *)
 
 and switch_case_node = { value : int; target_block : id }
 
