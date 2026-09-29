@@ -68,6 +68,13 @@ module Monomorphize = struct
     | CR_Record_kind { fields; _ } ->
         List.exists (fun f -> has_generic_ir_type f.field_ty.ir_type) fields
     | CR_Array_kind { element_ty } -> has_generic_ir_type element_ty.ir_type
+    | CR_Variant_kind { constructors } ->
+        List.exists
+          (fun (c : variant_ctor_layout) ->
+            List.exists
+              (fun f -> has_generic_ir_type f.field_ty.ir_type)
+              c.fields)
+          constructors
 
   let has_generic_ty (t : ty) = has_generic_ir_type t.ir_type
 
@@ -91,6 +98,14 @@ module Monomorphize = struct
           x_fields y_fields
     | CR_Array_kind { element_ty = xe }, CR_Array_kind { element_ty = ye } ->
         collect_subst subst xe ye
+    | ( CR_Variant_kind { constructors = xc },
+        CR_Variant_kind { constructors = yc } ) ->
+        List.iter2
+          (fun (xc : variant_ctor_layout) (yc : variant_ctor_layout) ->
+            List.iter2
+              (fun xf yf -> collect_subst subst xf.field_ty yf.field_ty)
+              xc.fields yc.fields)
+          xc yc
     | _ -> ()
 
   let create_subst x_tys y_tys : Subst.subst =

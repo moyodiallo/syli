@@ -230,6 +230,21 @@ let header_operand_of_obj (obj_ty : Oir.ty) : operand =
             fields
             |> List.map (fun (f : Oir.record_field_ty) -> lower_ty f.field_ty)
         | Oir.OR_Array_kind { element_ty } -> [ lower_ty element_ty ]
+        | Oir.OR_Variant_kind { constructors } ->
+            let fields =
+              match tag_variant with
+              | Some tag -> (
+                  match
+                    List.find_opt
+                      (fun (c : Oir.variant_ctor_layout) -> c.tag = tag)
+                      constructors
+                  with
+                  | Some c -> c.fields
+                  | None -> [])
+              | None -> []
+            in
+            fields
+            |> List.map (fun (f : Oir.record_field_ty) -> lower_ty f.field_ty)
       in
       let has_pointers = has_pointer_fields field_types in
       let obj_type, payload =
@@ -351,6 +366,7 @@ let lower_terminator (ctx : ctx) (term : Oir.terminator) : ctx * Rir.terminator
           | None -> (ctx, None)
         in
         (ctx, RR_Return op')
+    | OR_MatchFailure -> (ctx, RR_MatchFailure)
   in
   (ctx, { id = fresh_global_id (); node })
 

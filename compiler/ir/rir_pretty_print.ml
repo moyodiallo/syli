@@ -155,6 +155,7 @@ let string_of_terminator (term : terminator) : string =
         else_block
   | RR_Return None -> "  return"
   | RR_Return (Some op) -> Printf.sprintf "  return %s" (operand_to_string op)
+  | RR_MatchFailure -> "  match_failure"
 
 let string_of_block (b : block) : string =
   let stmts_str =

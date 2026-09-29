@@ -67,7 +67,8 @@ let terminator_uses (term : terminator) : IntSet.t =
   | OR_Return { operand = Some op; _ } -> vars_of_operand op
   | OR_CondBr { cond; _ } -> vars_of_operand (OR_OVar cond)
   | OR_Switch { scrutinee; _ } -> vars_of_operand (OR_OVar scrutinee)
-  | OR_Return { operand = None; _ } | OR_Goto _ -> IntSet.empty
+  | OR_Return { operand = None; _ } | OR_Goto _ | OR_MatchFailure ->
+      IntSet.empty
 
 (* ── Main analysis ────────────────────────────────────────────── *)
 

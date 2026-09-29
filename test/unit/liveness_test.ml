@@ -17,7 +17,7 @@ let obj_ty : ty =
       OR_Obj
         {
           named = Some "Obj";
-          obj_kind = OR_Record_kind { fields = []; cardinal = 0 };
+          obj_kind = OR_Record_kind { fields = [] };
           tag_variant = None;
           cyclic_prop = Acyclic;
         };

@@ -123,7 +123,7 @@ and lower_cyclic_prop (c : Cir.cyclic_prop) : Oir.cyclic_prop =
 
 and lower_obj_kind (k : Cir.obj_kind) : Oir.obj_kind =
   match k with
-  | Cir.CR_Record_kind { fields; cardinal } ->
+  | Cir.CR_Record_kind { fields } ->
       Oir.OR_Record_kind
         {
           fields =
@@ -138,10 +138,28 @@ and lower_obj_kind (k : Cir.obj_kind) : Oir.obj_kind =
                     | Cir.Immutable -> Oir.Immutable);
                 })
               fields;
-          cardinal;
         }
   | Cir.CR_Array_kind { element_ty } ->
       Oir.OR_Array_kind { element_ty = lower_ty element_ty }
+  | Cir.CR_Variant_kind { constructors } ->
+      Oir.OR_Variant_kind
+        {
+          constructors =
+            List.map
+              (fun (c : Cir.variant_ctor_layout) ->
+                { Oir.tag = c.tag; fields = List.map lower_field_ty c.fields })
+              constructors;
+        }
+
+and lower_field_ty (f : Cir.record_field_ty) : Oir.record_field_ty =
+  {
+    Oir.field_idx = f.field_idx;
+    field_ty = lower_ty f.field_ty;
+    field_mut =
+      (match f.field_mut with
+      | Cir.Mutable -> Oir.Mutable
+      | Cir.Immutable -> Oir.Immutable);
+  }
 
 and lower_ty (t : Cir.ty) : Oir.ty =
   { id = fresh_global_id (); ir_type = lower_ir_type t.ir_type }
@@ -228,6 +246,7 @@ let lower_terminator (ctx : ctx) (term : Cir.terminator) : ctx * Oir.terminator
         ( ctx,
           Oir.OR_Return { operand = op'; ownership_ret = Oir.OR_Ownership_own }
         )
+    | Cir.CR_MatchFailure -> (ctx, Oir.OR_MatchFailure)
   in
   (ctx, { id = fresh_global_id (); node })
 
@@ -419,9 +438,7 @@ let closure_obj_ty (sir_field_types : Cir.ty list) : Oir.ty =
       Oir.OR_Obj
         {
           named = None;
-          obj_kind =
-            Oir.OR_Record_kind
-              { fields; cardinal = List.length sir_field_types };
+          obj_kind = Oir.OR_Record_kind { fields };
           tag_variant = Some 0;
           cyclic_prop = Oir.Unknown_cyclic_prop;
         };

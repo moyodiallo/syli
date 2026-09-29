@@ -85,7 +85,7 @@ static inline void gc_one_step_releasing()
         uint32_t bitmap = syli_object_bitmap_bits(obj);
         syli_state.releasing_budget -= (int)length;
         for (uint64_t i = 0; i < length; i++) {
-            if (bitmap & (1 << i)) {
+            if (!syli_bitmap_is_ref(bitmap, i)) {
                 continue; // non-reference field
             }
             uint64_t field_value = gc_obj->value[i];

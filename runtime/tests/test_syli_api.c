@@ -221,16 +221,16 @@ static void test_rt_get_object_tag(void)
 
     syli_state_init();
 
-    uint64_t variant_bits  = (uint64_t)0xAB << 48;
+    uint64_t variant_tag  = (uint64_t)0xAB;
     object_header_t header = syli_object_make_header(Zone_GcLocal, Acyclic,
         Type_MonoImm, Flag_None, syli_object_make_mono_payload(0));
-    header |= variant_bits;
+    header |= variant_tag << GC_VARIANT_SHIFT;
 
     obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, 0);
     assert(obj != NULL);
 
     uint64_t tag = syli_rt_get_object_tag(syli_object_of_obj_ptr(obj));
-    assert(tag == variant_bits);
+    assert(tag == variant_tag);
 
     object_header_t header_no_variant
         = syli_object_make_header(Zone_GcLocal, Acyclic, Type_MonoRef,

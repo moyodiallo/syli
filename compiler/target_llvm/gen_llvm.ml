@@ -88,6 +88,7 @@ type lower_ctx = {
   str_data : string StringMap.t;
   allocas : lltype StringMap.t;
   need_unreachable : bool;
+  used_inlinables : StringSet.t;
 }
 
 let fresh_reg (ctx : lower_ctx) (ty : lltype) : lower_ctx * operand =
@@ -413,7 +414,12 @@ let lower_rvalue_rhs (ctx : lower_ctx) (rv : Rir.rvalue) :
       in
       let fn_name, ctx =
         match Ownership.use_if_inlinable_runtime_function fn_name with
-        | Some fn_name -> (fn_name, ctx)
+        | Some fn_name ->
+            ( fn_name,
+              {
+                ctx with
+                used_inlinables = StringSet.add fn_name ctx.used_inlinables;
+              } )
         | None ->
             let fn_name = Rir.runtime_op_name_to_string fn_name in
             let param_tys = List.map ty_of_operand args_ops in
@@ -534,7 +540,12 @@ let lower_statement (ctx : lower_ctx) (stmt : Rir.statement) :
       let ret_ty = lltype_of_var dst in
       let fn_name, ctx =
         match Ownership.use_if_inlinable_runtime_function fn_name with
-        | Some fn_name -> (fn_name, ctx)
+        | Some fn_name ->
+            ( fn_name,
+              {
+                ctx with
+                used_inlinables = StringSet.add fn_name ctx.used_inlinables;
+              } )
         | None ->
             let fn_name = Rir.runtime_op_name_to_string fn_name in
             let param_tys = List.map ty_of_operand args_ops in
@@ -614,6 +625,22 @@ let lower_terminator (ctx : lower_ctx) (term : Rir.terminator) :
       | Some op ->
           let ctx, op', extra = lower_operand ctx op in
           (ctx, LV_Ret (Some op'), extra))
+  | RR_MatchFailure ->
+      let fn_name = Rir.runtime_op_name_to_string Rir.RR_RT_match_failure in
+      let fn_ty = LV_Func ([], LV_Void) in
+      let ctx =
+        {
+          ctx with
+          runtime_decls = StringMap.add fn_name fn_ty ctx.runtime_decls;
+        }
+      in
+      let call =
+        LV_Assign
+          ( LV_Local ("match_failure_call", LV_Void),
+            LV_Call { fn = global fn_name fn_ty; args = []; ret_ty = LV_Void }
+          )
+      in
+      (ctx, LV_Unreachable, [ call ])
 
 let lower_function (ctx : lower_ctx) (fn : Rir.function_rir) : lower_ctx * func
     =
@@ -756,6 +783,7 @@ let lower_program (prog : Rir.program_rir) : module_ =
             ctx with
             runtime_decls = fn_ctx_after.runtime_decls;
             str_data = fn_ctx_after.str_data;
+            used_inlinables = fn_ctx_after.used_inlinables;
           },
           fn_result ))
       {
@@ -779,6 +807,7 @@ let lower_program (prog : Rir.program_rir) : module_ =
         str_data = StringMap.empty;
         allocas = StringMap.empty;
         need_unreachable = false;
+        used_inlinables = StringSet.empty;
       }
       prog.functions
   in
@@ -798,7 +827,11 @@ let lower_program (prog : Rir.program_rir) : module_ =
       prog.ffi_external_functions
   in
   let declarations =
-    [ Ownership.builtin_decls (); runtime_declarations; ffi_declarations ]
+    [
+      Ownership.builtin_decls final_ctx.used_inlinables;
+      runtime_declarations;
+      ffi_declarations;
+    ]
     |> List.concat
     |> List.sort_uniq (fun (fname1, _) (fname2, _) ->
         String.compare fname1 fname2)
@@ -826,7 +859,13 @@ let lower_program (prog : Rir.program_rir) : module_ =
     type_defs;
     declarations;
     globals;
-    functions = functions @ Ownership.builtins ();
+    functions =
+      functions
+      @ List.filter
+          (fun (f : func) ->
+            (not (Ownership.is_gated_inlinable f.name))
+            || StringSet.mem f.name final_ctx.used_inlinables)
+          (Ownership.builtins ());
     source_filename = prog.name;
   }
 

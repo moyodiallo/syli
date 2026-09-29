@@ -51,10 +51,12 @@ type unop = CR_Neg | CR_Not | CR_BitNot
 type visibility = CR_Public | CR_Private
 
 type record_field_ty = { field_idx : int; field_ty : ty; field_mut : mut_flag }
+and variant_ctor_layout = { tag : int; fields : record_field_ty list }
 
 and obj_kind =
-  | CR_Record_kind of { fields : record_field_ty list; cardinal : int }
+  | CR_Record_kind of { fields : record_field_ty list }
   | CR_Array_kind of { element_ty : ty }
+  | CR_Variant_kind of { constructors : variant_ctor_layout list }
 
 (** CIR type kinds. *)
 and ir_type =
@@ -120,6 +122,8 @@ and terminator_node =
     }
   | CR_CondBr of { cond : var; then_block : id; else_block : id }
   | CR_Return of operand option
+  | CR_MatchFailure
+      (** Pattern-match failure: aborts at runtime and has no successors. *)
 
 and switch_case_node = { value : int; target_block : id }
 (** A switch case mapping an integer value to a target block. *)

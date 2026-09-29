@@ -43,7 +43,7 @@ let rec string_of_ir_type = function
       Printf.sprintf "(%s -> %s)" params_str (string_of_ir_type ret_ty.ir_type)
 
 and string_of_obj_kind = function
-  | CR_Record_kind { fields; cardinal } ->
+  | CR_Record_kind { fields } ->
       let fields_str =
         fields
         |> List.map (fun (f : record_field_ty) ->
@@ -51,9 +51,22 @@ and string_of_obj_kind = function
               (string_of_ir_type f.field_ty.ir_type))
         |> String.concat "; "
       in
-      Printf.sprintf "{card=%d [%s]}" cardinal fields_str
+      Printf.sprintf "{card=%d [%s]}" (List.length fields) fields_str
   | CR_Array_kind { element_ty } ->
       Printf.sprintf "[array_elt=%s]" (string_of_ir_type element_ty.ir_type)
+  | CR_Variant_kind { constructors } ->
+      let ctor_str (c : variant_ctor_layout) =
+        let fields_str =
+          c.fields
+          |> List.map (fun (f : record_field_ty) ->
+              Printf.sprintf "%d:%s" f.field_idx
+                (string_of_ir_type f.field_ty.ir_type))
+          |> String.concat "; "
+        in
+        Printf.sprintf "%d{%s}" c.tag fields_str
+      in
+      Printf.sprintf "{variant [%s]}"
+        (String.concat "; " (List.map ctor_str constructors))
 
 let string_of_ty (t : ty) : string = string_of_ir_type t.ir_type
 
@@ -214,6 +227,7 @@ let string_of_terminator (lookup : int -> int) (term : terminator) : string =
         (lookup then_block) (lookup else_block)
   | CR_Return None -> "return"
   | CR_Return (Some op) -> Printf.sprintf "return %s" (string_of_operand op)
+  | CR_MatchFailure -> "match_failure"
 
 let string_of_block (lookup : int -> int) (b : block) : string =
   let stmts = List.map (fun s -> "    " ^ string_of_statement s) b.statements in

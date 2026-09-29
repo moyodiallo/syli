@@ -30,7 +30,7 @@
  * Bits 58      - HasFinalizer
  * Bits 57      - HasPointers
  *
- * Bit 56       : Traceable (an object directly or indirectly refers to a cyclic object)
+ * Bit 56       : Scanned (directly or indirectly refers to a cyclic)
  *
  * Bits 55-48   : Variant type flags (8 bits) (256 variants)
  *
@@ -58,7 +58,8 @@ typedef uint32_t object_payload_t;
 #define GC_HAS_FINALIZER_MASK   (0x1ULL << 58) // bit 58
 #define GC_HAS_POINTERS_MASK    (0x1ULL << 57) // bit 57
 #define GC_TRACEABLE_MASK       (0x1ULL << 56) // bit 56
-#define GC_VARIANT_FLAGS_MASK   (0xFFULL << 48) // bits 55-48
+#define GC_VARIANT_SHIFT        48
+#define GC_VARIANT_FLAGS_MASK   (0xFFULL << GC_VARIANT_SHIFT) // bits 55-48
 #define GC_IMMUTABLE_FLAGS_MASK (0x3ULL << 57) // bits 58-57
 #define GC_PAYLOAD_MASK         0xFFFFFFFFULL // bits 31-0
 
@@ -292,6 +293,11 @@ static inline uint32_t syli_object_bitmap_bits(Object* o)
     return syli_object_payload(o) >> GC_BITMAP_BITS_SHIFT;
 }
 
+static inline bool syli_bitmap_is_ref(uint32_t bitmap, size_t index)
+{
+    return (bitmap & (1u << index)) != 0;
+}
+
 /* ============================================================
  * Generic Length Accessor
  * ============================================================ */
@@ -316,7 +322,7 @@ static inline size_t syli_object_length(Object* o)
 /* Variants */
 static inline uint64_t syli_object_get_variant_tag(Object* o)
 {
-    return (o->header_word & GC_VARIANT_FLAGS_MASK);
+    return (o->header_word & GC_VARIANT_FLAGS_MASK) >> GC_VARIANT_SHIFT;
 }
 
 #endif /* HEADER_OBJECT_H */

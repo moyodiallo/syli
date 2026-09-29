@@ -61,7 +61,7 @@ static void gc_one_step_tracing(void)
         int bitmap    = syli_object_bitmap_bits(obj);
         syli_state.tracing_budget -= (int)length;
         for (size_t i = 0; i < length; i++) {
-            if (bitmap & (1 << i)) {
+            if (!syli_bitmap_is_ref(bitmap, i)) {
                 continue; // non-reference field
             }
             uint64_t field_value = current->value[i];
@@ -128,7 +128,7 @@ static void gc_one_step_prepare_tracing_mutations()
         uint64_t length = syli_object_bitmap_length(obj);
         uint32_t bitmap = syli_object_bitmap_bits(obj);
         for (uint32_t i = 0; i < length; i++) {
-            if (bitmap & (1 << i)) {
+            if (!syli_bitmap_is_ref(bitmap, i)) {
                 continue; // non-reference field
             }
             uint64_t field_value = gc_obj->value[i];

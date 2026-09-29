@@ -302,16 +302,65 @@ Tuple creates an object with two fields:
   > let pair = (1, 2)
   > EOF
   $ dune exec sylic -- cir test_tuple.sy
-  Fatal error: exception Middle_end__Lower_core_to_cir.Lowering_error("core form not lowered to SIR yet")
-  [2]
+  module Test_tuple :
+  globals:
+  global public syliTest_tuple.pair : obj_ptr = null init=__init_global.syliTest_tuple.pair
+  
+  
+  functions:
+  public fn __init.Test_tuple() -> void:
+    entry: bb0
+  
+    bb0:
+      %__sy_cir_init_tmp_0:obj_ptr = #call_direct __init_global.syliTest_tuple.pair ()
+      store_global syliTest_tuple.pair = %__sy_cir_init_tmp_0:obj_ptr
+      return
+  end
+  
+  private fn __init_global.syliTest_tuple.pair() -> obj_ptr:
+    entry: bb0
+  
+    bb0:
+      %Sy_cir_var_0:obj{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 1:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 2:i64):i64
+      return %Sy_cir_var_0:obj_ptr
+  end
+  
+  end
 
 Triple tuple creates an object with three fields:
   $ cat >test_triple.sy <<EOF
   > let triple = (true, 42, "x")
   > EOF
   $ dune exec sylic -- cir test_triple.sy
-  Fatal error: exception Middle_end__Lower_core_to_cir.Lowering_error("core form not lowered to SIR yet")
-  [2]
+  module Test_triple :
+  globals:
+  global public syliTest_triple.triple : obj_ptr = null init=__init_global.syliTest_triple.triple
+  
+  
+  functions:
+  public fn __init.Test_triple() -> void:
+    entry: bb0
+  
+    bb0:
+      %__sy_cir_init_tmp_0:obj_ptr = #call_direct __init_global.syliTest_triple.triple ()
+      store_global syliTest_triple.triple = %__sy_cir_init_tmp_0:obj_ptr
+      return
+  end
+  
+  private fn __init_global.syliTest_triple.triple() -> obj_ptr:
+    entry: bb0
+  
+    bb0:
+      %Sy_cir_var_0:obj{{card=3 [0:bool; 1:i64; 2:string]} tag=- unknown_cyclic} = object_create{size=3:i64}
+      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, true:bool):bool
+      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 42:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, 2:i64, x:string):string
+      return %Sy_cir_var_0:obj_ptr
+  end
+  
+  end
 
 Type error propagates from typing phase:
   $ cat >test_tyerr.sy <<EOF

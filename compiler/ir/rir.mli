@@ -18,6 +18,7 @@ type runtime_op_name =
   | RR_RT_object_release
   | RR_RT_object_alloc
   | RR_RT_object_make_always_borrow
+  | RR_RT_match_failure
 
 val runtime_op_name_to_string : runtime_op_name -> string
 
@@ -108,6 +109,8 @@ and terminator_node =
     }
   | RR_CondBr of { cond : var; then_block : id; else_block : id }
   | RR_Return of operand option
+  | RR_MatchFailure
+      (** Pattern-match failure: aborts at runtime and has no successors. *)
 
 and switch_case_node = { value : id; target_block : id }
 

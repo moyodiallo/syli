@@ -22,7 +22,7 @@ let build_cfg (blocks : block list) : cfg =
             let case_targets = List.map (fun c -> c.target_block) cases in
             Option.to_list default_block @ case_targets
         | CR_CondBr { then_block; else_block; _ } -> [ then_block; else_block ]
-        | CR_Return _ -> []
+        | CR_Return _ | CR_MatchFailure -> []
       in
       Hashtbl.replace succ b.id successors;
       List.iter

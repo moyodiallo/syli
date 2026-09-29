@@ -25,7 +25,7 @@ and subst_ir_type subst = function
   | other -> other
 
 and subst_obj_kind subst = function
-  | CR_Record_kind { fields; cardinal } ->
+  | CR_Record_kind { fields } ->
       CR_Record_kind
         {
           fields =
@@ -33,10 +33,25 @@ and subst_obj_kind subst = function
               (fun (f : record_field_ty) ->
                 { f with field_ty = apply_subst_ty subst f.field_ty })
               fields;
-          cardinal;
         }
   | CR_Array_kind { element_ty } ->
       CR_Array_kind { element_ty = apply_subst_ty subst element_ty }
+  | CR_Variant_kind { constructors } ->
+      CR_Variant_kind
+        {
+          constructors =
+            List.map
+              (fun (c : variant_ctor_layout) ->
+                {
+                  c with
+                  fields =
+                    List.map
+                      (fun (f : record_field_ty) ->
+                        { f with field_ty = apply_subst_ty subst f.field_ty })
+                      c.fields;
+                })
+              constructors;
+        }
 
 let type_of_param (var : var) = var.ty
 let subst_var subst (v : var) = { v with ty = apply_subst_ty subst v.ty }
@@ -132,6 +147,7 @@ let subst_terminator subst (term : terminator) : terminator =
     | CR_CondBr { cond; then_block; else_block } ->
         CR_CondBr { cond = subst_var subst cond; then_block; else_block }
     | CR_Return operand -> CR_Return (Option.map (subst_operand subst) operand)
+    | CR_MatchFailure -> CR_MatchFailure
   in
   { id = term.id; node }
 

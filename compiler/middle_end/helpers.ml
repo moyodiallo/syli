@@ -31,7 +31,8 @@ let rec type_key_of_ty (t : ty) : string =
             "obj_" ^ name ^ "_" ^ field_keys
           else "obj_" ^ name
       | CR_Array_kind { element_ty } ->
-          "obj_" ^ name ^ "_" ^ type_key_of_ty element_ty)
+          "obj_" ^ name ^ "_" ^ type_key_of_ty element_ty
+      | CR_Variant_kind _ -> "obj_" ^ name)
   | CR_Arrow (args, ret) ->
       "fn_"
       ^ String.concat "_" (List.map type_key_of_ty args)
@@ -46,25 +47,34 @@ let rec ir_type_equal (a : ir_type) (b : ir_type) : bool =
   | CR_Obj_Ptr, CR_Obj_Ptr -> true
   | CR_Obj a, CR_Obj b ->
       a.named = b.named
-      && a.tag_variant = b.tag_variant
       && a.cyclic_prop = b.cyclic_prop
       && obj_kind_equal a.obj_kind b.obj_kind
   | _ -> a = b
 
 and obj_kind_equal (a : obj_kind) (b : obj_kind) : bool =
   match (a, b) with
-  | ( CR_Record_kind { fields = fa; cardinal = ca },
-      CR_Record_kind { fields = fb; cardinal = cb } ) ->
-      ca = cb
-      && List.for_all2
-           (fun fa fb ->
-             fa.field_idx = fb.field_idx
-             && fa.field_mut = fb.field_mut
-             && ty_equal fa.field_ty fb.field_ty)
-           fa fb
+  | CR_Record_kind { fields = fa }, CR_Record_kind { fields = fb } ->
+      record_fields_equal fa fb
   | CR_Array_kind { element_ty = ea }, CR_Array_kind { element_ty = eb } ->
       ty_equal ea eb
+  | CR_Variant_kind { constructors = ca }, CR_Variant_kind { constructors = cb }
+    ->
+      List.length ca = List.length cb
+      && List.for_all2
+           (fun (a : variant_ctor_layout) (b : variant_ctor_layout) ->
+             a.tag = b.tag && record_fields_equal a.fields b.fields)
+           ca cb
   | _, _ -> false
+
+and record_fields_equal (fa : record_field_ty list) (fb : record_field_ty list)
+    : bool =
+  List.length fa = List.length fb
+  && List.for_all2
+       (fun (fa : record_field_ty) (fb : record_field_ty) ->
+         fa.field_idx = fb.field_idx
+         && fa.field_mut = fb.field_mut
+         && ty_equal fa.field_ty fb.field_ty)
+       fa fb
 
 and ty_equal (a : ty) (b : ty) : bool = ir_type_equal a.ir_type b.ir_type
 

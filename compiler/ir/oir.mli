@@ -39,10 +39,12 @@ type unop = OR_Neg | OR_Not | OR_BitNot
 type visibility = OR_Public | OR_Private
 
 type record_field_ty = { field_idx : int; field_ty : ty; field_mut : mut_flag }
+and variant_ctor_layout = { tag : int; fields : record_field_ty list }
 
 and obj_kind =
-  | OR_Record_kind of { fields : record_field_ty list; cardinal : int }
+  | OR_Record_kind of { fields : record_field_ty list }
   | OR_Array_kind of { element_ty : ty }
+  | OR_Variant_kind of { constructors : variant_ctor_layout list }
 
 and ir_type =
   | OR_Bool
@@ -93,6 +95,8 @@ and terminator_node =
     }
   | OR_CondBr of { cond : var; then_block : id; else_block : id }
   | OR_Return of { operand : operand option; ownership_ret : ownership_op }
+  | OR_MatchFailure
+      (** Pattern-match failure: aborts at runtime and has no successors. *)
 
 and switch_case_node = { value : int; target_block : id }
 

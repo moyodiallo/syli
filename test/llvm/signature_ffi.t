@@ -46,7 +46,10 @@ Signature with foreignal declaration emits an foreignal declaration in LLVM IR:
   define ptr addrspace(1) @syli_inlinable_ownership_borrow(ptr addrspace(1) %p) {
   bb0:
     %i = ptrtoint ptr addrspace(1) %p to i64
-    %u = and i64 %i, -2
+    %b1 = lshr i64 %i, 1
+    %b1m = and i64 %b1, 1
+    %m = or i64 %b1m, -2
+    %u = and i64 %i, %m
     %r = inttoptr i64 %u to ptr addrspace(1)
     ret ptr addrspace(1) %r
   }

@@ -22,7 +22,7 @@ let build_cfg (blocks : block list) : cfg =
               Option.to_list default_block @ case_targets
           | OR_CondBr { then_block; else_block; _ } ->
               [ then_block; else_block ]
-          | OR_Return _ -> []
+          | OR_Return _ | OR_MatchFailure -> []
         in
         let succ = IntMap.add b.id successors succ in
         let pred =

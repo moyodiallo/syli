@@ -144,13 +144,13 @@ unknown variant constructor
   unknown variant constructor 'Foo'
   [1]
 
-nullary constructor applied to an argument
-  $ cat >test_nullary_ctor.sy <<'EOF'
+constant constructor applied to an argument
+  $ cat >test_constant_ctor.sy <<'EOF'
   > type option = None | Some of i64
   > let x = None 3
   > EOF
-  $ dune exec sylic typing test_nullary_ctor.sy
-  Type error in test_nullary_ctor.sy at line 2, column 8
+  $ dune exec sylic typing test_constant_ctor.sy
+  Type error in test_constant_ctor.sy at line 2, column 8
   
     2 | let x = None 3
                 ^^^^
