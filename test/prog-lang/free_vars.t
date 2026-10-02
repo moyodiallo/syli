@@ -50,11 +50,11 @@ Closure with free variables:
       return %Sy_prim_result:i64
   end
   
-  private fn sy2_add__i64__i64__i64_ret_i64(%sy1_free:i64, %x:i64, %y:i64) -> i64:
+  private fn sy2_add__i64__i64__i64_ret_i64(%sy_sy1_free_cap_0:i64, %x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%sy1_free:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%sy_sy1_free_cap_0:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -109,9 +109,9 @@ Closure with free variables:
     ret i64 %Sy_prim_result
   }
   
-  define i64 @sy2_add__i64__i64__i64_ret_i64(i64 %sy1_free, i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @sy2_add__i64__i64__i64_ret_i64(i64 %sy_sy1_free_cap_0, i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %sy1_free, i64 %y)
+    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %sy_sy1_free_cap_0, i64 %y)
     ret i64 %Sy_cir_var_0
   }
   

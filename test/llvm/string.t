@@ -324,9 +324,9 @@ String returned from a closure capturing it:
     ret void
   }
   
-  define ptr addrspace(1) @sy2_f(ptr addrspace(1) %sy1_s) gc "statepoint-example" {
+  define ptr addrspace(1) @sy2_f(ptr addrspace(1) %sy_sy1_s_cap_0) gc "statepoint-example" {
   bb0:
-    %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %sy1_s)
+    %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %sy_sy1_s_cap_0)
     ret ptr addrspace(1) %Sy_rir_tmp_0
   }
   

@@ -28,11 +28,11 @@ Closure with free variables:
       return %Sy_cir_var_0:i64
   end
   
-  private fn sy2_add(%sy1_free:i64, %x:?50, %y:i64) -> i64:
+  private fn sy2_add(%sy_sy1_free_cap_0:i64, %x:?50, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%sy1_free:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%sy_sy1_free_cap_0:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   

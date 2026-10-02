@@ -226,11 +226,11 @@ Simple nested function without captured variables:
       return 10:i64
   end
   
-  private fn sy1_inner(%x:i64, %y:i64) -> i64:
+  private fn sy1_inner(%sy_x_cap_0:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_nested_simple.+" (%y:i64, %x:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_nested_simple.+" (%y:i64, %sy_x_cap_0:i64)
       %Sy_cir_var_1:i64 = #call_direct "syliTest_nested_simple.+" (%Sy_cir_var_0:i64, 1:i64)
       return %Sy_cir_var_1:i64
   end
