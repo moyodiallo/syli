@@ -1,5 +1,5 @@
 open Syli_common
-open Helpers
+open Cir_helpers
 
 type dispatch_id = int
 type graph = { root_ids : int list; edges : int list IntMap.t }

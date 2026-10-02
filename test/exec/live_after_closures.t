@@ -43,7 +43,7 @@ Object reused after being passed as an applied argument to a closure:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:syliLive_after.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_cir_var_0:syliLive_after.box{{card=1 [0:i64]} tag=- acyclic} = object_create{size=1:i64}
       
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 40:i64):i64
       gc_cycle

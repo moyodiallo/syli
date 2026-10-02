@@ -22,7 +22,7 @@ type ctx = {
   env : env;
   toplevel_functions : int StringMap.t;
   analysis : CA.core_closure_analysis;
-  type_defs : C.ty_decl StringMap.t;
+  type_defs : Type_lowering.type_entry StringMap.t;
   tmp_counter : int ref;
   block_counter : int ref;
   pending_merge_id : int option;
@@ -227,13 +227,14 @@ let rec take n xs =
 let unit_slot_ir_ty () : I.ty = { I.id = fresh_id (); I.ir_type = I.CR_I64 }
 
 (* IR type of one function-parameter slot given its Core type. *)
-let slot_ir_ty (type_defs : C.ty_decl StringMap.t) (t : C.ty) : I.ty =
+let slot_ir_ty (type_defs : Type_lowering.type_entry StringMap.t) (t : C.ty) :
+    I.ty =
   if is_unit_cty t then unit_slot_ir_ty () else mk_ir_ty type_defs t
 
 (* IR types for a *full* Core parameter list: every parameter — including a
    `unit` — occupies one slot. *)
-let full_param_ir_tys (type_defs : C.ty_decl StringMap.t) (ctys : C.ty list) :
-    I.ty list =
+let full_param_ir_tys (type_defs : Type_lowering.type_entry StringMap.t)
+    (ctys : C.ty list) : I.ty list =
   List.map (slot_ir_ty type_defs) ctys
 
 (* Indices (into a Core parameter list) of `unit` params. Uniform: these are
@@ -290,8 +291,16 @@ let cir_mut_flag = function CMutable -> I.Mutable | CImmutable -> I.Immutable
     yields [Circle] and [Rect] with two [f64] fields each, and [Dot] with a
     single field holding a [point] reference. The constructor tag is not a
     field; it lives in the object header ([tag_variant = Some tag]). *)
-let variant_constructor_ty (type_defs : C.ty_decl StringMap.t)
+let variant_constructor_ty (type_defs : Type_lowering.type_entry StringMap.t)
     (variant_name : string) (tag : int) (arg : C.constructor_arg) : I.ty =
+  let cyclic_prop =
+    match StringMap.find_opt variant_name type_defs with
+    | Some entry -> (
+        match List.assoc_opt tag entry.Type_lowering.ctor_props with
+        | Some prop -> prop
+        | None -> entry.Type_lowering.prop)
+    | None -> I.Unknown_cyclic_prop
+  in
   let fields =
     match arg with
     | Constr_ty { ty_desc = CTy_Tuple tys; _ } ->
@@ -329,7 +338,7 @@ let variant_constructor_ty (type_defs : C.ty_decl StringMap.t)
           named = Some variant_name;
           obj_kind = I.CR_Variant_kind { constructors = [ { I.tag; fields } ] };
           tag_variant = Some tag;
-          cyclic_prop = I.Unknown_cyclic_prop;
+          cyclic_prop;
         };
   }
 
@@ -363,11 +372,13 @@ let nth_tuple_ty (tys : C.ty list) (i : int) : C.ty =
         (Lowering_error (Printf.sprintf "pattern: tuple has no element %d" i))
 
 (** Resolve a type alias to its underlying type. *)
-let rec resolve_alias (type_defs : C.ty_decl StringMap.t) (t : C.ty) : C.ty =
+let rec resolve_alias (type_defs : Type_lowering.type_entry StringMap.t)
+    (t : C.ty) : C.ty =
   match t.ty_desc with
   | CTy_Defined { name; _ } -> (
       match StringMap.find_opt name.name type_defs with
-      | Some { def = CTydef_Alias inner; _ } -> resolve_alias type_defs inner
+      | Some { decl = { def = CTydef_Alias inner; _ }; _ } ->
+          resolve_alias type_defs inner
       | _ -> t)
   | _ -> t
 
@@ -427,7 +438,7 @@ let rec occurrence_ty (ctx : ctx) (occ : PM.occurrence) : ctx * C.ty =
                 match (resolve_alias ctx.type_defs t).ty_desc with
                 | CTy_Defined { name; _ } -> (
                     match StringMap.find_opt name.name ctx.type_defs with
-                    | Some { def = CTydef_Record fields; _ } ->
+                    | Some { decl = { def = CTydef_Record fields; _ }; _ } ->
                         (ctx, record_field_ty_of_idx fields idx)
                     | _ ->
                         raise
@@ -444,7 +455,7 @@ let rec occurrence_ty (ctx : ctx) (occ : PM.occurrence) : ctx * C.ty =
             match (resolve_alias ctx.type_defs parent_ty).ty_desc with
             | CTy_Defined { name; _ } -> (
                 match StringMap.find_opt name.name ctx.type_defs with
-                | Some { def = CTydef_Record fields; _ } ->
+                | Some { decl = { def = CTydef_Record fields; _ }; _ } ->
                     (ctx, record_field_ty_of_idx fields idx)
                 | _ ->
                     raise
@@ -529,7 +540,7 @@ let constructor_arg_of_occ (ctx : ctx) (occ : PM.occurrence) (tag : int) :
   match occ_ty.ty_desc with
   | CTy_Defined { name; _ } -> (
       match StringMap.find_opt name.name ctx.type_defs with
-      | Some { def = CTydef_Variant ctors; _ } -> (
+      | Some { decl = { def = CTydef_Variant ctors; _ }; _ } -> (
           match
             List.find_opt (fun (c : C.constructor_decl) -> c.tag = tag) ctors
           with
@@ -1164,7 +1175,7 @@ and lower_variant_constructor (ctx : ctx) (e : C.expr) (tag : int)
            "variant constructor used as a function is not lowered yet")
   | CTy_Defined { name; _ } -> (
       match StringMap.find_opt name.name ctx.type_defs with
-      | Some { def = CTydef_Variant ctors; _ } -> (
+      | Some { decl = { def = CTydef_Variant ctors; _ }; _ } -> (
           match
             List.find_opt (fun (c : C.constructor_decl) -> c.tag = tag) ctors
           with
@@ -1573,13 +1584,34 @@ let build_module_initializer (module_name : string)
 
 let lower_program (prog : C.program_core) : I.module_cir =
   let analysis = Syli_core.Closure_analysis.run prog in
-  let type_defs =
+  let raw_type_defs =
     List.fold_left
       (fun m (item : C.structure_item) ->
         match item.structure_item_desc with
         | CStr_Type td -> StringMap.add td.name.name td m
         | _ -> m)
       StringMap.empty prog.C.structure_items
+  in
+  let cyclic = Pass_cyclic_analysis.analyze raw_type_defs in
+  let type_defs =
+    StringMap.mapi
+      (fun name (decl : C.ty_decl) ->
+        let ctor_props =
+          match decl.def with
+          | CTydef_Variant ctors ->
+              List.map
+                (fun (c : C.constructor_decl) ->
+                  (c.tag, Pass_cyclic_analysis.ctor_prop cyclic name c.tag))
+                ctors
+          | _ -> []
+        in
+        {
+          Type_lowering.decl;
+          prop = Pass_cyclic_analysis.type_prop cyclic name;
+          record_prop = Pass_cyclic_analysis.record_prop cyclic name;
+          ctor_props;
+        })
+      raw_type_defs
   in
   let toplevel_functions = collect_toplevel_functions prog in
   let root_ctx, functions, globals, external_functions =

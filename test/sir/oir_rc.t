@@ -28,7 +28,7 @@ Record object with ref variable death:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:syliTest_rc1.person{{card=2 [0:i64; 1:i64]} tag=- unknow_cyclic} = object_create{size=2:i64}
+      %Sy_cir_var_0:syliTest_rc1.person{{card=2 [0:i64; 1:i64]} tag=- acyclic} = object_create{size=2:i64}
       
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 10:i64):i64
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 30:i64):i64
@@ -65,11 +65,11 @@ Multiple ref variables with independent lifetimes:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_cir_var_0:syliTest_rc2.box{{card=1 [0:i64]} tag=- acyclic} = object_create{size=1:i64}
       
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 1:i64):i64
       gc_cycle
-      %Sy_cir_var_1:syliTest_rc2.box{{card=1 [0:i64]} tag=- unknow_cyclic} = object_create{size=1:i64}
+      %Sy_cir_var_1:syliTest_rc2.box{{card=1 [0:i64]} tag=- acyclic} = object_create{size=1:i64}
       
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i64, 2:i64):i64
       %Sy_cir_var_2:i64 = obj_get(%Sy_cir_var_0:obj_ptr, 0:i64):i64

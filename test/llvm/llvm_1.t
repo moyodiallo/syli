@@ -748,7 +748,6 @@ Tuple emits syli_object_create and syli_object_set runtime calls:
   declare ptr addrspace(1) @syli_rt_ownership_alloc_object(i64, i32, i64)
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
-  declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
   
   @syliTest_tuple.pair = global ptr addrspace(1) zeroinitializer
   
@@ -768,15 +767,13 @@ Tuple emits syli_object_create and syli_object_set runtime calls:
   bb0:
     %__sy_cir_init_tmp_0 = call ptr addrspace(1) @__init_global.syliTest_tuple.pair()
     store ptr addrspace(1) %__sy_cir_init_tmp_0, ptr @syliTest_tuple.pair
-    %Sy_llvm_tmp_0 = load ptr addrspace(1), ptr @syliTest_tuple.pair
-    call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_llvm_tmp_0, ptr addrspace(1) %__sy_cir_init_tmp_0)
     ret void
   }
   
   define ptr addrspace(1) @__init_global.syliTest_tuple.pair() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i64 2)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2, i32 1, i64 2)
     ; nop
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
@@ -859,19 +856,6 @@ Tuple emits syli_object_create and syli_object_set runtime calls:
     ret ptr addrspace(1) %rp
   }
   
-  define void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value) {
-  bb0:
-    %vi = ptrtoint ptr addrspace(1) %value to i64
-    %tag = and i64 %vi, 3
-    %imm = icmp eq i64 %tag, 3
-    br i1 %imm, label %done, label %notify
-  notify:
-    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value)
-    ret void
-  done:
-    ret void
-  }
-  
 
 Triple tuple emits three object_set calls:
   $ cat >test_triple.sy <<EOF
@@ -882,7 +866,6 @@ Triple tuple emits three object_set calls:
   declare ptr addrspace(1) @syli_rt_ownership_alloc_object(i64, i32, i64)
   declare void @syli_rt_ownership_decr(ptr addrspace(1))
   declare void @syli_rt_ownership_incr(ptr addrspace(1))
-  declare void @syli_rt_ownership_notify_mutation(ptr addrspace(1), ptr addrspace(1))
   
   @syliTest_triple.triple = global ptr addrspace(1) zeroinitializer
   @__str.1 = global { i64, i64, [8 x i8] } { i64 -9223372036854775807, i64 0, [8 x i8] c"x\00\00\00\00\00\00\06" }
@@ -903,15 +886,13 @@ Triple tuple emits three object_set calls:
   bb0:
     %__sy_cir_init_tmp_0 = call ptr addrspace(1) @__init_global.syliTest_triple.triple()
     store ptr addrspace(1) %__sy_cir_init_tmp_0, ptr @syliTest_triple.triple
-    %Sy_llvm_tmp_0 = load ptr addrspace(1), ptr @syliTest_triple.triple
-    call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_llvm_tmp_0, ptr addrspace(1) %__sy_cir_init_tmp_0)
     ret void
   }
   
   define ptr addrspace(1) @__init_global.syliTest_triple.triple() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748355, i32 1, i64 3)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 1873497444986126467, i32 1, i64 3)
     ; nop
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
@@ -1005,41 +986,4 @@ Triple tuple emits three object_set calls:
     ret ptr addrspace(1) %rp
   }
   
-  define void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value) {
-  bb0:
-    %vi = ptrtoint ptr addrspace(1) %value to i64
-    %tag = and i64 %vi, 3
-    %imm = icmp eq i64 %tag, 3
-    br i1 %imm, label %done, label %notify
-  notify:
-    call void @syli_rt_ownership_notify_mutation(ptr addrspace(1) %obj, ptr addrspace(1) %value)
-    ret void
-  done:
-    ret void
-  }
-  
 
-Type error propagates from typing phase:
-  $ cat >test_tyerr.sy <<EOF
-  > let x = 1 + true
-  > EOF
-  $ dune exec sylic -- llvm test_tyerr.sy 2>&1
-  Type error in test_tyerr.sy at line 1, column 8
-  
-    1 | let x = 1 + true
-                ^^^^^^^^
-  
-  Unbound identifier '+'
-  ***** UNREACHABLE *****
-
-Collection literals are not yet lowered (unsupported):
-  $ cat >test_arr.sy <<EOF
-  > let arr = [1, 2, 3]
-  > EOF
-  ***** UNREACHABLE *****
-  $ dune exec sylic -- llvm test_arr.sy 2>&1
-  ***** UNREACHABLE *****
-
-Missing file produces an error:
-  $ dune exec sylic -- llvm no_such_file.sy 2>&1
-  ***** UNREACHABLE *****

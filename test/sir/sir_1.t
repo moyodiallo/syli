@@ -321,7 +321,7 @@ Tuple creates an object with two fields:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:obj{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
+      %Sy_cir_var_0:obj{{card=2 [0:i64; 1:i64]} tag=- acyclic} = object_create{size=2:i64}
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 1:i64):i64
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 2:i64):i64
       return %Sy_cir_var_0:obj_ptr
@@ -353,7 +353,7 @@ Triple tuple creates an object with three fields:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:obj{{card=3 [0:bool; 1:i64; 2:string]} tag=- unknown_cyclic} = object_create{size=3:i64}
+      %Sy_cir_var_0:obj{{card=3 [0:bool; 1:i64; 2:string]} tag=- acyclic} = object_create{size=3:i64}
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, true:bool):bool
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 42:i64):i64
       obj_set(%Sy_cir_var_0:obj_ptr, 2:i64, x:string):string

@@ -249,15 +249,11 @@ void syli_state_gc_tracing()
                     }
 
                 } else {
-                    // Object is not reachable, free it
-                    if (syli_object_is_mono_imm(obj)) {
-                        syli_state.total_objects_memory_freed++;
-                        free(obj);
-                    } else {
-                        // Freed later via free_released_object, which counts
-                        // it.
-                        gc_releasing_worklist_push_if_not(suspected_obj->obj);
-                    }
+                    // Immediate mono object is never cyclic
+                    assert(!syli_object_is_mono_imm(obj));
+
+                    // Freed later via free_released_object
+                    gc_releasing_worklist_push_if_not(suspected_obj->obj);
                 }
 
                 syli_state.current_suspected_check_index++;

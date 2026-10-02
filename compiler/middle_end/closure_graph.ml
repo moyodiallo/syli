@@ -346,8 +346,8 @@ let retropopagate_ret_ty graph =
                       match ret_ty_gen with
                       | Some (ret_ty, is_generic) ->
                           if
-                            Helpers.type_key_of_ty ret_ty
-                            <> Helpers.type_key_of_ty leaf_ret_ty
+                            Cir_helpers.type_key_of_ty ret_ty
+                            <> Cir_helpers.type_key_of_ty leaf_ret_ty
                           then Some (ret_ty, true)
                           else None
                       | None -> Some (leaf_ret_ty, false))
@@ -377,8 +377,8 @@ let generic_nodes fn_specializations graph =
                         if
                           List.exists
                             (fun sp ->
-                              Helpers.type_key_of_ty sp.ret_ty
-                              <> Helpers.type_key_of_ty hd.ret_ty)
+                              Cir_helpers.type_key_of_ty sp.ret_ty
+                              <> Cir_helpers.type_key_of_ty hd.ret_ty)
                             tl
                         then IntSet.add node_id acc
                         else if
