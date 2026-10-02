@@ -75,36 +75,36 @@ Nested closures capturing closures with multiple application levels:
       return
   end
   
-  private fn sy2_f(%sy1_a:i64, %x:i64) -> i64:
+  private fn sy2_f(%sy_sy1_a_cap_0:i64, %x:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTriple.+" (%x:i64, %sy1_a:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTriple.+" (%x:i64, %sy_sy1_a_cap_0:i64)
       return %Sy_cir_var_0:i64
   end
   
-  private fn sy3_g(%sy2_f:obj_ptr, %x:i64) -> i64:
+  private fn sy3_g(%sy_sy2_f_cap_0:obj_ptr, %x:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_0:fn_ptr = obj_get(%sy2_f:obj_ptr, 0:i32):fn_ptr
-      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, @borrow %sy2_f:obj_ptr, 1:i64)
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%sy_sy2_f_cap_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, @borrow %sy_sy2_f_cap_0:obj_ptr, 1:i64)
       
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%sy2_f:obj_ptr, 0:i32):fn_ptr
-      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_0:i64, @transfer %sy2_f:obj_ptr, 0:i64)
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%sy_sy2_f_cap_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_0:i64, @transfer %sy_sy2_f_cap_0:obj_ptr, 0:i64)
       
       return %Sy_cir_var_1:i64
   end
   
-  private fn sy4_h(%sy3_g:obj_ptr, %y:i64) -> i64:
+  private fn sy4_h(%sy_sy3_g_cap_0:obj_ptr, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_0:fn_ptr = obj_get(%sy3_g:obj_ptr, 0:i32):fn_ptr
-      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%y:i64, @borrow %sy3_g:obj_ptr, 1:i64)
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%sy_sy3_g_cap_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%y:i64, @borrow %sy_sy3_g_cap_0:obj_ptr, 1:i64)
       
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%sy3_g:obj_ptr, 0:i32):fn_ptr
-      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_0:i64, @transfer %sy3_g:obj_ptr, 0:i64)
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%sy_sy3_g_cap_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_cir_var_1:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_0:i64, @transfer %sy_sy3_g_cap_0:obj_ptr, 0:i64)
       
       return %Sy_cir_var_1:i64
   end

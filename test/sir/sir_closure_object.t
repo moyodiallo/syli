@@ -391,11 +391,11 @@ TODO: fix the bug
       return @own %__sy_cir_lambda_22:obj_ptr
   end
   
-  public fn __sy_cir_lambda_22(%x:i64, %y:i64) -> i64:
+  public fn __sy_cir_lambda_22(%sy_x_cap_0:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_env.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct "syliTest_env.+" (%sy_x_cap_0:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   

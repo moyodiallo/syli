@@ -1351,8 +1351,20 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
     | Some info -> CA.VarIdSet.elements info.free_vars
     | None -> []
   in
-  let free_vars : I.var list =
-    List.filter_map (fun (id : C.ident) -> env_find_var_opt ctx id) free_idents
+  (* Rename the captured variables to avoid collision with the locals variables
+    of the lambda body *)
+  let free_vars : (string * I.var) list =
+    List.mapi
+      (fun i (id : C.ident) ->
+        match env_find_var_opt ctx id with
+        | None -> None
+        | Some v ->
+            let v' : I.var =
+              { v with I.name = "sy_" ^ v.name ^ "_cap_" ^ string_of_int i }
+            in
+            Some (id.name, v'))
+      free_idents
+    |> List.filter_map Fun.id |> List.rev
   in
   let lambda_body_ctx, (lambda_param_vars, unit_param_indices) =
     let base_ctx =
@@ -1366,8 +1378,11 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
         block_counter = ref 0;
       }
     in
-    let ctx_with_free_vars =
-      List.fold_left (fun ctx fv -> env_add_var ctx fv) base_ctx free_vars
+    let ctx_with_free_vars, free_params =
+      List.fold_left
+        (fun (ctx, acc) (src_name, v) ->
+          ({ ctx with env = StringMap.add src_name v ctx.env }, v :: acc))
+        (base_ctx, []) free_vars
     in
     let tys = List.combine slot_tys param_ctys in
     let body_ctx, lambda_params, unit_pos_rev, _ =
@@ -1383,7 +1398,7 @@ and lower_lambda_function (ctx : ctx) (name : string) (lam : C.lambda)
             let ctx, v = fresh_var_with_name ctx p.name slot_ty in
             let ctx = env_add_var ctx v in
             (ctx, v :: vars, unit_pos, idx + 1))
-        (ctx_with_free_vars, free_vars, [], List.length free_vars)
+        (ctx_with_free_vars, free_params, [], List.length free_params)
         lam.params tys
     in
     (body_ctx, (List.rev lambda_params, List.rev unit_pos_rev))
@@ -1710,6 +1725,14 @@ let lower_program (prog : C.program_core) : I.module_cir =
                 in
                 let ctx =
                   { ctx with env = StringMap.add name.name global_var ctx.env }
+                in
+                (* Lambdas nested in the initializer were lifted into
+                   value_ctx; keep them so they get emitted. *)
+                let ctx =
+                  {
+                    ctx with
+                    lifted_fns = value_ctx.lifted_fns @ ctx.lifted_fns;
+                  }
                 in
                 (ctx, init_fn :: fns, gv :: globs, exts))
         | CStr_Type _ -> (ctx, fns, globs, exts)
