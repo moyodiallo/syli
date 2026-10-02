@@ -28,8 +28,9 @@ let binop_of_symbol (symbol : string) : I.binop option =
   | "ge" -> Some CR_Ge
   | _ -> None
 
-let build_binop (type_defs : C.ty_decl StringMap.t) (name : string)
-    (op : I.binop) (is_public : bool) (annotated_ty : C.ty) : I.function_cir =
+let build_binop (type_defs : Type_lowering.type_entry StringMap.t)
+    (name : string) (op : I.binop) (is_public : bool) (annotated_ty : C.ty) :
+    I.function_cir =
   let param_ctys = Type_lowering.get_args_ty annotated_ty in
   if List.length param_ctys <> 2 then
     raise
@@ -90,7 +91,7 @@ let build_binop (type_defs : C.ty_decl StringMap.t) (name : string)
     unit_param_indices = [];
   }
 
-let build (type_defs : C.ty_decl StringMap.t) ~(fn_name : string)
+let build (type_defs : Type_lowering.type_entry StringMap.t) ~(fn_name : string)
     ~(symbol : string) ~(is_public : bool) (annotated_ty : C.ty) :
     I.function_cir =
   match binop_of_symbol symbol with

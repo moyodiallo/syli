@@ -4,6 +4,17 @@
  (libraries helpers))
 
 (test
+ (name cyclic_analysis)
+ (modules cyclic_analysis)
+ (libraries
+  middle_end
+  syli_core
+  syli_ir
+  syli_common
+  syli_parsing
+  syli_typing))
+
+(test
  (name collect_closures)
  (modules collect_closures)
  (libraries helpers syli_core))

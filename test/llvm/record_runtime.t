@@ -24,7 +24,7 @@
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:syliTest_e2e_print.person{{card=2 [0:i64; 1:i64]} tag=- unknown_cyclic} = object_create{size=2:i64}
+      %Sy_cir_var_0:syliTest_e2e_print.person{{card=2 [0:i64; 1:i64]} tag=- acyclic} = object_create{size=2:i64}
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 10:i64):i64
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 30:i64):i64
       %Sy_cir_var_1:i64 = obj_get(%Sy_cir_var_0:obj_ptr, 1:i64):i64
@@ -62,7 +62,7 @@
   define void @syliTest_e2e_print.main() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i64 2)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2, i32 1, i64 2)
     ; nop
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0

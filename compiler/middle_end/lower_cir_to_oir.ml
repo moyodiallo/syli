@@ -349,7 +349,7 @@ let make_closure_apply_gen_functions (ctx : ctx) ~node_id ~fn_name =
   in
   let callee_of (spe : Closure_graph.fn_specialization) =
     if StringSet.mem spe.fn_name ctx.available_fns then spe.fn_name
-    else Helpers.specialization_name spe.fn_name spe.arg_tys spe.ret_ty
+    else Cir_helpers.specialization_name spe.fn_name spe.arg_tys spe.ret_ty
   in
   (* Generate the wrappers (for the accum dispatch to call) *)
   let gen_functions =

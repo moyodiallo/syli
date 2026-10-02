@@ -116,7 +116,7 @@ module Monomorphize = struct
       subst;
     subst
 
-  let specialization_name = Helpers.specialization_name
+  let specialization_name = Cir_helpers.specialization_name
 
   (** Specialize [fn_name] using the full [arg_tys] and [ret_ty] from a
       closure_graph specialization. Computes the substitution first, then names

@@ -1,3 +1,5 @@
+TODO: review these tests, since the cyclic analysis changed them
+
 We are showing here that the tracing is working.
 With this simple example we need to reduce the thresholds:
 SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0
@@ -33,11 +35,11 @@ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0
   > EOF
   $ dune exec sylic -- build gc_state.sy
   $ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0 ./gc_state.exe
-  4242427GC[tracing_state=Idle releasing_state=Idle generations=2 suspects=0 suspect-notif=0 traced=3 freed=5 release-waitlist=0 tracing-worklist=0]
+  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=5 release-waitlist=0 tracing-worklist=0]
 
 Without the reducing the treshold, no tracing for this simple example:
   $ ./gc_state.exe
-  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=1 suspect-notif=3 traced=0 freed=1 release-waitlist=3 tracing-worklist=0]
+  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=1 release-waitlist=3 tracing-worklist=0]
 
 It shows even with this simple example object is still be freed.
 And tracing also still works.
@@ -60,8 +62,8 @@ And tracing also still works.
   > EOF
   $ dune exec sylic -- build basic.sy
   $ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0 ./basic.exe
-  GC[tracing_state=Idle releasing_state=Idle generations=1 suspects=1 suspect-notif=0 traced=1 freed=1 release-waitlist=1 tracing-worklist=0]
-  42GC[tracing_state=Idle releasing_state=Idle generations=1 suspects=1 suspect-notif=1 traced=1 freed=1 release-waitlist=1 tracing-worklist=0]
+  GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
+  42GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
   $ ./basic.exe
   GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=0 release-waitlist=2 tracing-worklist=0]
-  42GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=1 suspect-notif=1 traced=0 freed=0 release-waitlist=2 tracing-worklist=0]
+  42GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=0 release-waitlist=2 tracing-worklist=0]

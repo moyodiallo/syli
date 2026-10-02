@@ -7,7 +7,7 @@
 open Syli_common
 
 val build :
-  Syli_core.Core_ast.ty_decl StringMap.t ->
+  Type_lowering.type_entry StringMap.t ->
   fn_name:string ->
   symbol:string ->
   is_public:bool ->
