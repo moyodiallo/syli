@@ -168,14 +168,14 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.67_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
@@ -187,7 +187,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       %Sy_cir_var_2:i64 = #call_direct syliComplex_dispatch.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_cir_var_1:obj_ptr, 10:i64, 20:i64)
       %Sy_cir_var_3:void = #call_direct syliComplex_dispatch.syli_print_i64 (%Sy_cir_var_2:i64)
       gc_cycle
-      %Sy_cir_var_4:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_4:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_oir_accum_fn_2:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_4:obj_ptr, 0:i32, %Sy_oir_accum_fn_2:fn_ptr):fn_ptr
@@ -199,7 +199,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
       %Sy_cir_var_5:i64 = #call_direct syliComplex_dispatch.apply__fn_f64_f64_i64__f64__f64_ret_i64 (@transfer %Sy_cir_var_4:obj_ptr, 1.0f:f64, 2.0f:f64)
       %Sy_cir_var_6:void = #call_direct syliComplex_dispatch.syli_print_i64 (%Sy_cir_var_5:i64)
       gc_cycle
-      %Sy_cir_var_7:obj{{card=4 [0:fn_ptr; 1:i64; 2:obj_ptr; 3:i64]} tag=0 unknow_cyclic} = object_create{size=4:i32}
+      %Sy_cir_var_7:obj{{card=4 [0:fn_ptr; 1:i64; 2:obj_ptr; 3:i64]} tag=0 unknown_cyclic} = object_create{size=4:i32}
       
       %Sy_accum_fn_3:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_7:obj_ptr, 0:i32, %Sy_accum_fn_3:fn_ptr):fn_ptr
@@ -223,7 +223,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   
     bb2:
       gc_cycle
-      %Sy_cir_var_16:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_16:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_oir_accum_fn_7:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_16:obj_ptr, 0:i32, %Sy_oir_accum_fn_7:fn_ptr):fn_ptr
@@ -238,7 +238,7 @@ Complex test combining closures, dispatch, casts, partial application, and if-th
   
     bb1:
       gc_cycle
-      %Sy_cir_var_14:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_14:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_8:fn_ptr = addr_fn(__partial_closure_accum.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_14:obj_ptr, 0:i32, %Sy_oir_accum_fn_8:fn_ptr):fn_ptr

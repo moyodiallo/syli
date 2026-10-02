@@ -18,8 +18,9 @@ type mut_flag = Mutable | Immutable
 
 (** Cyclicity / trackability property of an object type. *)
 type cyclic_prop =
-  | Cyclic_n_Trackable
-  | Acyclic_n_Trackable
+  | Mutable_cyclic_trackable
+  | Immutable_cyclic_trackable
+  | Acyclic_trackable
   | Acyclic
   | Unknown_cyclic_prop
 

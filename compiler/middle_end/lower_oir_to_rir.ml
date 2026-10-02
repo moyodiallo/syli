@@ -184,13 +184,15 @@ let has_pointer_fields (field_types : ty list) : bool =
 
 let cyclic_bit_of_prop (p : Oir.cyclic_prop) : int64 =
   match p with
-  | Oir.Acyclic | Oir.Acyclic_n_Trackable -> 0L
-  | Oir.Cyclic_n_Trackable | Oir.Unknown_cyclic_prop -> 1L
+  | Oir.Mutable_cyclic_trackable | Oir.Immutable_cyclic_trackable
+  | Oir.Unknown_cyclic_prop ->
+      1L
+  | Oir.Acyclic_trackable | Oir.Acyclic -> 0L
 
 let traceable_bit_of_prop (p : Oir.cyclic_prop) : int64 =
   match p with
-  | Oir.Cyclic_n_Trackable | Oir.Unknown_cyclic_prop | Oir.Acyclic_n_Trackable
-    ->
+  | Oir.Mutable_cyclic_trackable | Oir.Immutable_cyclic_trackable
+  | Oir.Unknown_cyclic_prop | Oir.Acyclic_trackable ->
       1L
   | Oir.Acyclic -> 0L
 

@@ -28,7 +28,7 @@ Simple closure with one captured variable:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
+      %Sy_cir_var_0:obj{{card=1 [0:fn_ptr]} tag=0 unknown_cyclic} = object_create{size=1:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_simple.double_x.75_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
@@ -114,7 +114,7 @@ Closure with multiple captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
+      %Sy_cir_var_0:obj{{card=1 [0:fn_ptr]} tag=0 unknown_cyclic} = object_create{size=1:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.82_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
@@ -194,14 +194,14 @@ Closure with multipble chains of captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.56_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
@@ -291,14 +291,14 @@ Closure with multipble chains of captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.58_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr
@@ -382,7 +382,7 @@ TODO: fix the bug
   
     bb0:
       gc_cycle
-      %__sy_cir_lambda_22:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %__sy_cir_lambda_22:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.__sy_cir_lambda_22.36_ret_i64)
       obj_set(%__sy_cir_lambda_22:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
@@ -455,14 +455,14 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_chain.add.81_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr

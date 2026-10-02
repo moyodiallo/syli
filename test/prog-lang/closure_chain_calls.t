@@ -201,14 +201,14 @@
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_file.add.62_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:obj_ptr; 2:i64]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.clos1_arg1_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_accum_fn_1:fn_ptr):fn_ptr

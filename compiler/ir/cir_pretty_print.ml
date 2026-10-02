@@ -1,8 +1,9 @@
 open Cir
 
 let string_of_cyclic_prop = function
-  | Cyclic_n_Trackable -> "cyclic"
-  | Acyclic_n_Trackable -> "acyclic_n_trackable"
+  | Mutable_cyclic_trackable -> "mutable_cyclic"
+  | Immutable_cyclic_trackable -> "immutable_cyclic"
+  | Acyclic_trackable -> "acyclic_trackable"
   | Acyclic -> "acyclic"
   | Unknown_cyclic_prop -> "unknown_cyclic"
 

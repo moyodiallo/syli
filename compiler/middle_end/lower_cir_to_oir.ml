@@ -116,8 +116,9 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
 
 and lower_cyclic_prop (c : Cir.cyclic_prop) : Oir.cyclic_prop =
   match c with
-  | Cir.Cyclic_n_Trackable -> Oir.Cyclic_n_Trackable
-  | Cir.Acyclic_n_Trackable -> Oir.Acyclic_n_Trackable
+  | Cir.Mutable_cyclic_trackable -> Oir.Mutable_cyclic_trackable
+  | Cir.Immutable_cyclic_trackable -> Oir.Immutable_cyclic_trackable
+  | Cir.Acyclic_trackable -> Oir.Acyclic_trackable
   | Cir.Acyclic -> Oir.Acyclic
   | Cir.Unknown_cyclic_prop -> Oir.Unknown_cyclic_prop
 
