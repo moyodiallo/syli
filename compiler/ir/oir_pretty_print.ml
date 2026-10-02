@@ -1,10 +1,11 @@
 open Oir
 
 let string_of_cyclic_prop = function
-  | Cyclic_n_Trackable -> "cyclic"
-  | Acyclic_n_Trackable -> "acyc_n_track"
+  | Mutable_cyclic_trackable -> "mutable_cyclic"
+  | Immutable_cyclic_trackable -> "immutable_cyclic"
+  | Acyclic_trackable -> "acyclic_trackable"
   | Acyclic -> "acyclic"
-  | Unknown_cyclic_prop -> "unknow_cyclic"
+  | Unknown_cyclic_prop -> "unknown_cyclic"
 
 let string_of_tag_variant = function
   | Some t -> Printf.sprintf "tag=%d" t

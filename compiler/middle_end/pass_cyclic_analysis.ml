@@ -3,9 +3,11 @@
     Builds a graph whose nodes are type definitions, record bodies and variant
     constructors, then classifies every node as:
 
-    - [Cyclic_n_Trackable]: a cyclic component containing at least one mutable
-      edge (so a cycle can actually be built at runtime);
-    - [Acyclic_n_Trackable] (scannable): an acyclic node that refers, directly
+    - [Mutable_cyclic_trackable]: a node of a cyclic component (one containing
+      an internal mutable edge) that is itself the source of a mutable edge;
+    - [Immutable_cyclic_trackable]: any other node of such a component (part of
+      a cycle but with no mutable field);
+    - [Acyclic_trackable] (scannable): an acyclic node that refers, directly
       or indirectly, to a cyclic node;
     - [Acyclic]: everything else.
 
@@ -45,9 +47,11 @@
     [array:box -> box] is structural (immutable). Nested arrays chain one node
     per level: [array<array<box>>] gives [array:array:box -> array:box -> box].
 
-    [node] and [node#1] form the only cyclic component and it holds a mutable
-    edge, so both are [Cyclic_n_Trackable]. [wrapper] and [wrapper#record] reach
-    that component, so both are [Acyclic_n_Trackable] (scannable). All the rest
+    [node] and [node#1] form the only cyclic component (it holds a mutable
+    edge). [node#1] is the source of that mutable edge, so it is
+    [Mutable_cyclic_trackable]; [node] has only structural edges, so it is
+    [Immutable_cyclic_trackable]. [wrapper] and [wrapper#record] reach that
+    component, so both are [Acyclic_trackable] (scannable). All the rest
     ([point], [point#record], [color], [color#0], [color#1], [node#0]) are
     [Acyclic].
 
@@ -180,23 +184,36 @@ let build_ctx (type_defs : C.ty_decl StringMap.t) : ctx =
   StringMap.fold (add_decl type_defs) type_defs empty_ctx
 
 let classify (ctx : ctx) : t =
-  (* A cyclic component is a true cycle iff it contains a mutable edge: inside a
-     strongly connected component every edge lies on a cycle. *)
+  let add_all comp acc =
+    List.fold_left (fun acc n -> StringSet.add n acc) acc comp
+  in
+  (* A component is cyclic iff it contains a mutable edge: inside a strongly
+     connected component every edge lies on a cycle. Components without a
+     mutable edge cannot build a cycle at runtime. *)
   let cyclic_nodes =
-    G.cyclic_components ctx.graph
-    |> List.fold_left
-         (fun acc comp ->
-           let comp_set = StringSet.of_list comp in
-           let has_mut =
-             List.exists
-               (fun (u, v) ->
-                 StringSet.mem u comp_set && StringSet.mem v comp_set)
-               ctx.mutable_edges
-           in
-           if has_mut then
-             List.fold_left (fun acc n -> StringSet.add n acc) acc comp
-           else acc)
-         StringSet.empty
+    List.fold_left
+      (fun acc comp ->
+        let comp_set = StringSet.of_list comp in
+        let has_mut =
+          List.exists
+            (fun (u, v) -> StringSet.mem u comp_set && StringSet.mem v comp_set)
+            ctx.mutable_edges
+        in
+        if has_mut then add_all comp acc else acc)
+      StringSet.empty
+      (G.cyclic_components ctx.graph)
+  in
+  (* Split the cyclic nodes by their own mutability: a node that is the source
+     of a mutable edge is mutable-cyclic, any other node of the component is
+     immutable-cyclic (part of the cycle but with no mutable field). *)
+  let mutable_cyclic, immutable_cyclic =
+    StringSet.fold
+      (fun n (mut, imm) ->
+        if List.exists (fun (u, _) -> u = n) ctx.mutable_edges then
+          (StringSet.add n mut, imm)
+        else (mut, StringSet.add n imm))
+      cyclic_nodes
+      (StringSet.empty, StringSet.empty)
   in
   let reachable_from (seeds : StringSet.t) : StringSet.t =
     let rev = G.reverse ctx.graph in
@@ -219,8 +236,10 @@ let classify (ctx : ctx) : t =
   StringSet.fold
     (fun n acc ->
       let prop =
-        if StringSet.mem n cyclic_nodes then I.Cyclic_n_Trackable
-        else if StringSet.mem n reaches_cyclic then I.Acyclic_n_Trackable
+        if StringSet.mem n mutable_cyclic then I.Mutable_cyclic_trackable
+        else if StringSet.mem n immutable_cyclic then
+          I.Immutable_cyclic_trackable
+        else if StringSet.mem n reaches_cyclic then I.Acyclic_trackable
         else I.Acyclic
       in
       StringMap.add n prop acc)

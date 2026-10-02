@@ -12,8 +12,9 @@ module PT = Middle_end.Pipeline_types
 module SM = Syli_common.StringMap
 
 let pp_prop : I.cyclic_prop -> string = function
-  | I.Cyclic_n_Trackable -> "cyclic"
-  | I.Acyclic_n_Trackable -> "acyclic_n_trackable"
+  | I.Mutable_cyclic_trackable -> "mutable_cyclic"
+  | I.Immutable_cyclic_trackable -> "immutable_cyclic"
+  | I.Acyclic_trackable -> "acyclic_trackable"
   | I.Acyclic -> "acyclic"
   | I.Unknown_cyclic_prop -> "unknown_cyclic"
 

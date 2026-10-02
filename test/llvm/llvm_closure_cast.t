@@ -53,7 +53,7 @@ Closure as an argument with multiple captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.61_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
@@ -64,7 +64,7 @@ Closure as an argument with multiple captured variables:
   
     bb2:
       gc_cycle
-      %Sy_cir_var_5:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_5:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_5:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
@@ -79,7 +79,7 @@ Closure as an argument with multiple captured variables:
   
     bb1:
       gc_cycle
-      %Sy_cir_var_3:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_3:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_2:fn_ptr = addr_fn(__partial_closure_accum.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_3:obj_ptr, 0:i32, %Sy_oir_accum_fn_2:fn_ptr):fn_ptr

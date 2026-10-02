@@ -147,14 +147,14 @@ Closure as an argument with multiple captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.61_ret_i64)
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
       
       gc_cycle
-      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_1:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=3:i32}
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_1:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
@@ -165,7 +165,7 @@ Closure as an argument with multiple captured variables:
       
       %Sy_cir_var_2:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_cir_var_1:obj_ptr, 3:i64, 4:i64)
       gc_cycle
-      %Sy_cir_var_3:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_3:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_2:fn_ptr = addr_fn(__partial_closure_accum.clos0_arg2_ret_i64)
       obj_set(%Sy_cir_var_3:obj_ptr, 0:i32, %Sy_oir_accum_fn_2:fn_ptr):fn_ptr

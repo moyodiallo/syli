@@ -13,8 +13,9 @@ let fresh_id () =
 type mut_flag = Mutable | Immutable
 
 type cyclic_prop =
-  | Cyclic_n_Trackable
-  | Acyclic_n_Trackable
+  | Mutable_cyclic_trackable
+  | Immutable_cyclic_trackable
+  | Acyclic_trackable
   | Acyclic
   | Unknown_cyclic_prop
 

@@ -44,14 +44,14 @@ Nested closures capturing closures with multiple application levels:
     bb0:
       %sy1_a:i64 = cast(3:i64 as i64)
       gc_cycle
-      %sy2_f:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %sy2_f:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.48_ret_i64)
       obj_set(%sy2_f:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       obj_set(%sy2_f:obj_ptr, 1:i32, %sy1_a:i64):i64
       
       gc_cycle
-      %sy3_g:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %sy3_g:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.dispatch.75_ret_i64)
       obj_set(%sy3_g:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
@@ -60,7 +60,7 @@ Nested closures capturing closures with multiple application levels:
       obj_set(%sy3_g:obj_ptr, 1:i32, @own %sy2_f:obj_ptr):obj_ptr
       
       gc_cycle
-      %sy4_h:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknow_cyclic} = object_create{size=2:i32}
+      %sy4_h:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=2:i32}
       
       %Sy_oir_accum_fn_2:fn_ptr = addr_fn(__make_closure_accum.sy4_h.102_ret_i64)
       obj_set(%sy4_h:obj_ptr, 0:i32, %Sy_oir_accum_fn_2:fn_ptr):fn_ptr

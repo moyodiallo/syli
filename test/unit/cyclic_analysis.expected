@@ -1,21 +1,21 @@
 --- immutable list
   list: acyclic ctors=[0=acyclic; 1=acyclic]
 --- mutable recursive variant
-  node: cyclic ctors=[0=acyclic; 1=cyclic]
+  node: immutable_cyclic ctors=[0=acyclic; 1=mutable_cyclic]
 --- immutable recursive variant
   node: acyclic ctors=[0=acyclic; 1=acyclic]
 --- wrapper points to a cyclic node
-  node: cyclic ctors=[0=acyclic; 1=cyclic]
-  wrapper: acyclic_n_trackable record=acyclic_n_trackable
+  node: immutable_cyclic ctors=[0=acyclic; 1=mutable_cyclic]
+  wrapper: acyclic_trackable record=acyclic_trackable
 --- constant-only record
   point: acyclic record=acyclic
 --- anonymous aggregates
   object anon: acyclic
-  object node: cyclic
+  object node: mutable_cyclic
   object anon: unknown_cyclic
 --- array nodes
   array<i64>: acyclic
-  array<box>: acyclic_n_trackable
+  array<box>: acyclic_trackable
 --- nested array nodes
-  array<array<box>>: acyclic_n_trackable
-  array<box>: acyclic_n_trackable
+  array<array<box>>: acyclic_trackable
+  array<box>: acyclic_trackable

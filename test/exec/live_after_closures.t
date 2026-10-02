@@ -47,13 +47,13 @@ Object reused after being passed as an applied argument to a closure:
       
       obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 40:i64):i64
       gc_cycle
-      %sy2_go:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
+      %sy2_go:obj{{card=1 [0:fn_ptr]} tag=0 unknown_cyclic} = object_create{size=1:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.sy2_go.91_ret_i64)
       obj_set(%sy2_go:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       
       gc_cycle
-      %__sy_cir_lambda_115:obj{{card=1 [0:fn_ptr]} tag=0 unknow_cyclic} = object_create{size=1:i32}
+      %__sy_cir_lambda_115:obj{{card=1 [0:fn_ptr]} tag=0 unknown_cyclic} = object_create{size=1:i32}
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__make_closure_accum.__sy_cir_lambda_115.128_ret_i64)
       obj_set(%__sy_cir_lambda_115:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
