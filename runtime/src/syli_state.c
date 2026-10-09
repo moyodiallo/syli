@@ -46,7 +46,6 @@ void syli_state_init()
     // Initialize the cyclic candidate registry and its release buffers
     vector_init_CyclicCandidate(&syli_state.cyclic_candidates);
     vector_init_obj_ptr(&syli_state.lost_cycle_worklist);
-    vector_init_obj_ptr(&syli_state.lost_cycle_waitlist);
 
     // Initialize stats
     syli_state.releasing_steps = 0;
@@ -85,7 +84,6 @@ void syli_state_destroy()
     // Clean up the cyclic candidate registry and its release buffers
     vector_destroy_CyclicCandidate(&syli_state.cyclic_candidates);
     vector_destroy_obj_ptr(&syli_state.lost_cycle_worklist);
-    vector_destroy_obj_ptr(&syli_state.lost_cycle_waitlist);
 
     // Clean up stackmap recorded pc
     free(syli_state.stackmap_record_entry);

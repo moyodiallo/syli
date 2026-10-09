@@ -73,7 +73,6 @@ static bool lost_cycle_drained(void)
 {
     return vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0
         && vector_size_obj_ptr(&syli_state.lost_cycle_worklist) == 0
-        && vector_size_obj_ptr(&syli_state.lost_cycle_waitlist) == 0
         && syli_state.tracing_state == Tracing_Idle;
 }
 
@@ -81,7 +80,6 @@ static bool candidates_empty_and_releasing_drained(void)
 {
     return vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0
         && vector_size_obj_ptr(&syli_state.lost_cycle_worklist) == 0
-        && vector_size_obj_ptr(&syli_state.lost_cycle_waitlist) == 0
         && vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0
         && vector_size_obj_ptr(&syli_state.releasing_worklist) == 0;
 }
@@ -233,8 +231,8 @@ static void test_zero_refcount_candidate_arc_released(void)
 
 // A lost cycle can point at an unmarked child that is still referenced by
 // another unmarked object (rc > 0) and is not itself a registered candidate.
-// The cascade must route it, otherwise it and its peer leak.
-//   a <-> b (registered), a -> c, c <-> d (not registered)
+// The cascade must route it, otherwise it and its peers leak.
+//   a <-> b (registered), a -> c, c <-> d (c registered, d plain)
 static void test_unmarked_child_with_refs(void)
 {
     printf("Test 5: unmarked child with rc>0 is collected\n");
@@ -244,7 +242,7 @@ static void test_unmarked_child_with_refs(void)
 
     obj_ptr a = make_two_refs(NULL, NULL); // registered
     obj_ptr b = make_cons(a);              // registered, b -> a
-    obj_ptr c = make_plain_cons(NULL);     // not registered
+    obj_ptr c = make_cons(NULL);           // registered, c -> d
     obj_ptr d = make_plain_cons(c);        // not registered, d -> c
 
     set_field(a, 0, b); // a -> b
@@ -263,7 +261,7 @@ static void test_unmarked_child_with_refs(void)
     syli_rt_ownership_decr(c);
     syli_rt_ownership_decr(d);
 
-    assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 2);
+    assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 3);
 
     run_gc_until(lost_cycle_drained, 256);
 

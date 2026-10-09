@@ -17,11 +17,10 @@ typedef struct CyclicCandidate {
 } CyclicCandidate;
 
 typedef enum Tracing_state_machine {
-    Tracing_Idle               = 0,
-    Tracing                    = 1,
-    Mutation_Prepare           = 2,
-    Checking_Cyclic_Candidates = 3,
-    Releasing_Unreachable      = 4,
+    Tracing_Idle                 = 0,
+    Tracing                      = 1,
+    Mutation_Prepare             = 2,
+    Reclaiming_Cyclic_Candidates = 3,
 } Tracing_state_machine;
 
 typedef enum Releasing_state_machine {
@@ -58,9 +57,7 @@ typedef struct Syli_state {
     vector_obj_ptr releasing_waitlist;
 
     vector_CyclicCandidate cyclic_candidates;
-
     vector_obj_ptr lost_cycle_worklist;
-    vector_obj_ptr lost_cycle_waitlist;
 
     size_t releasing_steps;
     size_t tracing_steps;
@@ -86,6 +83,7 @@ typedef struct Syli_state {
 
     size_t cyclic_obj_alloc_at_trace;
 
+    // Number of candidate entries still to consider; counts down to 0.
     size_t current_candidate_check_index;
 
     // LLVM pre-computed records
@@ -105,8 +103,6 @@ typedef struct Syli_state {
 #else
 #define SYLI_TLS __thread
 #endif
-
-#define INITIAL_CANDIDATE_INDEX (-1)
 
 // Thread-local state declaration
 extern SYLI_TLS Syli_state syli_state;

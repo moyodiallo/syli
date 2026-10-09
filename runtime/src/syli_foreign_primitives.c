@@ -49,10 +49,8 @@ static const char* tracing_state_name(Tracing_state_machine state)
         return "Tracing";
     case Mutation_Prepare:
         return "Mutation_Prepare";
-    case Checking_Cyclic_Candidates:
-        return "Checking";
-    case Releasing_Unreachable:
-        return "Releasing_Unreachable";
+    case Reclaiming_Cyclic_Candidates:
+        return "Reclaiming";
     }
     return "?";
 }
