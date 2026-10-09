@@ -126,16 +126,6 @@ static inline void gc_releasing_worklist_push(obj_ptr obj_p)
     gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
 }
 
-static inline void gc_releasing_worklist_push_if_not(obj_ptr obj_p)
-{
-    Object* obj = syli_object_of_obj_ptr(obj_p);
-    if (syli_object_has_flags(obj, Meta_Flags_Releasing)) {
-        return;
-    }
-    syli_object_set_flags(obj, Meta_Flags_Releasing);
-    gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
-}
-
 // ========================
 // Object marking bit management
 // ========================

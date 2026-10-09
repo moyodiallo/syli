@@ -11,33 +11,20 @@ static inline void child_release_object(obj_ptr obj_ptr)
     assert(obj_ptr != NULL);
 
     Object* obj = syli_object_of_obj_ptr(obj_ptr);
-
-    GCObject* gc_obj = as_gc_object(obj);
     syli_object_decr_local(obj);
 
-    const int ref_count = (gc_obj->meta_ref_count & REFCOUNT_MASK);
-
-    if (ref_count > 0) {
-        // Still referenced.
-        return;
+    if (syli_object_refcount(obj) > 0) {
+        return; // still referenced
     }
-
-    assert(ref_count == 0);
-
-    // Reaching 0 is a normal release, not a lost cycle.
-    // If not removed from candidates list, the lost cycle
-    // releasing mechanism could owns it, which will lead to double free.
-    gc_remove_from_candidates_if_registered(obj);
 
     if (syli_object_has_pointers(obj) == 0) {
         free_released_object(obj);
         return;
     }
 
-    if (syli_object_has_flags(obj, Meta_Flags_Releasing)) {
-        // an object can even points to itself.
-        return;
-    }
+    // Reaching 0 is a normal release, not a lost cycle.
+    // Marking it, will avoid the cyclic lost handling owning it.
+    gc_mark_tag_object(obj);
 
     // we need to process its children before we can free it
     gc_vector_push_back(&syli_state.releasing_worklist, obj_ptr);
@@ -50,57 +37,50 @@ static inline void gc_one_step_releasing()
     Object* obj        = syli_object_of_obj_ptr(tagged_ptr);
     GCObject* gc_obj   = as_gc_object(obj);
 
-    if (!syli_object_has_flags(obj, Meta_Flags_Children_Released)) {
-        if (syli_object_is_mono_ref(obj)) {
-            // All fields are references, traverse all
-            uint64_t length = syli_object_length(obj);
-            syli_state.releasing_budget -= (int)length;
-            for (uint64_t i = 0; i < length; i++) {
-                uint64_t field_value = gc_obj->value[i];
-                if (!field_value
-                    || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
-                    continue;
-                }
-                child_release_object(((obj_ptr)field_value));
+    if (syli_object_is_mono_ref(obj)) {
+        // All fields are references, traverse all
+        uint64_t length = syli_object_length(obj);
+        syli_state.releasing_budget -= (int)length;
+        for (uint64_t i = 0; i < length; i++) {
+            uint64_t field_value = gc_obj->value[i];
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
+                continue;
             }
-        } else if (syli_object_is_mixed_bitmap(obj)) {
-            // All fields are references, traverse all
-            uint64_t length = syli_object_length(obj);
-            uint32_t bitmap = syli_object_bitmap_bits(obj);
-            syli_state.releasing_budget -= (int)length;
-            for (uint64_t i = 0; i < length; i++) {
-                if (!syli_bitmap_is_ref(bitmap, i)) {
-                    continue; // non-reference field
-                }
-                uint64_t field_value = gc_obj->value[i];
-                if (!field_value
-                    || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
-                    continue;
-                }
-                child_release_object(((obj_ptr)field_value));
-            }
-        } else if (syli_object_is_mixed_order(obj)) {
-            // All fields are references, traverse all
-            size_t ptr_count = syli_object_order_ptr_count(obj);
-            syli_state.releasing_budget -= (int)ptr_count;
-            for (size_t i = 0; i < ptr_count; i++) {
-                uint64_t field_value = gc_obj->value[i];
-                if (!field_value
-                    || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
-                    continue;
-                }
-                child_release_object(((obj_ptr)field_value));
-            }
+            child_release_object(((obj_ptr)field_value));
         }
-        syli_object_set_flags(obj, Meta_Flags_Children_Released);
+    } else if (syli_object_is_mixed_bitmap(obj)) {
+        // All fields are references, traverse all
+        uint64_t length = syli_object_length(obj);
+        uint32_t bitmap = syli_object_bitmap_bits(obj);
+        syli_state.releasing_budget -= (int)length;
+        for (uint64_t i = 0; i < length; i++) {
+            if (!syli_bitmap_is_ref(bitmap, i)) {
+                continue; // non-reference field
+            }
+            uint64_t field_value = gc_obj->value[i];
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
+                continue;
+            }
+            child_release_object(((obj_ptr)field_value));
+        }
+    } else if (syli_object_is_mixed_order(obj)) {
+        // All fields are references, traverse all
+        size_t ptr_count = syli_object_order_ptr_count(obj);
+        syli_state.releasing_budget -= (int)ptr_count;
+        for (size_t i = 0; i < ptr_count; i++) {
+            uint64_t field_value = gc_obj->value[i];
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
+                continue;
+            }
+            child_release_object(((obj_ptr)field_value));
+        }
     }
 
-    if ((gc_obj->meta_ref_count & REFCOUNT_MASK) > 0) {
-        // still referenced: retry on a later pass
-        gc_vector_push_back(&syli_state.releasing_waitlist, tagged_ptr);
-    } else {
-        free_released_object(obj);
-    }
+    assert(syli_object_refcount(obj) == 0);
+    free_released_object(obj);
 }
 
 void set_releasing_working()
