@@ -43,7 +43,6 @@ obj_ptr syli_rt_ownership_share(obj_ptr ptr);
 void syli_rt_ownership_release(obj_ptr ptr);
 void syli_rt_ownership_decr(obj_ptr ptr);
 void syli_rt_ownership_incr(obj_ptr ptr);
-void syli_rt_ownership_check_lost_cyclic_release(obj_ptr ptr);
 void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr);
 
 /************************************************
@@ -53,9 +52,6 @@ void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr);
 void syli_rt_object_incr(Object* obj);
 void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr);
 void syli_rt_object_decr_n(Object* obj, int n);
-
-// If refcount is still above zero, mark as suspect lost cycle
-void syli_rt_object_check_lost_cyclic_release(Object* obj, obj_ptr ptr);
 
 // Write barrier: notify the GC that `obj` was mutated to point to `target`
 // during tracing. If `obj` is marked but `target` is not, `target` is added
@@ -85,12 +81,5 @@ void syli_match_failure(void);
  ************************************************/
 
 void syli_rt_gc_cycle();
-
-/************************************************
- * Others Functions
- ************************************************/
-
-Object* syli_rt_object_copy(Object* src);
-void syli_rt_object_raw_copy(Object* src, Object* dst);
 
 #endif /* SYLI_H */

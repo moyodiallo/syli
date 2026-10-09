@@ -21,12 +21,12 @@ void syli_state_init()
     // Zero out the entire state to ensure clean initialization
     memset(&syli_state, 0, sizeof(Syli_state));
 
-    syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE
-        = syli_env.syli_gc_suspect_threshold;
+    syli_state.THRESHOLD_MEM_CYCLIC_OBJ
+        = syli_env.syli_gc_mem_cyclic_obj_threshold;
+    syli_state.THRESHOLD_CANDIDATES_RATIO
+        = syli_env.syli_gc_candidates_ratio_threshold;
 
     syli_state.THRESHOLD_RELEASING_BUCKET = syli_env.syli_gc_release_threshold;
-
-    syli_state.FULL_BUCKET_SUSPECT_LOST_CYCLE = 10000;
 
     // Initialize budgets
     syli_state.BUDGET_GC_TRACING   = 2 * BUDGET_BATCH_SIZE;
@@ -43,8 +43,10 @@ void syli_state_init()
     vector_init_obj_ptr(&syli_state.releasing_worklist);
     vector_init_obj_ptr(&syli_state.releasing_waitlist);
 
-    // Initialize suspect lost cycle vector
-    vector_init_Suspected(&syli_state.suspect_lost_cycle);
+    // Initialize the cyclic candidate registry and its release buffers
+    vector_init_CyclicCandidate(&syli_state.cyclic_candidates);
+    vector_init_obj_ptr(&syli_state.lost_cycle_worklist);
+    vector_init_obj_ptr(&syli_state.lost_cycle_waitlist);
 
     // Initialize stats
     syli_state.releasing_steps = 0;
@@ -66,9 +68,7 @@ void syli_state_init()
     syli_state.tracing_state   = Tracing_Idle;
     syli_state.releasing_state = Releasing_Idle;
 
-    syli_state.suspect_objects_notifications = 0;
-
-    syli_state.current_suspected_check_index = 0;
+    syli_state.current_candidate_check_index = 0;
 
     syli_state.stackmap_record_entry     = NULL;
     syli_state.stackmap_record_entry_len = 0;
@@ -82,8 +82,10 @@ void syli_state_destroy()
     vector_destroy_obj_ptr(&syli_state.releasing_worklist);
     vector_destroy_obj_ptr(&syli_state.releasing_waitlist);
 
-    // Clean up suspect lost cycle vector
-    vector_destroy_Suspected(&syli_state.suspect_lost_cycle);
+    // Clean up the cyclic candidate registry and its release buffers
+    vector_destroy_CyclicCandidate(&syli_state.cyclic_candidates);
+    vector_destroy_obj_ptr(&syli_state.lost_cycle_worklist);
+    vector_destroy_obj_ptr(&syli_state.lost_cycle_waitlist);
 
     // Clean up stackmap recorded pc
     free(syli_state.stackmap_record_entry);

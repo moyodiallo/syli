@@ -30,11 +30,10 @@ static obj_ptr make_ref_object(size_t words)
     return obj;
 }
 
-/* Returns true once the tracing GC has fully processed all suspects. */
-static bool tracing_done(void)
+/* Returns true once the tracing GC has fully processed all candidates. */
+static bool tracing_idle(void)
 {
-    return syli_state.suspect_objects_notifications == 0
-        && vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
+    return vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
         && vector_size_obj_ptr(&syli_state.tracing_mutations_worklist) == 0
         && syli_state.tracing_state == Tracing_Idle
         && syli_state.releasing_state == Releasing_Idle;
@@ -59,20 +58,21 @@ static void run_tracing_bench(const char* label, obj_ptr* root_slot,
 
     for (int round = 0; round < N_ROUNDS; round++) {
         /* Reset tracing state for each round without reallocating the graph.
-           Only the tracing-related fields need to be cleared. */
-        syli_state.tracing_state                 = Tracing_Idle;
-        syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
-        syli_state.THRESHOLD_RELEASING_BUCKET    = 1;
-        syli_state.tracing_steps                 = 0;
+           The nodes are plain cyclic (not candidates), so the trigger cannot
+           fire; start the trace directly. */
+        size_t gen_before                     = syli_state.tracing_generations;
+        syli_state.tracing_state              = Tracing;
+        syli_state.THRESHOLD_RELEASING_BUCKET = 1;
+        syli_state.tracing_steps              = 0;
+        gc_next_marking_generation();
 
         gc_tracing_worklist_push(*root_slot);
 
-        gc_add_suspect(*root_slot);
-
         /* GC drain loop */
-        while (!tracing_done()) {
+        while (syli_state.tracing_generations == gen_before
+            || !tracing_idle()) {
             size_t cands
-                = vector_size_Suspected(&syli_state.suspect_lost_cycle);
+                = vector_size_CyclicCandidate(&syli_state.cyclic_candidates);
             if (cands > peak_candidates)
                 peak_candidates = cands;
 

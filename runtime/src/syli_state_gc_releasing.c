@@ -6,23 +6,6 @@
 
 #include "syli/syli_state.h"
 
-static inline void free_released_object(Object* obj)
-{
-    if (syli_object_has_flags(obj, Meta_Flags_Suspect_Lost_Cycle)) {
-        size_t index_suspect = syli_object_get_cyclic_index(as_gc_object(obj));
-        gc_remove_suspect_at(index_suspect);
-        syli_object_clear_flags(obj, Meta_Flags_Suspect_Lost_Cycle);
-    }
-
-    if (syli_object_has_flags(obj, Meta_Flags_Tracing)) {
-        syli_object_set_flags(obj, Meta_Flags_Waiting_Remove);
-        return;
-    }
-
-    syli_state.total_objects_memory_freed++;
-    free(obj);
-}
-
 static inline void child_release_object(obj_ptr obj_ptr)
 {
     assert(obj_ptr != NULL);
@@ -34,17 +17,17 @@ static inline void child_release_object(obj_ptr obj_ptr)
 
     const int ref_count = (gc_obj->meta_ref_count & REFCOUNT_MASK);
 
-    if (ref_count > 0 && syli_object_is_cyclic(obj)) {
-        gc_add_suspect(obj_ptr);
-        return;
-    }
-
     if (ref_count > 0) {
-        // the child is not cyclic so safe to ignore
+        // Still referenced.
         return;
     }
 
     assert(ref_count == 0);
+
+    // Reaching 0 is a normal release, not a lost cycle.
+    // If not removed from candidates list, the lost cycle
+    // releasing mechanism could owns it, which will lead to double free.
+    gc_remove_from_candidates_if_registered(obj);
 
     if (syli_object_has_pointers(obj) == 0) {
         free_released_object(obj);

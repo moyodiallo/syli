@@ -69,6 +69,7 @@ let is_reference_ty = function
 (*   Bit  57:    HasPointers                                     *)
 (*   Bit  56:    Traceable                                       *)
 (*   Bits 55-48: Variant tag (8 bits)                            *)
+(*   Bit  47:    Cyclic mutable                                 *)
 (*   Bits 31-0:  Payload (32 bits)                               *)
 (* ------------------------------------------------------------- *)
 
@@ -78,6 +79,7 @@ let type_shift = 59
 let has_pointers_shift = 57
 let tracing_shift = 56
 let variant_tag_shift = 48
+let cyclic_mutable_shift = 47
 
 (** ObjectType values as 2-bit fields. 00 = mono_imm, 01 = mono_ref, 10 =
     mixed_order, 11 = mixed_bitmap *)
@@ -112,11 +114,14 @@ let ptr_and_imm_counts (field_types : ty list) : int * int =
     (0, 0) field_types
 
 (** Assemble the full 64-bit header word using bitwise OR. *)
-let make_header ~(zone : int64) ~(cyclic : int64) ~(obj_type : int64)
-    ~(has_pointers : bool) ~(traceable : int64) ~(variant_tag : int64)
-    (payload : int64) : int64 =
+let make_header ~(zone : int64) ~(cyclic : int64) ~(cyclic_mutable : int64)
+    ~(obj_type : int64) ~(has_pointers : bool) ~(traceable : int64)
+    ~(variant_tag : int64) (payload : int64) : int64 =
   let zone_bits = Int64.shift_left zone zone_shift in
   let cyclic_bits = Int64.shift_left cyclic cyclic_shift in
+  let cyclic_mutable_bits =
+    Int64.shift_left cyclic_mutable cyclic_mutable_shift
+  in
   let type_bits = Int64.shift_left obj_type type_shift in
   let has_pointers_bit =
     if has_pointers then Int64.shift_left 1L has_pointers_shift else 0L
@@ -124,6 +129,7 @@ let make_header ~(zone : int64) ~(cyclic : int64) ~(obj_type : int64)
   let traceable_bit = Int64.shift_left traceable tracing_shift in
   let payload_bits = Int64.logand payload 0xFFFFFFFFL in
   let header = Int64.logor zone_bits cyclic_bits in
+  let header = Int64.logor header cyclic_mutable_bits in
   let header = Int64.logor header type_bits in
   let header = Int64.logor header has_pointers_bit in
   let header = Int64.logor header traceable_bit in
@@ -196,6 +202,9 @@ let traceable_bit_of_prop (p : Oir.cyclic_prop) : int64 =
       1L
   | Oir.Acyclic -> 0L
 
+let cyclic_mutable_bit_of_prop (p : Oir.cyclic_prop) : int64 =
+  match p with Oir.Mutable_cyclic_trackable -> 1L | _ -> 0L
+
 let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
   match t with
   | OR_Bool -> RR_Bool
@@ -224,6 +233,7 @@ let header_operand_of_obj (obj_ty : Oir.ty) : operand =
   | Oir.OR_Obj { obj_kind; tag_variant; cyclic_prop; _ } ->
       let zone = 0L in
       let cyclic = cyclic_bit_of_prop cyclic_prop in
+      let cyclic_mutable = cyclic_mutable_bit_of_prop cyclic_prop in
       let traceable = traceable_bit_of_prop cyclic_prop in
       let variant_tag = variant_tag_raw (Option.value tag_variant ~default:0) in
       let field_types =
@@ -259,8 +269,8 @@ let header_operand_of_obj (obj_ty : Oir.ty) : operand =
       in
       let payload_val = encode_payload payload in
       let header =
-        make_header ~zone ~cyclic ~obj_type ~has_pointers ~traceable
-          ~variant_tag payload_val
+        make_header ~zone ~cyclic ~cyclic_mutable ~obj_type ~has_pointers
+          ~traceable ~variant_tag payload_val
       in
       int64_operand header
   | _ -> failwith "OR_Object_create dst must have an OR_Obj structural type"

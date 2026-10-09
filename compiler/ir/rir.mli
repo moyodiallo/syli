@@ -9,8 +9,6 @@ type runtime_op_name =
   | RR_RT_get_object_length
   | RR_RT_get_object_tag
   | RR_RT_gc_cycle
-  | RR_RT_object_raw_copy
-  | RR_RT_object_copy
   | RR_RT_object_check_mutation
   | RR_RT_object_borrow
   | RR_RT_object_share

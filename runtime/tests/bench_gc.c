@@ -126,6 +126,9 @@ static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
     object_payload_t payload = syli_object_make_mono_payload(words);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
+    if (cyclic == Cyclic) {
+        header |= GC_CYCLIC_MUTABLE_MASK;
+    }
     obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, words);
     Object* o   = syli_object_of_obj_ptr(obj);
     memset(syli_object_data(o), 0, words * sizeof(uint64_t));
@@ -198,7 +201,7 @@ static CounterSnapshot take_counter_snapshot(void)
 
     s.generation_tracing    = syli_state.generation_tracing;
     s.tracing_generations   = syli_state.tracing_generations;
-    s.suspect_notifications = syli_state.suspect_objects_notifications;
+    s.suspect_notifications = gc_current_cyclic_mem();
     return s;
 }
 
@@ -220,15 +223,15 @@ static bool gc_is_done(void)
 
 static void init_runtime_defaults(void)
 {
-    syli_state.THRESHOLD_RELEASING_BUCKET    = 1;
-    syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
+    syli_state.THRESHOLD_RELEASING_BUCKET  = 1;
+    syli_state.THRESHOLD_MEM_CYCLIC_OBJ    = 0;
+    syli_state.THRESHOLD_CANDIDATES_RATIO  = 0.0; // force the trace trigger
 }
 
 static void run_drain_and_collect(RoundResult* round)
 {
     uint64_t total_gc_ns = 0;
-    size_t peak_suspect_notifications
-        = syli_state.suspect_objects_notifications;
+    size_t peak_suspect_notifications = gc_current_cyclic_mem();
 
     while (!gc_is_done()) {
         struct timespec cs;
@@ -241,7 +244,7 @@ static void run_drain_and_collect(RoundResult* round)
         metric.cycle_index = round->cycle_count;
         metric.pause_ns    = time_diff_ns(&cs, &ce);
         metric.suspected_lost_cycle
-            = vector_size_Suspected(&syli_state.suspect_lost_cycle);
+            = vector_size_CyclicCandidate(&syli_state.cyclic_candidates);
         metric.releasing_worklist
             = vector_size_obj_ptr(&syli_state.releasing_worklist);
         metric.releasing_waitlist
@@ -253,10 +256,8 @@ static void run_drain_and_collect(RoundResult* round)
 
         append_cycle_metric(round, &metric);
 
-        if (syli_state.suspect_objects_notifications
-            > peak_suspect_notifications) {
-            peak_suspect_notifications
-                = syli_state.suspect_objects_notifications;
+        if (gc_current_cyclic_mem() > peak_suspect_notifications) {
+            peak_suspect_notifications = gc_current_cyclic_mem();
         }
 
         if (metric.pause_ns > round->max_pause_ns) {
@@ -431,10 +432,6 @@ static ScenarioResult run_mixed_scenario(size_t rounds)
         for (size_t i = 0; i < release_count; i++) {
             obj_ptr rel = make_ref_object(0, Acyclic);
             syli_rt_ownership_release(rel);
-        }
-
-        for (size_t i = 0; i < trace_pairs; i++) {
-            gc_add_suspect(root_slots[i]);
         }
 
         clock_gettime(CLOCK_MONOTONIC, &t1);

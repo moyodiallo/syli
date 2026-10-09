@@ -20,6 +20,7 @@ static void gc_one_step_tracing(void)
     syli_object_clear_flags(obj, Meta_Flags_Tracing);
 
     if (syli_object_has_flags(obj, Meta_Flags_Waiting_Remove)) {
+        gc_account_cyclic_free(obj);
         free(obj);
         return;
     }
@@ -157,36 +158,219 @@ static void gc_one_step_prepare_tracing_mutations()
     }
 }
 
+// ==================== Lost-cycle release ====================
+//
+// The checking phase collects unreachable mutable-cyclic candidates. Release
+// mirrors the normal releasing pipeline but keeps its own worklist/waitlist so
+// the two mechanisms never mix. An unreachable object with refcount > 1 is
+// still referenced by a peer, so it waits until its referrers are released.
+
+static inline void lost_cycle_enqueue(vector_obj_ptr* list, obj_ptr obj_p)
+{
+    Object* obj = syli_object_of_obj_ptr(obj_p);
+    if (syli_object_has_flags(obj, Meta_Flags_Lost_Cycle_Releasing)) {
+        return;
+    }
+    syli_object_set_flags(obj, Meta_Flags_Lost_Cycle_Releasing);
+    gc_vector_push_back(list, obj_p);
+}
+
+static inline void lost_cycle_route(obj_ptr obj_p)
+{
+    Object* obj = syli_object_of_obj_ptr(obj_p);
+
+    const int rc = (int)syli_object_refcount(obj);
+    if (rc > 1) {
+        lost_cycle_enqueue(&syli_state.lost_cycle_waitlist, obj_p);
+    } else {
+        lost_cycle_enqueue(&syli_state.lost_cycle_worklist, obj_p);
+    }
+}
+
+// Release one reference to a child while walking a lost cycle.
+static inline void lost_cycle_child_decr(obj_ptr obj_p)
+{
+    Object* obj = syli_object_of_obj_ptr(obj_p);
+    syli_object_decr_local(obj);
+
+    const int rc = (int)syli_object_refcount(obj);
+
+    if (rc == 0) {
+        if (syli_object_has_pointers(obj) == 0) {
+            free_released_object(obj);
+            return;
+        }
+        lost_cycle_enqueue(&syli_state.lost_cycle_worklist, obj_p);
+        return;
+    }
+
+    if (gc_is_object_mark_tagged(obj)) {
+        return; // reachable: not a lost cycle
+    }
+
+    lost_cycle_route(obj_p);
+}
+
+static inline void lost_cycle_release_children(Object* obj)
+{
+    GCObject* gc_obj = as_gc_object(obj);
+
+    if (syli_object_is_mono_ref(obj)) {
+        size_t length = syli_object_length(obj);
+        syli_state.checking_budget -= (int)length;
+        for (size_t i = 0; i < length; i++) {
+            uint64_t field_value = gc_obj->value[i];
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
+                continue;
+            }
+            lost_cycle_child_decr((obj_ptr)field_value);
+        }
+    } else if (syli_object_is_mixed_bitmap(obj)) {
+        size_t length   = syli_object_bitmap_length(obj);
+        uint32_t bitmap = syli_object_bitmap_bits(obj);
+        syli_state.checking_budget -= (int)length;
+        for (size_t i = 0; i < length; i++) {
+            if (!syli_bitmap_is_ref(bitmap, i)) {
+                continue;
+            }
+            uint64_t field_value = gc_obj->value[i];
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
+                continue;
+            }
+            lost_cycle_child_decr((obj_ptr)field_value);
+        }
+    } else if (syli_object_is_mixed_order(obj)) {
+        size_t ptr_count = syli_object_order_ptr_count(obj);
+        syli_state.checking_budget -= (int)ptr_count;
+        for (size_t i = 0; i < ptr_count; i++) {
+            uint64_t field_value = gc_obj->value[i];
+            if (!field_value
+                || !syli_ownership_is_own_ref((obj_ptr)field_value)) {
+                continue;
+            }
+            lost_cycle_child_decr((obj_ptr)field_value);
+        }
+    }
+}
+
+// Scan the candidate registry, to find the unreachable
+static inline void gc_one_step_scan(void)
+{
+    syli_state.checking_budget--;
+
+    size_t reg_size
+        = vector_size_CyclicCandidate(&syli_state.cyclic_candidates);
+    if (syli_state.current_candidate_check_index >= reg_size) {
+        // Registry scanned: release what was collected.
+        syli_state.current_candidate_check_index = 0;
+        syli_state.tracing_state                 = Releasing_Unreachable;
+        return;
+    }
+
+    CyclicCandidate* candidate = (CyclicCandidate*)vector_at_CyclicCandidate(
+        &syli_state.cyclic_candidates,
+        syli_state.current_candidate_check_index);
+    obj_ptr obj_p = candidate->obj;
+    Object* obj   = syli_object_of_obj_ptr(obj_p);
+
+    if (gc_is_object_mark_tagged(obj)) {
+        // Still reachable: keep it in the registry.
+        syli_state.current_candidate_check_index++;
+    } else {
+        // Unreachable: leave the registry and release it.
+        syli_object_clear_flags(obj, Meta_Flags_Cyclic_Candidate);
+        gc_remove_candidate_at(syli_state.current_candidate_check_index);
+        lost_cycle_route(obj_p);
+    }
+}
+
+// Drain the lost-cycle worklist/waitlist.
+static inline void gc_one_step_release_unreachable(void)
+{
+    syli_state.checking_budget--;
+
+    if (vector_size_obj_ptr(&syli_state.lost_cycle_worklist) > 0) {
+        obj_ptr obj_p = gc_vector_pop_back(&syli_state.lost_cycle_worklist);
+        Object* obj   = syli_object_of_obj_ptr(obj_p);
+
+        if (!syli_object_has_flags(obj, Meta_Flags_Children_Released)) {
+            lost_cycle_release_children(obj);
+            syli_object_set_flags(obj, Meta_Flags_Children_Released);
+        }
+
+        if (syli_object_refcount(obj) == 0) {
+            free_released_object(obj);
+        } else {
+            gc_vector_push_back(&syli_state.lost_cycle_waitlist, obj_p);
+        }
+        return;
+    }
+
+    // Worklist drained; promote the waitlist for another pass. Objects whose
+    // referrers were released now have refcount 0.
+    if (vector_size_obj_ptr(&syli_state.lost_cycle_waitlist) > 0) {
+        vector_obj_ptr tmp             = syli_state.lost_cycle_worklist;
+        syli_state.lost_cycle_worklist = syli_state.lost_cycle_waitlist;
+        syli_state.lost_cycle_waitlist = tmp;
+        vector_clear_obj_ptr(&syli_state.lost_cycle_waitlist);
+        return;
+    }
+
+    // waitlist and worklist are empty: done.
+    syli_state.tracing_state = Tracing_Idle;
+}
+
 void syli_state_gc_tracing()
 {
+
     while (1) {
 
         if (syli_state.tracing_budget <= 0)
-            return; // Out of budget for this cycle
+            return;
 
         switch (syli_state.tracing_state) {
         case Tracing_Idle:
 
-            if (syli_state.suspect_objects_notifications
-                > syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE) {
+            if (syli_state.tracing_state == Tracing_Idle) {
+                const size_t cyclic_objs      = gc_current_cyclic_obj();
+                const size_t candidates_live  = gc_cyclic_candidate_count();
+                const double candidates_ratio = cyclic_objs == 0
+                    ? 0.0
+                    : (double)candidates_live / (double)cyclic_objs;
 
-                syli_state.tracing_state = Tracing;
-                gc_next_marking_generation();
+                // TODO: the triggering heuristic is naive one, we should
+                // find an accurate one. Making it it dynamic could be an
+                // option. One idea is to count during the tracing the possible
+                // cycles and use that for the next triggering.
 
-                syli_rt_collect_stack_roots();
+                if (gc_current_cyclic_mem()
+                        > syli_state.THRESHOLD_MEM_CYCLIC_OBJ
+                    && candidates_ratio > syli_state.THRESHOLD_CANDIDATES_RATIO
+                    && syli_state.cyclic_obj_alloc
+                        > syli_state.cyclic_obj_alloc_at_trace) {
 
-                if (vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
-                    && vector_size_obj_ptr(
-                           &syli_state.tracing_mutations_worklist)
-                        == 0) {
-                    syli_state.tracing_state = Checking_Suspect_Lost_Cycle;
-                    syli_state.suspect_objects_notifications = 0;
+                    syli_state.tracing_state = Tracing;
+                    syli_state.cyclic_obj_alloc_at_trace
+                        = syli_state.cyclic_obj_alloc;
+                    gc_next_marking_generation();
+
+                    syli_rt_collect_stack_roots();
+
+                    if (vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
+                        && vector_size_obj_ptr(
+                               &syli_state.tracing_mutations_worklist)
+                            == 0) {
+                        syli_state.tracing_state = Checking_Cyclic_Candidates;
+                    }
+                } else {
+                    return; // No need to start tracing
                 }
-
-                break; // Start tracing in the next iteration
             }
 
-            return; // No need to start tracing;
+            break;
+
         case Tracing:
             gc_one_step_tracing();
             syli_state.tracing_steps++;
@@ -194,8 +378,7 @@ void syli_state_gc_tracing()
             if (vector_size_obj_ptr(&syli_state.tracing_worklist) == 0
                 && vector_size_obj_ptr(&syli_state.tracing_mutations_worklist)
                     == 0) {
-                syli_state.tracing_state = Checking_Suspect_Lost_Cycle;
-                syli_state.suspect_objects_notifications = 0;
+                syli_state.tracing_state = Checking_Cyclic_Candidates;
                 break;
             }
 
@@ -213,8 +396,7 @@ void syli_state_gc_tracing()
                 if (vector_size_obj_ptr(&syli_state.tracing_worklist) > 0) {
                     syli_state.tracing_state = Tracing;
                 } else {
-                    syli_state.tracing_state = Checking_Suspect_Lost_Cycle;
-                    syli_state.suspect_objects_notifications = 0;
+                    syli_state.tracing_state = Checking_Cyclic_Candidates;
                 }
                 break;
             }
@@ -222,55 +404,14 @@ void syli_state_gc_tracing()
             syli_state.mutation_steps++;
             break;
 
-        case Checking_Suspect_Lost_Cycle:
-            syli_state.checking_budget--;
+        case Checking_Cyclic_Candidates:
+            gc_one_step_scan();
+            syli_state.checking_steps++;
+            break;
 
-            if (syli_state.checking_budget <= 0) {
-                return; // Out of budget for this cycle
-            }
-
-            if (vector_size_Suspected(&syli_state.suspect_lost_cycle) > 0) {
-                Suspected* suspected_obj = (Suspected*)vector_at_Suspected(
-                    &syli_state.suspect_lost_cycle,
-                    syli_state.current_suspected_check_index);
-
-                Object* obj = syli_object_of_obj_ptr(suspected_obj->obj);
-
-                if (gc_is_object_mark_tagged(obj)) {
-                    // Object is still reachable, could be removed from suspects
-
-                    if (vector_size_Suspected(&syli_state.suspect_lost_cycle)
-                        >= syli_state.FULL_BUCKET_SUSPECT_LOST_CYCLE) {
-
-                        syli_object_clear_flags(
-                            obj, Meta_Flags_Suspect_Lost_Cycle);
-                        gc_remove_suspect_at(
-                            syli_state.current_suspected_check_index);
-                    }
-
-                } else {
-                    // Immediate mono object is never cyclic
-                    assert(!syli_object_is_mono_imm(obj));
-
-                    // Freed later via free_released_object
-                    gc_releasing_worklist_push_if_not(suspected_obj->obj);
-                }
-
-                syli_state.current_suspected_check_index++;
-
-                size_t suspect_size
-                    = vector_size_Suspected(&syli_state.suspect_lost_cycle);
-
-                if (syli_state.current_suspected_check_index >= suspect_size) {
-                    // Finished checking all suspects, reset for next cycle
-                    syli_state.current_suspected_check_index = 0;
-                    syli_state.tracing_state                 = Tracing_Idle;
-                }
-            } else {
-                // No suspects left to check
-                syli_state.tracing_state = Tracing_Idle;
-            }
-
+        case Releasing_Unreachable:
+            gc_one_step_release_unreachable();
+            syli_state.checking_steps++;
             break;
         }
     }

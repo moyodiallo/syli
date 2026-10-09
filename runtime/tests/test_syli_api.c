@@ -165,56 +165,6 @@ static void test_rt_object_decr_n(void)
     printf("✓ syli_rt_object_decr_n decrements by the correct amount\n\n");
 }
 
-static void test_rt_object_check_lost_cyclic_release(void)
-{
-    printf("Test 4: syli_rt_object_check_lost_cyclic_release()\n");
-
-    syli_state_init();
-
-    obj_ptr obj
-        = make_object(Zone_GcLocal, Cyclic, Type_MonoRef, Flag_HasPointers, 1);
-    assert(obj != NULL);
-    Object* o = syli_object_of_obj_ptr(obj);
-    assert(syli_object_refcount(o) == 1);
-
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 0);
-    syli_rt_ownership_check_lost_cyclic_release(obj);
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 1);
-
-    {
-        Suspected* suspect
-            = vector_at_Suspected(&syli_state.suspect_lost_cycle, 0);
-        assert(syli_object_of_obj_ptr(suspect->obj) == o);
-    }
-
-    syli_rt_ownership_check_lost_cyclic_release(obj);
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 1);
-
-    syli_object_clear_flags(o, Meta_Flags_Suspect_Lost_Cycle);
-    vector_pop_back_Suspected(&syli_state.suspect_lost_cycle);
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 0);
-
-    syli_rt_ownership_decr(obj);
-    assert(syli_object_refcount(o) == 0);
-
-    syli_rt_ownership_check_lost_cyclic_release(obj);
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 0);
-
-    {
-        Object static_obj;
-        static_obj.header_word = syli_object_make_header(
-            Zone_Static, Acyclic, Type_MonoImm, Flag_None, 0);
-        syli_rt_object_check_lost_cyclic_release(
-            &static_obj, (obj_ptr)&static_obj);
-        assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 0);
-    }
-
-    syli_free_ptr(obj);
-    syli_state_destroy();
-    printf("✓ syli_rt_object_check_lost_cyclic_release correctly manages "
-           "suspects\n\n");
-}
-
 static void test_rt_get_object_tag(void)
 {
     printf("Test 5: syli_rt_get_object_tag()\n");
@@ -296,55 +246,6 @@ static void test_rt_get_object_length(void)
     syli_state_destroy();
     printf("✓ syli_rt_get_object_length returns correct length for all "
            "types\n\n");
-}
-
-static void test_rt_object_raw_copy(void)
-{
-    printf("Test 7: syli_rt_object_raw_copy()\n");
-
-    syli_state_init();
-
-    size_t words = 4;
-    obj_ptr src
-        = make_object(Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, words);
-    assert(src != NULL);
-    Object* src_o = syli_object_of_obj_ptr(src);
-
-    uint64_t* src_data = syli_object_data(src_o);
-    src_data[0]        = 0xDEAD;
-    src_data[1]        = 0xBEEF;
-    src_data[2]        = 0xCAFE;
-    src_data[3]        = 0xBABE;
-
-    obj_ptr dst
-        = make_object(Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, words);
-    assert(dst != NULL);
-    Object* dst_o = syli_object_of_obj_ptr(dst);
-
-    uint64_t* dst_data = syli_object_data(dst_o);
-    dst_data[0]        = 0xFFFF;
-    dst_data[1]        = 0xFFFF;
-    dst_data[2]        = 0xFFFF;
-    dst_data[3]        = 0xFFFF;
-
-    syli_rt_object_raw_copy(src_o, dst_o);
-
-    GCObject* src_gc = as_gc_object(src_o);
-    GCObject* dst_gc = as_gc_object(dst_o);
-    assert(dst_gc->header_word == src_gc->header_word);
-    assert(dst_gc->meta_ref_count == src_gc->meta_ref_count);
-
-    uint64_t* dst_data_after = syli_object_data(dst_o);
-    assert(dst_data_after[0] == 0xDEAD);
-    assert(dst_data_after[1] == 0xBEEF);
-    assert(dst_data_after[2] == 0xCAFE);
-    assert(dst_data_after[3] == 0xBABE);
-
-    syli_free_ptr(src);
-    syli_free_ptr(dst);
-    syli_state_destroy();
-    printf("✓ syli_rt_object_raw_copy copies header, meta_ref_count, and "
-           "data\n\n");
 }
 
 static void test_rt_gc_cycle(void)
@@ -642,10 +543,8 @@ int main(void)
     test_rt_rc_alloc_object();
     test_rt_object_incr_decr();
     test_rt_object_decr_n();
-    test_rt_object_check_lost_cyclic_release();
     test_rt_get_object_tag();
     test_rt_get_object_length();
-    test_rt_object_raw_copy();
     test_rt_gc_cycle();
     test_rt_object_notify_mutation();
     test_rt_ownership_own();

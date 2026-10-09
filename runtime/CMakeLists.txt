@@ -219,6 +219,13 @@ target_include_directories(test_gc_tracing_graph PRIVATE
 )
 target_link_libraries(test_gc_tracing_graph PRIVATE syliruntime)
 
+add_executable(test_gc_lost_cycle tests/test_gc_lost_cycle.c)
+target_include_directories(test_gc_lost_cycle PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_gc_lost_cycle PRIVATE syliruntime)
+
 add_executable(test_chunk_vector tests/test_chunk_vector.c)
 target_include_directories(test_chunk_vector PRIVATE
     ${CMAKE_SOURCE_DIR}
@@ -269,6 +276,7 @@ add_custom_target(build-tests
         test_gc
         test_gc_roots
         test_gc_tracing_graph
+        test_gc_lost_cycle
         test_chunk_vector
         test_object
         test_syli_state
@@ -296,6 +304,7 @@ add_custom_target(run-tests
     COMMAND $<TARGET_FILE:test_object>
     COMMAND $<TARGET_FILE:test_header_object>
     COMMAND $<TARGET_FILE:test_gc_tracing_graph>
+    COMMAND $<TARGET_FILE:test_gc_lost_cycle>
     COMMAND $<TARGET_FILE:test_syli_state>
     COMMAND $<TARGET_FILE:test_syli_api>
     DEPENDS build-tests
