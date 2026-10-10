@@ -19,8 +19,6 @@ type runtime_op_name =
   | RR_RT_get_object_length
   | RR_RT_get_object_tag
   | RR_RT_gc_cycle
-  | RR_RT_object_raw_copy
-  | RR_RT_object_copy
   | RR_RT_object_check_mutation
   | RR_RT_object_borrow
   | RR_RT_object_share
@@ -34,8 +32,6 @@ let runtime_op_name_to_string = function
   | RR_RT_get_object_length -> "syli_rt_get_object_length"
   | RR_RT_get_object_tag -> "syli_rt_get_object_tag"
   | RR_RT_gc_cycle -> "syli_rt_gc_cycle"
-  | RR_RT_object_raw_copy -> "syli_rt_object_raw_copy"
-  | RR_RT_object_copy -> "syli_rt_object_copy"
   | RR_RT_object_check_mutation -> "syli_rt_ownership_notify_mutation"
   | RR_RT_object_borrow -> "syli_rt_ownership_borrow"
   | RR_RT_object_share -> "syli_rt_ownership_share"

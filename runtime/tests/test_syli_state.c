@@ -19,9 +19,12 @@ void test_state_init()
     syli_state_init();
 
     // Check thresholds
-    assert(syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE == 1000);
-    assert(syli_state.THRESHOLD_RELEASING_BUCKET == 1000);
-    assert(syli_state.FULL_BUCKET_SUSPECT_LOST_CYCLE == 10000);
+    assert(syli_state.THRESHOLD_MEM_CYCLIC_OBJ
+        == DEFAULT_MEM_CYCLIC_OBJ_THRESHOLD);
+    assert(syli_state.THRESHOLD_CANDIDATES_RATIO
+        == DEFAULT_GC_CANDIDATES_RATIO_THRESHOLD);
+    assert(
+        syli_state.THRESHOLD_RELEASING_BUCKET == DEFAULT_GC_RELEASE_THRESHOLD);
 
     // Check budgets
     assert(syli_state.BUDGET_GC_TRACING == 2 * BUDGET_BATCH_SIZE);
@@ -43,8 +46,8 @@ void test_state_init()
     assert(vector_empty_obj_ptr(&syli_state.releasing_worklist) == true);
     assert(vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0);
     assert(vector_empty_obj_ptr(&syli_state.releasing_waitlist) == true);
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 0);
-    assert(vector_empty_Suspected(&syli_state.suspect_lost_cycle) == true);
+    assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
+    assert(vector_empty_CyclicCandidate(&syli_state.cyclic_candidates) == true);
 
     // Check stats start at 0
     assert(syli_state.releasing_steps == 0);
@@ -65,9 +68,12 @@ void test_state_init()
     assert(syli_state.tracing_state == Tracing_Idle);
     assert(syli_state.releasing_state == Releasing_Idle);
 
-    // Check suspect notifications and check indices
-    assert(syli_state.suspect_objects_notifications == 0);
-    assert(syli_state.current_suspected_check_index == 0);
+    // Check cyclic gauges and check indices
+    assert(syli_state.cyclic_mem_alloc == 0);
+    assert(syli_state.cyclic_mem_dealloc == 0);
+    assert(syli_state.cyclic_obj_alloc == 0);
+    assert(syli_state.cyclic_obj_dealloc == 0);
+    assert(syli_state.current_candidate_check_index == 0);
 
     syli_state_destroy();
     printf("✓ syli_state_init() initializes all fields correctly\n\n");
@@ -101,9 +107,9 @@ void test_state_destroy()
     assert(syli_state.releasing_waitlist.chunk_count == 0);
     assert(syli_state.releasing_waitlist.total_elements == 0);
 
-    assert(syli_state.suspect_lost_cycle.chunks == NULL);
-    assert(syli_state.suspect_lost_cycle.chunk_count == 0);
-    assert(syli_state.suspect_lost_cycle.total_elements == 0);
+    assert(syli_state.cyclic_candidates.chunks == NULL);
+    assert(syli_state.cyclic_candidates.chunk_count == 0);
+    assert(syli_state.cyclic_candidates.total_elements == 0);
 
     printf("✓ syli_state_destroy() cleans up all resources\n\n");
 }
@@ -168,7 +174,7 @@ void test_state_worklist_operations()
         vector_empty_obj_ptr(&syli_state.tracing_mutations_worklist) == true);
     assert(vector_empty_obj_ptr(&syli_state.releasing_worklist) == true);
     assert(vector_empty_obj_ptr(&syli_state.releasing_waitlist) == true);
-    assert(vector_empty_Suspected(&syli_state.suspect_lost_cycle) == true);
+    assert(vector_empty_CyclicCandidate(&syli_state.cyclic_candidates) == true);
 
     // Push objects to tracing_worklist using gc_vector_push_back helper
     obj_ptr obj1 = (obj_ptr)0x1234;
@@ -211,53 +217,62 @@ void test_state_worklist_operations()
     popped = gc_vector_pop_back(&syli_state.tracing_mutations_worklist);
     assert(popped == obj1);
 
-    // Suspected worklist (uses Suspected struct directly)
-    Suspected s1 = { .obj = (obj_ptr)obj1 };
-    Suspected s2 = { .obj = (obj_ptr)obj2 };
-    vector_push_back_Suspected(&syli_state.suspect_lost_cycle, &s1);
-    vector_push_back_Suspected(&syli_state.suspect_lost_cycle, &s2);
-    assert(vector_size_Suspected(&syli_state.suspect_lost_cycle) == 2);
-    assert(vector_at_Suspected(&syli_state.suspect_lost_cycle, 0)->obj == obj1);
-    assert(vector_at_Suspected(&syli_state.suspect_lost_cycle, 1)->obj == obj2);
+    // Cyclic candidate registry (uses CyclicCandidate struct directly)
+    CyclicCandidate s1 = { .obj = (obj_ptr)obj1 };
+    CyclicCandidate s2 = { .obj = (obj_ptr)obj2 };
+    vector_push_back_CyclicCandidate(&syli_state.cyclic_candidates, &s1);
+    vector_push_back_CyclicCandidate(&syli_state.cyclic_candidates, &s2);
+    assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 2);
+    assert(vector_at_CyclicCandidate(&syli_state.cyclic_candidates, 0)->obj
+        == obj1);
+    assert(vector_at_CyclicCandidate(&syli_state.cyclic_candidates, 1)->obj
+        == obj2);
 
     syli_state_destroy();
     printf("✓ GC worklist operations work correctly\n\n");
 }
 
-void test_state_env_suspect_threshold()
+void test_state_env_thresholds()
 {
-    printf("Test 6: SYLI_GC_SUSPECT_THRESHOLD env override\n");
+    printf("Test 6: GC threshold env overrides\n");
 
-    unsetenv("SYLI_GC_SUSPECT_THRESHOLD");
+    unsetenv("SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD");
+    unsetenv("SYLI_GC_CANDIDATES_RATIO_THRESHOLD");
     syli_state_init();
-    assert(syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE == 1000);
+    assert(syli_state.THRESHOLD_MEM_CYCLIC_OBJ
+        == DEFAULT_MEM_CYCLIC_OBJ_THRESHOLD);
+    assert(syli_state.THRESHOLD_CANDIDATES_RATIO
+        == DEFAULT_GC_CANDIDATES_RATIO_THRESHOLD);
     syli_state_destroy();
 
-    setenv("SYLI_GC_SUSPECT_THRESHOLD", "3", 1);
+    setenv("SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD", "1234", 1);
+    setenv("SYLI_GC_CANDIDATES_RATIO_THRESHOLD", "0.75", 1);
     syli_state_init();
-    assert(syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE == 3);
+    assert(syli_state.THRESHOLD_MEM_CYCLIC_OBJ == 1234);
+    assert(syli_state.THRESHOLD_CANDIDATES_RATIO == 0.75);
     syli_state_destroy();
 
-    setenv("SYLI_GC_SUSPECT_THRESHOLD", "0", 1);
+    setenv("SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD", "not-a-number", 1);
     syli_state_init();
-    assert(syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE == 0);
-    syli_state_destroy();
-
-    setenv("SYLI_GC_SUSPECT_THRESHOLD", "not-a-number", 1);
-    syli_state_init();
-    assert(syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE == 1000);
+    assert(syli_state.THRESHOLD_MEM_CYCLIC_OBJ
+        == DEFAULT_MEM_CYCLIC_OBJ_THRESHOLD);
     syli_state_destroy();
 
     setenv("SYLI_GC_RELEASING_THRESHOLD", "7", 1);
-    unsetenv("SYLI_GC_SUSPECT_THRESHOLD");
+    unsetenv("SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD");
+    unsetenv("SYLI_GC_CANDIDATES_RATIO_THRESHOLD");
     syli_state_init();
     assert(syli_state.THRESHOLD_RELEASING_BUCKET == 7);
-    assert(syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE == 1000);
+    assert(syli_state.THRESHOLD_MEM_CYCLIC_OBJ
+        == DEFAULT_MEM_CYCLIC_OBJ_THRESHOLD);
+    assert(syli_state.THRESHOLD_CANDIDATES_RATIO
+        == DEFAULT_GC_CANDIDATES_RATIO_THRESHOLD);
     syli_state_destroy();
 
-    unsetenv("SYLI_GC_SUSPECT_THRESHOLD");
+    unsetenv("SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD");
+    unsetenv("SYLI_GC_CANDIDATES_RATIO_THRESHOLD");
     unsetenv("SYLI_GC_RELEASING_THRESHOLD");
-    printf("✓ SYLI_GC_SUSPECT_THRESHOLD env override works\n\n");
+    printf("✓ GC threshold env overrides work\n\n");
 }
 
 int main()
@@ -269,7 +284,7 @@ int main()
     test_state_init_destroy_cycle();
     test_state_gc_cycle();
     test_state_worklist_operations();
-    test_state_env_suspect_threshold();
+    test_state_env_thresholds();
 
     printf("\033[1;32m=== All syli_state Tests Passed! ===\033[0m\n\n");
     return 0;

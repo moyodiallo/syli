@@ -24,6 +24,9 @@ static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
     object_payload_t payload = syli_object_make_mono_payload(words);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
+    if (cyclic == Cyclic) {
+        header |= GC_CYCLIC_MUTABLE_MASK;
+    }
     obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, words);
     Object* o   = syli_object_of_obj_ptr(obj);
     memset(syli_object_data(o), 0, words * sizeof(uint64_t));
@@ -64,8 +67,9 @@ static void run_profile(
 
     for (int round = 0; round < N_ROUNDS; round++) {
         syli_state_init();
-        syli_state.THRESHOLD_RELEASING_BUCKET    = 1;
-        syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
+        syli_state.THRESHOLD_RELEASING_BUCKET  = 1;
+        syli_state.THRESHOLD_MEM_CYCLIC_OBJ    = 0;
+        syli_state.THRESHOLD_CANDIDATES_RATIO  = 0.0; // force the trace trigger
 
         /* Allocation phase */
         struct timespec t0, t1;
@@ -90,18 +94,13 @@ static void run_profile(
             syli_rt_ownership_release(obj);
         }
 
-        /* Mark long-lived roots as cycle suspects */
-        for (size_t i = 0; i < long_lived_count; i++) {
-            gc_add_suspect(root_slots[i]);
-        }
-
         clock_gettime(CLOCK_MONOTONIC, &t1);
         total_alloc_ns += time_diff_ns(&t0, &t1);
 
         /* GC drain loop — runs until all queues empty */
         while (!gc_is_done()) {
             size_t cands
-                = vector_size_Suspected(&syli_state.suspect_lost_cycle);
+                = vector_size_CyclicCandidate(&syli_state.cyclic_candidates);
             if (cands > peak_candidates)
                 peak_candidates = cands;
 

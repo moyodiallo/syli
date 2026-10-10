@@ -6,21 +6,21 @@
 #include <stdlib.h>
 
 #include "chunk_vector.h"
+#include "env.h"
 #include "gc_roots.h"
 #include "object.h"
-#include "env.h"
 
 #define BUDGET_BATCH_SIZE 1000
 
-typedef struct Suspected {
+typedef struct CyclicCandidate {
     obj_ptr obj;
-} Suspected;
+} CyclicCandidate;
 
 typedef enum Tracing_state_machine {
-    Tracing_Idle                = 0,
-    Tracing                     = 1,
-    Mutation_Prepare            = 2,
-    Checking_Suspect_Lost_Cycle = 3,
+    Tracing_Idle                 = 0,
+    Tracing                      = 1,
+    Mutation_Prepare             = 2,
+    Reclaiming_Cyclic_Candidates = 3,
 } Tracing_state_machine;
 
 typedef enum Releasing_state_machine {
@@ -29,18 +29,17 @@ typedef enum Releasing_state_machine {
 } Releasing_state_machine;
 
 CHUNK_VECTOR_STRUCT(obj_ptr);
-CHUNK_VECTOR_STRUCT(Suspected);
+CHUNK_VECTOR_STRUCT(CyclicCandidate);
 
 CHUNK_VECTOR_IMPLEMENT(obj_ptr);
-CHUNK_VECTOR_IMPLEMENT(Suspected);
+CHUNK_VECTOR_IMPLEMENT(CyclicCandidate);
 
 // ==================== Syli State ====================
 typedef struct Syli_state {
 
-    size_t THRESHOLD_SUSPECTS_LOST_CYCLE;
+    size_t THRESHOLD_MEM_CYCLIC_OBJ;
+    double THRESHOLD_CANDIDATES_RATIO;
     size_t THRESHOLD_RELEASING_BUCKET;
-
-    size_t FULL_BUCKET_SUSPECT_LOST_CYCLE;
 
     size_t BUDGET_GC_TRACING;
     size_t BUDGET_GC_RELEASING;
@@ -57,7 +56,8 @@ typedef struct Syli_state {
 
     vector_obj_ptr releasing_waitlist;
 
-    vector_Suspected suspect_lost_cycle;
+    vector_CyclicCandidate cyclic_candidates;
+    vector_obj_ptr lost_cycle_worklist;
 
     size_t releasing_steps;
     size_t tracing_steps;
@@ -73,13 +73,18 @@ typedef struct Syli_state {
     uint64_t tracing_current_bit_mark;
     size_t tracing_generations;
 
-    // State machines for GC phases
     Tracing_state_machine tracing_state;
     Releasing_state_machine releasing_state;
 
-    size_t suspect_objects_notifications;
+    size_t cyclic_mem_alloc;
+    size_t cyclic_mem_dealloc;
+    size_t cyclic_obj_alloc;
+    size_t cyclic_obj_dealloc;
 
-    size_t current_suspected_check_index;
+    size_t cyclic_obj_alloc_at_trace;
+
+    // Number of candidate entries still to consider; counts down to 0.
+    size_t current_candidate_check_index;
 
     // LLVM pre-computed records
     SyliStackMap_Record_Entry* stackmap_record_entry;
@@ -98,8 +103,6 @@ typedef struct Syli_state {
 #else
 #define SYLI_TLS __thread
 #endif
-
-#define INITIAL_CANDIDATE_INDEX (-1)
 
 // Thread-local state declaration
 extern SYLI_TLS Syli_state syli_state;

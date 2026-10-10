@@ -1,4 +1,5 @@
 #include "syli/syli_foreign_primitives.h"
+#include "syli/gc_helpers.h"
 #include "syli/object.h"
 #include "syli/syli_state.h"
 #include <inttypes.h>
@@ -48,8 +49,8 @@ static const char* tracing_state_name(Tracing_state_machine state)
         return "Tracing";
     case Mutation_Prepare:
         return "Mutation_Prepare";
-    case Checking_Suspect_Lost_Cycle:
-        return "Checking";
+    case Reclaiming_Cyclic_Candidates:
+        return "Reclaiming";
     }
     return "?";
 }
@@ -68,14 +69,17 @@ static const char* releasing_state_name(Releasing_state_machine state)
 void syli_print_gc_state(void)
 {
     printf("GC[tracing_state=%s releasing_state=%s generations=%zu "
-           "suspects=%zu suspect-notif=%zu traced=%zu freed=%zu "
-           "release-waitlist=%zu tracing-worklist=%zu]\n",
+           "candidates=%zu cyclic-mem=%zu cyclic-alloc=%zu "
+           "cyclic-dealloc=%zu obj-alloc=%zu obj-dealloc=%zu traced=%zu "
+           "freed=%zu release-waitlist=%zu tracing-worklist=%zu]\n",
         tracing_state_name(syli_state.tracing_state),
         releasing_state_name(syli_state.releasing_state),
         syli_state.tracing_generations,
-        vector_size_Suspected(&syli_state.suspect_lost_cycle),
-        syli_state.suspect_objects_notifications,
-        syli_state.total_objects_traced, syli_state.total_objects_memory_freed,
+        vector_size_CyclicCandidate(&syli_state.cyclic_candidates),
+        gc_current_cyclic_mem(), syli_state.cyclic_mem_alloc,
+        syli_state.cyclic_mem_dealloc, syli_state.cyclic_obj_alloc,
+        syli_state.cyclic_obj_dealloc, syli_state.total_objects_traced,
+        syli_state.total_objects_memory_freed,
         vector_size_obj_ptr(&syli_state.releasing_waitlist),
         vector_size_obj_ptr(&syli_state.tracing_worklist));
 }

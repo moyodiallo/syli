@@ -1,8 +1,9 @@
 TODO: review these tests, since the cyclic analysis changed them
+TODO: review since the lost cycle handling is changed
 
 We are showing here that the tracing is working.
 With this simple example we need to reduce the thresholds:
-SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0
+SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD=0 SYLI_GC_CANDIDATES_RATIO_THRESHOLD=0
   $ cat >gc_state.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > foreign syli_print_gc_state : unit -> unit = "syli_print_gc_state"
@@ -34,12 +35,12 @@ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0
   > let _ = main ()
   > EOF
   $ dune exec sylic -- build gc_state.sy
-  $ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0 ./gc_state.exe
-  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=5 release-waitlist=0 tracing-worklist=0]
+  $ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD=0 SYLI_GC_CANDIDATES_RATIO_THRESHOLD=0 ./gc_state.exe
+  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 candidates=0 cyclic-mem=0 cyclic-alloc=0 cyclic-dealloc=0 obj-alloc=0 obj-dealloc=0 traced=0 freed=5 release-waitlist=0 tracing-worklist=0]
 
 Without the reducing the treshold, no tracing for this simple example:
   $ ./gc_state.exe
-  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=1 release-waitlist=3 tracing-worklist=0]
+  4242427GC[tracing_state=Idle releasing_state=Idle generations=0 candidates=0 cyclic-mem=0 cyclic-alloc=0 cyclic-dealloc=0 obj-alloc=0 obj-dealloc=0 traced=0 freed=5 release-waitlist=0 tracing-worklist=0]
 
 It shows even with this simple example object is still be freed.
 And tracing also still works.
@@ -61,9 +62,9 @@ And tracing also still works.
   > let _ = main ()
   > EOF
   $ dune exec sylic -- build basic.sy
-  $ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_SUSPECT_THRESHOLD=0 ./basic.exe
-  GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
-  42GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
+  $ SYLI_GC_RELEASING_THRESHOLD=0 SYLI_GC_MEM_CYCLIC_OBJ_THRESHOLD=0 SYLI_GC_CANDIDATES_RATIO_THRESHOLD=0 ./basic.exe
+  GC[tracing_state=Idle releasing_state=Idle generations=0 candidates=0 cyclic-mem=0 cyclic-alloc=0 cyclic-dealloc=0 obj-alloc=0 obj-dealloc=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
+  42GC[tracing_state=Idle releasing_state=Idle generations=0 candidates=0 cyclic-mem=0 cyclic-alloc=0 cyclic-dealloc=0 obj-alloc=0 obj-dealloc=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
   $ ./basic.exe
-  GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=0 release-waitlist=2 tracing-worklist=0]
-  42GC[tracing_state=Idle releasing_state=Idle generations=0 suspects=0 suspect-notif=0 traced=0 freed=0 release-waitlist=2 tracing-worklist=0]
+  GC[tracing_state=Idle releasing_state=Idle generations=0 candidates=0 cyclic-mem=0 cyclic-alloc=0 cyclic-dealloc=0 obj-alloc=0 obj-dealloc=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]
+  42GC[tracing_state=Idle releasing_state=Idle generations=0 candidates=0 cyclic-mem=0 cyclic-alloc=0 cyclic-dealloc=0 obj-alloc=0 obj-dealloc=0 traced=0 freed=1 release-waitlist=1 tracing-worklist=0]

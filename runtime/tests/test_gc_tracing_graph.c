@@ -27,13 +27,14 @@ static bool is_marked(obj_ptr p)
     return gc_is_object_mark_tagged(syli_object_of_obj_ptr(p));
 }
 
-static void run_tracing(obj_ptr root)
+// The graph nodes are plain cyclic (not candidates), so the trigger cannot
+// fire; start the trace directly.
+static void run_tracing(void)
 {
-    gc_add_suspect(root);
-    syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
-    syli_state.tracing_budget                = 1000;
-    syli_state.checking_budget               = 1000;
-    syli_state.tracing_state                 = Tracing_Idle;
+    syli_state.tracing_budget  = 1000;
+    syli_state.checking_budget = 1000;
+    syli_state.tracing_state   = Tracing;
+    gc_next_marking_generation();
     syli_state_gc_tracing();
 }
 
@@ -57,7 +58,7 @@ static void test_linear_chain_marking(void)
 
     gc_tracing_worklist_push(root);
 
-    run_tracing(root);
+    run_tracing();
 
     assert(is_marked(root));
     assert(is_marked(n1));
@@ -105,7 +106,7 @@ static void test_binary_tree_marking(void)
 
     gc_tracing_worklist_push(root);
 
-    run_tracing(root);
+    run_tracing();
 
     assert(is_marked(root));
     assert(is_marked(n1));
@@ -157,7 +158,7 @@ static void test_diamond_graph_marking(void)
 
     gc_tracing_worklist_push(root);
 
-    run_tracing(root);
+    run_tracing();
 
     assert(is_marked(root));
     assert(is_marked(n1));
@@ -196,14 +197,7 @@ static void test_multiple_roots_shared_graph(void)
     gc_tracing_worklist_push(root1);
     gc_tracing_worklist_push(root2);
 
-    // Add both roots as suspects
-    gc_add_suspect(root1);
-    gc_add_suspect(root2);
-    syli_state.THRESHOLD_SUSPECTS_LOST_CYCLE = 0;
-    syli_state.tracing_budget                = 1000;
-    syli_state.checking_budget               = 1000;
-    syli_state.tracing_state                 = Tracing_Idle;
-    syli_state_gc_tracing();
+    run_tracing();
 
     assert(is_marked(root1));
     assert(is_marked(root2));
@@ -244,7 +238,7 @@ static void test_disconnected_components(void)
 
     gc_tracing_worklist_push(root);
 
-    run_tracing(root);
+    run_tracing();
 
     // Reachable nodes should be marked
     assert(is_marked(root));

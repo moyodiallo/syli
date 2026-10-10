@@ -34,7 +34,9 @@
  *
  * Bits 55-48   : Variant type flags (8 bits) (256 variants)
  *
- * Bits 47–31   : Reserved for future use
+ * Bit 47       : CYCLIC MUTABLE (0 = no, 1 = mutable cyclic)
+ *
+ * Bits 46–31   : Reserved for future use
  *
  * Bits  32-0  :
  *   PAYLOAD (32)   ← immutable
@@ -58,6 +60,7 @@ typedef uint32_t object_payload_t;
 #define GC_HAS_FINALIZER_MASK   (0x1ULL << 58) // bit 58
 #define GC_HAS_POINTERS_MASK    (0x1ULL << 57) // bit 57
 #define GC_TRACEABLE_MASK       (0x1ULL << 56) // bit 56
+#define GC_CYCLIC_MUTABLE_MASK  (0x1ULL << 47) // bit 47 (mutable cyclic)
 #define GC_VARIANT_SHIFT        48
 #define GC_VARIANT_FLAGS_MASK   (0xFFULL << GC_VARIANT_SHIFT) // bits 55-48
 #define GC_IMMUTABLE_FLAGS_MASK (0x3ULL << 57) // bits 58-57
@@ -183,6 +186,11 @@ static inline bool syli_object_is_cyclic(Object* o)
 static inline bool syli_object_is_acyclic(Object* o)
 {
     return (o->header_word & GC_CYCLIC_MASK) == 0;
+}
+
+static inline bool syli_object_is_cyclic_mutable(Object* o)
+{
+    return (o->header_word & GC_CYCLIC_MUTABLE_MASK) != 0;
 }
 
 static inline bool syli_object_has_finalizer(Object* o)
@@ -323,6 +331,16 @@ static inline size_t syli_object_length(Object* o)
 static inline uint64_t syli_object_get_variant_tag(Object* o)
 {
     return (o->header_word & GC_VARIANT_FLAGS_MASK) >> GC_VARIANT_SHIFT;
+}
+
+static inline size_t syli_object_total_words(Object* o)
+{
+    // header + meta_ref_count + data (+ candidate index for mutable-cyclic)
+    size_t words = 2 + syli_object_length(o);
+    if (syli_object_is_cyclic_mutable(o)) {
+        words += 1;
+    }
+    return words;
 }
 
 #endif /* HEADER_OBJECT_H */

@@ -53,17 +53,18 @@ void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr)
         local_obj->meta_ref_count--;
 
         if (syli_object_refcount(obj) == 0) {
+
             if (syli_object_is_mono_imm(obj)) {
                 syli_state.total_objects_memory_freed++;
 
                 // Freeing an object that is not cyclic and has no value pointer
+                gc_account_cyclic_free(obj);
                 free(obj);
                 return;
             }
+
             gc_releasing_worklist_push(obj_ptr);
             return;
-        } else if (syli_object_is_cyclic(obj)) {
-            gc_add_suspect(obj_ptr);
         }
     }
 }
@@ -79,17 +80,6 @@ void syli_rt_object_decr_n(Object* obj, int n)
         GCObject* local_obj = as_gc_object(obj);
         syli_object_decr_local_n((Object*)local_obj, n);
         return;
-    }
-}
-
-void syli_rt_object_check_lost_cyclic_release(Object* obj, obj_ptr ptr)
-{
-    assert(obj != NULL);
-
-    ObjectZone zone = syli_object_get_zone(obj);
-
-    if (zone == Zone_GcLocal && syli_object_refcount(obj) > 0) {
-        gc_add_suspect(ptr);
     }
 }
 
@@ -109,87 +99,6 @@ void syli_match_failure(void)
 {
     fprintf(stderr, "match failure\n");
     abort();
-}
-
-Object* syli_rt_object_copy(Object* src)
-{
-    assert(src != NULL);
-
-    ObjectZone src_zone = syli_object_get_zone(src);
-
-    if (src_zone == Zone_GcLocal) {
-        GCObject* src_local     = as_gc_object(src);
-        size_t length           = syli_object_length(src);
-        object_header_t header  = src_local->header_word;
-        uint64_t meta_ref_count = src_local->meta_ref_count;
-
-        GCObject* dst
-            = (GCObject*)syli_object_alloc(header, meta_ref_count, length);
-
-        uint64_t* data_src = src_local->value;
-        uint64_t* data_dst = dst->value;
-        for (size_t i = 0; i < length; i++) {
-            data_dst[i] = data_src[i];
-        }
-
-        // Increment refcounts for pointer/reference fields in the new copy
-        ObjectType obj_type = syli_object_type(src);
-        if (obj_type == Type_MonoRef) {
-            // All fields are pointers
-            for (size_t i = 0; i < length; i++) {
-                Object* ref = (Object*)data_dst[i];
-                if (ref != NULL) {
-                    syli_rt_object_incr(ref);
-                }
-            }
-        } else if (obj_type == Type_MixedOrder) {
-            // First ptr_count fields are pointers
-            size_t ptr_count = syli_object_order_ptr_count(src);
-            for (size_t i = 0; i < ptr_count; i++) {
-                Object* ref = (Object*)data_dst[i];
-                if (ref != NULL) {
-                    syli_rt_object_incr(ref);
-                }
-            }
-        } else if (obj_type == Type_MixedBitmap) {
-            // Bitmap encodes which fields are pointers
-            uint32_t bitmap = syli_object_bitmap_bits(src);
-            for (size_t i = 0; i < length; i++) {
-                if (syli_bitmap_is_ref(bitmap, i)) {
-                    Object* ref = (Object*)data_dst[i];
-                    if (ref != NULL) {
-                        syli_rt_object_incr(ref);
-                    }
-                }
-            }
-        }
-        // Type_MonoImm: no pointer fields, nothing to do
-
-        return as_object(dst);
-    }
-
-    return NULL;
-}
-
-void syli_rt_object_raw_copy(Object* src, Object* dst)
-{
-    assert(src != NULL && dst != NULL);
-
-    ObjectZone src_zone = syli_object_get_zone(src);
-
-    if (src_zone == Zone_GcLocal) {
-        GCObject* src_local       = as_gc_object(src);
-        GCObject* dst_local       = as_gc_object(dst);
-        dst_local->header_word    = src_local->header_word;
-        dst_local->meta_ref_count = src_local->meta_ref_count;
-
-        size_t length      = syli_object_length(src);
-        uint64_t* data_src = src_local->value;
-        uint64_t* data_dst = dst_local->value;
-        for (size_t i = 0; i < length; i++) {
-            data_dst[i] = data_src[i];
-        }
-    }
 }
 
 void syli_rt_object_notify_mutation(
@@ -228,7 +137,19 @@ obj_ptr syli_rt_ownership_alloc_object(
     object_header_t header, size_t refcount, size_t words)
 {
     GCObject* obj = syli_rt_rc_alloc_object(header, refcount, words);
-    return syli_ownership_set_own(obj);
+    obj_ptr ptr   = syli_ownership_set_own(obj);
+
+    // Track every cyclic object
+    if (syli_object_is_cyclic(as_object(obj))) {
+        syli_state.cyclic_mem_alloc += syli_object_total_words(as_object(obj));
+        syli_state.cyclic_obj_alloc++;
+
+        if (syli_object_is_cyclic_mutable(obj)) {
+            gc_register_candidate(ptr);
+        }
+    }
+
+    return ptr;
 }
 
 obj_ptr syli_rt_ownership_share(obj_ptr ptr)
@@ -266,19 +187,17 @@ void syli_rt_ownership_incr(obj_ptr ptr)
     syli_rt_object_incr(obj);
 }
 
-void syli_rt_ownership_check_lost_cyclic_release(obj_ptr ptr)
-{
-    Object* obj = syli_object_of_obj_ptr(ptr);
-    syli_rt_object_check_lost_cyclic_release(obj, ptr);
-}
-
 void syli_rt_ownership_notify_mutation(obj_ptr ptr, obj_ptr target_ptr)
 {
     assert(!syli_ownership_is_immediate(ptr));
-    if ((syli_state.tracing_state == Tracing
-            || syli_state.tracing_state == Mutation_Prepare)
-        && syli_ownership_is_own_ref(ptr)) {
-        Object* obj    = syli_object_of_obj_ptr(ptr);
+    if (!syli_ownership_is_own_ref(ptr)) {
+        return;
+    }
+
+    Object* obj = syli_object_of_obj_ptr(ptr);
+
+    if (syli_state.tracing_state == Tracing
+        || syli_state.tracing_state == Mutation_Prepare) {
         Object* target = syli_object_of_obj_ptr(target_ptr);
         syli_rt_object_notify_mutation(obj, target, target_ptr);
     }

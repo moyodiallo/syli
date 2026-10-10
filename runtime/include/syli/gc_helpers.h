@@ -1,37 +1,83 @@
 #include "syli/object.h"
 #include "syli/syli_state.h"
 
-static inline void gc_add_suspect(obj_ptr obj_ptr)
+static inline size_t gc_cyclic_candidate_count(void)
 {
-    Object* obj = syli_object_of_obj_ptr(obj_ptr);
-    syli_state.suspect_objects_notifications++;
-    if (syli_object_has_flags(as_object(obj), Meta_Flags_Suspect_Lost_Cycle)) {
-        return;
-    }
-    Suspected* suspected_obj
-        = vector_alloc_slot_Suspected(&syli_state.suspect_lost_cycle);
-    suspected_obj->obj = obj_ptr;
-    size_t last_index
-        = vector_size_Suspected(&syli_state.suspect_lost_cycle) - 1;
-
-    syli_object_set_cyclic_index(as_gc_object(obj), (uint32_t)last_index);
-    syli_object_set_flags(as_object(obj), Meta_Flags_Suspect_Lost_Cycle);
+    return vector_size_CyclicCandidate(&syli_state.cyclic_candidates);
 }
 
-static inline void gc_remove_suspect_at(size_t index)
+static inline size_t gc_current_cyclic_mem(void)
 {
-    vector_Suspected* vector = &syli_state.suspect_lost_cycle;
-    size_t last              = vector_size_Suspected(vector) - 1;
+    return syli_state.cyclic_mem_alloc >= syli_state.cyclic_mem_dealloc
+        ? syli_state.cyclic_mem_alloc - syli_state.cyclic_mem_dealloc
+        : 0;
+}
+
+static inline size_t gc_current_cyclic_obj(void)
+{
+    return syli_state.cyclic_obj_alloc >= syli_state.cyclic_obj_dealloc
+        ? syli_state.cyclic_obj_alloc - syli_state.cyclic_obj_dealloc
+        : 0;
+}
+
+static inline void gc_register_candidate(obj_ptr obj_ptr)
+{
+    Object* obj = syli_object_of_obj_ptr(obj_ptr);
+    if (syli_object_has_flags(as_object(obj), Meta_Flags_Cyclic_Candidate)) {
+        return;
+    }
+    CyclicCandidate* candidate
+        = vector_alloc_slot_CyclicCandidate(&syli_state.cyclic_candidates);
+    candidate->obj = obj_ptr;
+    size_t last_index
+        = vector_size_CyclicCandidate(&syli_state.cyclic_candidates) - 1;
+
+    syli_object_set_candidate_index(as_gc_object(obj), last_index);
+    syli_object_set_flags(as_object(obj), Meta_Flags_Cyclic_Candidate);
+}
+
+static inline void gc_remove_candidate_at(size_t index)
+{
+    vector_CyclicCandidate* vector = &syli_state.cyclic_candidates;
+    size_t last                    = vector_size_CyclicCandidate(vector) - 1;
     if (index != last) {
-        Suspected* data      = (Suspected*)vector_at_Suspected(vector, index);
-        Suspected* last_data = (Suspected*)vector_at_Suspected(vector, last);
-        *data                = *last_data;
+        CyclicCandidate* data
+            = (CyclicCandidate*)vector_at_CyclicCandidate(vector, index);
+        CyclicCandidate* last_data
+            = (CyclicCandidate*)vector_at_CyclicCandidate(vector, last);
+        *data = *last_data;
         // The entry previously at `last` now lives at `index`; keep its
         // object's stored index in sync so it can still be removed later.
         Object* moved = syli_object_of_obj_ptr(data->obj);
-        syli_object_set_cyclic_index(as_gc_object(moved), (uint32_t)index);
+        syli_object_set_candidate_index(as_gc_object(moved), index);
     }
-    vector_pop_back_Suspected(vector);
+    vector_pop_back_CyclicCandidate(vector);
+}
+
+static inline void gc_account_cyclic_free(Object* obj)
+{
+    if (syli_object_is_cyclic(obj)) {
+        syli_state.cyclic_mem_dealloc += syli_object_total_words(obj);
+        syli_state.cyclic_obj_dealloc++;
+    }
+}
+
+static inline void free_released_object(Object* obj)
+{
+    if (syli_object_has_flags(obj, Meta_Flags_Cyclic_Candidate)) {
+        size_t index = syli_object_get_candidate_index(as_gc_object(obj));
+        gc_remove_candidate_at(index);
+        syli_object_clear_flags(obj, Meta_Flags_Cyclic_Candidate);
+    }
+
+    if (syli_object_has_flags(obj, Meta_Flags_Tracing)) {
+        syli_object_set_flags(obj, Meta_Flags_Waiting_Remove);
+        return;
+    }
+
+    syli_state.total_objects_memory_freed++;
+    gc_account_cyclic_free(obj);
+    free(obj);
 }
 
 static inline obj_ptr gc_vector_pop_back(vector_obj_ptr* vector)
@@ -63,21 +109,19 @@ static inline void gc_tracing_worklist_push(obj_ptr obj_p)
     gc_vector_push_back(&syli_state.tracing_worklist, obj_p);
 }
 
+static inline void gc_mark_tag_object(Object* obj);
+
 static inline void gc_releasing_worklist_push(obj_ptr obj_p)
 {
     Object* obj = syli_object_of_obj_ptr(obj_p);
-    assert(!syli_object_has_flags(obj, Meta_Flags_Releasing));
-    syli_object_set_flags(obj, Meta_Flags_Releasing);
-    gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
-}
+    assert(syli_object_refcount(obj) == 0);
 
-static inline void gc_releasing_worklist_push_if_not(obj_ptr obj_p)
-{
-    Object* obj = syli_object_of_obj_ptr(obj_p);
-    if (syli_object_has_flags(obj, Meta_Flags_Releasing)) {
-        return;
+    if (syli_object_is_cyclic_mutable(obj)) {
+        // Reaching 0 is a normal release, not a lost cycle.
+        // Marking it, will avoid the cyclic lost handling owning it.
+        gc_mark_tag_object(obj);
     }
-    syli_object_set_flags(obj, Meta_Flags_Releasing);
+
     gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
 }
 

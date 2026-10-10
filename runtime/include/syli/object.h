@@ -38,12 +38,11 @@ typedef struct GCObject {
 } GCObject;
 
 typedef enum ObjectMetaFlags {
-    Meta_Flags_None               = 0,
-    Meta_Flags_Suspect_Lost_Cycle = 1ULL << 56,
-    Meta_Flags_Releasing          = 1ULL << (56 + 1),
-    Meta_Flags_Tracing            = 1ULL << (56 + 2),
-    Meta_Flags_Waiting_Remove     = 1ULL << (56 + 3),
-    Meta_Flags_Children_Released  = 1ULL << (56 + 4)
+    Meta_Flags_None              = 0,
+    Meta_Flags_Cyclic_Candidate  = 1ULL << 56,
+    Meta_Flags_Tracing           = 1ULL << (56 + 2),
+    Meta_Flags_Waiting_Remove    = 1ULL << (56 + 3),
+    Meta_Flags_Children_Released = 1ULL << (56 + 4)
 } ObjectMetaFlags;
 
 /*
@@ -338,13 +337,10 @@ static inline void syli_object_decr_n(Object* o, size_t n)
 static inline Object* syli_object_alloc(
     object_header_t header, uint64_t meta_ref_count, size_t words)
 {
-    int cyclic_index = 0;
-    if ((header & GC_CYCLIC_MASK)) {
-        cyclic_index = sizeof(uint32_t);
-    }
+    size_t extra_words = (header & GC_CYCLIC_MUTABLE_MASK) ? 1 : 0;
 
     GCObject* obj = (GCObject*)malloc(
-        sizeof(GCObject) + words * sizeof(uint64_t) + cyclic_index);
+        sizeof(GCObject) + (words + extra_words) * sizeof(uint64_t));
 
     obj->header_word    = header;
     obj->meta_ref_count = meta_ref_count;
@@ -365,17 +361,16 @@ static inline uint64_t* syli_object_data(Object* obj)
     }
 }
 
-static inline void syli_object_set_cyclic_index(GCObject* obj, uint32_t index)
+static inline void syli_object_set_candidate_index(GCObject* obj, size_t index)
 {
     assert(obj != NULL);
-    assert(syli_object_is_cyclic(as_object(obj)));
+    assert(syli_object_is_cyclic_mutable(as_object(obj)));
     const ObjectZone zone = syli_object_get_zone((Object*)obj);
     switch (zone) {
     case Zone_GcLocal:
     case Zone_GcShared: {
-        size_t len                 = syli_object_length(as_object((void*)obj));
-        uint32_t* cyclic_index_ptr = (uint32_t*)(obj->value + len);
-        *cyclic_index_ptr          = index;
+        size_t len      = syli_object_length(as_object((void*)obj));
+        obj->value[len] = index;
         break;
     }
     default:
@@ -383,17 +378,16 @@ static inline void syli_object_set_cyclic_index(GCObject* obj, uint32_t index)
     }
 }
 
-static inline uint32_t syli_object_get_cyclic_index(GCObject* obj)
+static inline size_t syli_object_get_candidate_index(GCObject* obj)
 {
     assert(obj != NULL);
-    assert(syli_object_is_cyclic(as_object(obj)));
+    assert(syli_object_is_cyclic_mutable(as_object(obj)));
     const ObjectZone zone = syli_object_get_zone((Object*)obj);
     switch (zone) {
     case Zone_GcLocal:
     case Zone_GcShared: {
-        size_t len                 = syli_object_length(as_object(obj));
-        uint32_t* cyclic_index_ptr = (uint32_t*)(obj->value + len);
-        return *cyclic_index_ptr;
+        size_t len = syli_object_length(as_object(obj));
+        return obj->value[len];
     }
     default:
         return 0;
