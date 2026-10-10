@@ -22,12 +22,9 @@ static inline void child_release_object(obj_ptr obj_ptr)
         return;
     }
 
-    // Reaching 0 is a normal release, not a lost cycle.
-    // Marking it, will avoid the cyclic lost handling owning it.
-    gc_mark_tag_object(obj);
-
     // we need to process its children before we can free it
-    gc_vector_push_back(&syli_state.releasing_worklist, obj_ptr);
+    assert(syli_object_refcount(obj) == 0);
+    gc_releasing_worklist_push(obj_ptr);
 }
 
 static inline void gc_one_step_releasing()

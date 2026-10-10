@@ -63,10 +63,6 @@ void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr)
                 return;
             }
 
-            // Reaching 0 is a normal release, not a lost cycle: leaving the
-            // candidate registry before the handling lost cyclic releasing owns it.
-            gc_remove_from_candidates_if_registered(obj);
-
             gc_releasing_worklist_push(obj_ptr);
             return;
         }

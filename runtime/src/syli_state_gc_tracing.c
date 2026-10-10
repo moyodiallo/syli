@@ -169,11 +169,7 @@ static void gc_one_step_prepare_tracing_mutations()
 static inline void lost_cycle_enqueue_free(obj_ptr obj_p)
 {
     Object* obj = syli_object_of_obj_ptr(obj_p);
-    if (syli_object_has_flags(obj, Meta_Flags_Lost_Cycle_Releasing)) {
-        return;
-    }
     assert(syli_object_refcount(obj) == 0);
-    syli_object_set_flags(obj, Meta_Flags_Lost_Cycle_Releasing);
     gc_vector_push_back(&syli_state.lost_cycle_worklist, obj_p);
 }
 

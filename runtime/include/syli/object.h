@@ -38,13 +38,11 @@ typedef struct GCObject {
 } GCObject;
 
 typedef enum ObjectMetaFlags {
-    Meta_Flags_None                 = 0,
-    Meta_Flags_Cyclic_Candidate     = 1ULL << 56,
-    Meta_Flags_Releasing            = 1ULL << (56 + 1),
-    Meta_Flags_Tracing              = 1ULL << (56 + 2),
-    Meta_Flags_Waiting_Remove       = 1ULL << (56 + 3),
-    Meta_Flags_Children_Released    = 1ULL << (56 + 4),
-    Meta_Flags_Lost_Cycle_Releasing = 1ULL << (56 + 5)
+    Meta_Flags_None              = 0,
+    Meta_Flags_Cyclic_Candidate  = 1ULL << 56,
+    Meta_Flags_Tracing           = 1ULL << (56 + 2),
+    Meta_Flags_Waiting_Remove    = 1ULL << (56 + 3),
+    Meta_Flags_Children_Released = 1ULL << (56 + 4)
 } ObjectMetaFlags;
 
 /*

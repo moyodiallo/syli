@@ -80,15 +80,6 @@ static inline void free_released_object(Object* obj)
     free(obj);
 }
 
-static inline void gc_remove_from_candidates_if_registered(Object* obj)
-{
-    if (syli_object_has_flags(obj, Meta_Flags_Cyclic_Candidate)) {
-        size_t index = syli_object_get_candidate_index(as_gc_object(obj));
-        gc_remove_candidate_at(index);
-        syli_object_clear_flags(obj, Meta_Flags_Cyclic_Candidate);
-    }
-}
-
 static inline obj_ptr gc_vector_pop_back(vector_obj_ptr* vector)
 {
     assert(
@@ -118,11 +109,19 @@ static inline void gc_tracing_worklist_push(obj_ptr obj_p)
     gc_vector_push_back(&syli_state.tracing_worklist, obj_p);
 }
 
+static inline void gc_mark_tag_object(Object* obj);
+
 static inline void gc_releasing_worklist_push(obj_ptr obj_p)
 {
     Object* obj = syli_object_of_obj_ptr(obj_p);
-    assert(!syli_object_has_flags(obj, Meta_Flags_Releasing));
-    syli_object_set_flags(obj, Meta_Flags_Releasing);
+    assert(syli_object_refcount(obj) == 0);
+
+    if (syli_object_is_cyclic_mutable(obj)) {
+        // Reaching 0 is a normal release, not a lost cycle.
+        // Marking it, will avoid the cyclic lost handling owning it.
+        gc_mark_tag_object(obj);
+    }
+
     gc_vector_push_back(&syli_state.releasing_waitlist, obj_p);
 }
 
