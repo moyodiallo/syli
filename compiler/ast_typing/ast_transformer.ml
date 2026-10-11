@@ -85,12 +85,18 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
           }
     | TExp_VariantConstructor { tag; name; arg } ->
         TExp_VariantConstructor { tag; name; arg = Option.map (t.expr t) arg }
-    | TExp_Array { element_ty; elements; size } ->
-        TExp_Array
+    | TExp_ArrayLit { elements } ->
+        TExp_ArrayLit { elements = List.map (t.expr t) elements }
+    | TExp_ArrayAlloc { size; init } ->
+        TExp_ArrayAlloc { size = t.expr t size; init = t.expr t init }
+    | TExp_Index { array; index } ->
+        TExp_Index { array = t.expr t array; index = t.expr t index }
+    | TExp_IndexSet { array; index; value } ->
+        TExp_IndexSet
           {
-            element_ty = t.ty t element_ty;
-            elements = List.map (t.expr t) elements;
-            size = t.expr t size;
+            array = t.expr t array;
+            index = t.expr t index;
+            value = t.expr t value;
           }
     | TExp_Lambda lam -> TExp_Lambda (transform_lambda t lam)
     | TExp_Apply { closure_fun; args } ->

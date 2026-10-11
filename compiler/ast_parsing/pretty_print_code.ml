@@ -29,7 +29,11 @@ let rec string_of_ty (ty : ty) : string =
   | Ty_Constant Ty_Char -> "char"
   | Ty_Any -> "_"
   | Ty_Var s -> "'" ^ s
-  | Ty_Array ty' -> "array[" ^ string_of_ty ty' ^ "]"
+  | Ty_Array ty' ->
+      (match ty'.ty_desc with
+        | Ty_Arrow _ -> "(" ^ string_of_ty ty' ^ ")"
+        | _ -> string_of_ty ty')
+      ^ " array"
   | Ty_Tuple tys -> "(" ^ String.concat ", " (List.map string_of_ty tys) ^ ")"
   | Ty_Arrow (param_ty, ret) ->
       string_of_ty param_ty ^ " -> " ^ string_of_ty ret
@@ -100,10 +104,17 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
         | Some e -> "(" ^ string_of_expr ~ind e ^ ")"
       in
       name.name ^ args_str
-  | Exp_Array { element_ty; elements; size } ->
-      "array[" ^ string_of_ty element_ty ^ "]["
+  | Exp_ArrayLit elements ->
+      "[| "
       ^ String.concat "; " (List.map (string_of_expr ~ind) elements)
-      ^ "] size(" ^ string_of_expr ~ind size ^ ")"
+      ^ " |]"
+  | Exp_ArrayAlloc { size; init } ->
+      "[| " ^ string_of_expr ~ind size ^ ": " ^ string_of_expr ~ind init ^ " |]"
+  | Exp_Index { array; index } ->
+      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "]"
+  | Exp_IndexSet { array; index; value } ->
+      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "] := "
+      ^ string_of_expr ~ind value
   | Exp_Lambda { params; body; ret_ty; _ } ->
       let params_str = String.concat ", " (List.map string_of_param params) in
       let ret_str =

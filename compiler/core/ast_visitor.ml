@@ -27,9 +27,17 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_Constant _ | CExp_Ident _ | CExp_Continue -> acc'
   | CExp_VariantConstructor { arg; _ } ->
       Option.fold ~none:acc' ~some:(v.expr v acc') arg
-  | CExp_Array { elements; size; _ } ->
-      let acc'' = List.fold_left (v.expr v) acc' elements in
-      v.expr v acc'' size
+  | CExp_ArrayLit { elements } -> List.fold_left (v.expr v) acc' elements
+  | CExp_ArrayAlloc { size; init } ->
+      let acc'' = v.expr v acc' size in
+      v.expr v acc'' init
+  | CExp_Index { array; index } ->
+      let acc'' = v.expr v acc' array in
+      v.expr v acc'' index
+  | CExp_IndexSet { array; index; value } ->
+      let acc'' = v.expr v acc' array in
+      let acc''' = v.expr v acc'' index in
+      v.expr v acc''' value
   | CExp_Tuple exprs -> List.fold_left (v.expr v) acc' exprs
   | CExp_Record fields ->
       List.fold_left

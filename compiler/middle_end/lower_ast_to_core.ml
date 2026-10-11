@@ -236,12 +236,30 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
         ( CExp_VariantConstructor
             { tag; arg = Option.map (fun a -> fst (desugar_expr env a)) arg },
           env )
-    | TExp_Array { element_ty; elements; size } ->
-        ( CExp_Array
+    | TExp_ArrayLit { elements } ->
+        ( CExp_ArrayLit
+            { elements = List.map (fun a -> fst (desugar_expr env a)) elements },
+          env )
+    | TExp_ArrayAlloc { size; init } ->
+        ( CExp_ArrayAlloc
             {
-              element_ty = desugar_ty env element_ty;
-              elements = List.map (fun a -> fst (desugar_expr env a)) elements;
               size = fst (desugar_expr env size);
+              init = fst (desugar_expr env init);
+            },
+          env )
+    | TExp_Index { array; index } ->
+        ( CExp_Index
+            {
+              array = fst (desugar_expr env array);
+              index = fst (desugar_expr env index);
+            },
+          env )
+    | TExp_IndexSet { array; index; value } ->
+        ( CExp_IndexSet
+            {
+              array = fst (desugar_expr env array);
+              index = fst (desugar_expr env index);
+              value = fst (desugar_expr env value);
             },
           env )
     | TExp_Lambda l ->

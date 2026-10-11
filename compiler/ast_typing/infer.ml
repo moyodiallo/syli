@@ -557,20 +557,72 @@ let rec infer_expr (ctx : infer_ctx) (e : Parsing_ast.expr) : infer_ctx * expr =
       let ctx, body = infer_expr ctx condition in
       let ctx, ty = fresh_ty ctx in
       (ctx, { id = e.id; expr_desc = TExp_Loop { expr = body }; loc; ty })
-  | Parsing_ast.Exp_Array { element_ty; elements; size } ->
-      let ctx, element_ty = ty_of_parsing ctx element_ty in
+  | Parsing_ast.Exp_ArrayLit elements ->
       let ctx, elements = List.fold_left_map infer_expr ctx elements in
+      let ctx, element_ty =
+        match elements with
+        | [] -> fresh_ty ctx
+        | first :: rest ->
+            let ctx =
+              List.fold_left
+                (fun ctx (el : expr) ->
+                  unify_into ~loc:el.loc ctx el.ty first.ty)
+                ctx rest
+            in
+            (ctx, first.ty)
+      in
+      let ty = mk_ty (TTy_Array element_ty) in
+      (ctx, { id = e.id; expr_desc = TExp_ArrayLit { elements }; loc; ty })
+  | Parsing_ast.Exp_ArrayAlloc { size; init } ->
       let ctx, size = infer_expr ctx size in
       let ctx =
         unify_into ~loc:size.loc ctx size.ty (mk_ty (TTy_Constant TTy_Int64))
       in
+      let ctx, init = infer_expr ctx init in
+      let ctx, element_ty = fresh_ty ctx in
+      let expected =
+        mk_ty (TTy_Arrow (mk_ty (TTy_Constant TTy_Int64), element_ty))
+      in
+      let ctx = unify_into ~loc:init.loc ctx init.ty expected in
+      let element_ty = apply_ty ctx element_ty in
       let ty = mk_ty (TTy_Array element_ty) in
+      (ctx, { id = e.id; expr_desc = TExp_ArrayAlloc { size; init }; loc; ty })
+  | Parsing_ast.Exp_Index { array; index } ->
+      let ctx, array = infer_expr ctx array in
+      let ctx, index = infer_expr ctx index in
+      let ctx =
+        unify_into ~loc:index.loc ctx index.ty (mk_ty (TTy_Constant TTy_Int64))
+      in
+      let ctx, element_ty = fresh_ty ctx in
+      let ctx =
+        unify_into ~loc:array.loc ctx array.ty (mk_ty (TTy_Array element_ty))
+      in
+      let element_ty = apply_ty ctx element_ty in
       ( ctx,
         {
           id = e.id;
-          expr_desc = TExp_Array { element_ty; elements; size };
+          expr_desc = TExp_Index { array; index };
           loc;
-          ty;
+          ty = element_ty;
+        } )
+  | Parsing_ast.Exp_IndexSet { array; index; value } ->
+      let ctx, array = infer_expr ctx array in
+      let ctx, index = infer_expr ctx index in
+      let ctx, value = infer_expr ctx value in
+      let ctx =
+        unify_into ~loc:index.loc ctx index.ty (mk_ty (TTy_Constant TTy_Int64))
+      in
+      let ctx, element_ty = fresh_ty ctx in
+      let ctx =
+        unify_into ~loc:array.loc ctx array.ty (mk_ty (TTy_Array element_ty))
+      in
+      let ctx = unify_into ~loc:value.loc ctx value.ty element_ty in
+      ( ctx,
+        {
+          id = e.id;
+          expr_desc = TExp_IndexSet { array; index; value };
+          loc;
+          ty = mk_ty (TTy_Constant TTy_Unit);
         } )
   | Parsing_ast.Exp_FieldSet { record; field_name; value } ->
       let ctx, record = infer_expr ctx record in

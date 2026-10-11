@@ -86,7 +86,10 @@ and expr_node =
   | CExp_Tuple of expr list
   | CExp_Record of record_field list
   | CExp_VariantConstructor of { tag : int; arg : expr option }
-  | CExp_Array of { element_ty : ty; elements : expr list; size : expr }
+  | CExp_ArrayLit of { elements : expr list }
+  | CExp_ArrayAlloc of { size : expr; init : expr }
+  | CExp_Index of { array : expr; index : expr }
+  | CExp_IndexSet of { array : expr; index : expr; value : expr }
   | CExp_Lambda of lambda
   | CExp_Apply of { closure_fun : expr; args : expr list }
   | CExp_Let of { rec_flag : rec_flag; name : ident; value : expr }

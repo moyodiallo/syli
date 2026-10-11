@@ -67,12 +67,12 @@
   $ cat >parse0.src <<EOF
   > let add () =
   >     let record = 
-  >     [|
-  >       2,
-  >       3,
-  >       4,
-  >       5
-  >     |] 
+  >       [|
+  >         2;
+  >         3;
+  >         4;
+  >         5
+  >       |] 
   >     let n = record.value
   >       record.value = 10
   >     print_int(5)
@@ -81,12 +81,12 @@
   >     print_int (add ())
   > EOF
   $ dune exec sylic parse parse0.src
-  Parse error in parse0.src at line 3, column 4
+  Parse error in parse0.src at line 10, column 0
   
-    3 |     [|
-            ^^
+    10 |       record.value = 10
+         ^^^^^^
   
-  Unexpected token: '[|'
+  Unexpected token: 'INDENT'
   [1]
 
 

@@ -454,23 +454,19 @@ atom_expr:
   | LBRACE record_fields_expr RBRACE
     { mk_expr $startpos $endpos (Exp_Record { fields = $2})}
   | lambda  { mk_expr $startpos $endpos (Exp_Lambda $1) }
+  | LBRACKET_BAR array_literal RBRACKET_BAR
+    { mk_expr $startpos $endpos (Exp_ArrayLit $2) }
+  | LBRACKET_BAR expr COLON expr RBRACKET_BAR
+    { mk_expr $startpos $endpos (Exp_ArrayAlloc { size = $2; init = $4 }) }
 
 simple_expr:
   | operation  { $1 }
   | expr_variant  { $1 }
-  | expr LBRACKET_BAR expr RBRACKET_BAR
-    { let closure = mk_ident ~is_operator:true $startpos $endpos "uindex" in
-      mk_expr $startpos $endpos
-        (Exp_Apply
-           { closure_fun = mk_expr $startpos $endpos (Exp_Ident closure);
-             args = [$1; $3] }) }
-  | expr LBRACKET_BAR expr RBRACKET_BAR COLONEQ expr
-    { let closure =
-        mk_ident ~is_operator:true $startpos $endpos "uindex_get" in
-      mk_expr $startpos $endpos
-        (Exp_Apply
-           { closure_fun = mk_expr $startpos $endpos (Exp_Ident closure);
-             args = [$1; $3; $6] }) }
+  | expr DOT LBRACKET expr RBRACKET
+    { mk_expr $startpos $endpos (Exp_Index { array = $1; index = $4 }) }
+  | expr DOT LBRACKET expr RBRACKET COLONEQ expr
+    { mk_expr $startpos $endpos
+        (Exp_IndexSet { array = $1; index = $4; value = $7 }) }
   | expr DOT IDENT
     { let ident = mk_ident $startpos $endpos $3 in
       mk_expr $startpos $endpos
@@ -586,5 +582,13 @@ record_fields_expr:
   | field_name = ident EQ expr SEMI record_fields_expr
     { let field_name = (field_name : ident) in
       mk_record_field_expr $startpos $endpos field_name $3 :: $5}
+
+array_literal:
+  | { [] }
+  | array_literal_ne { $1 }
+
+array_literal_ne:
+  | expr                          { [$1] }
+  | expr SEMI array_literal_ne    { $1 :: $3 }
 
 %%

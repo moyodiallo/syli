@@ -125,7 +125,10 @@ and expr_desc =
   | TExp_Tuple of { elements : expr list }
   | TExp_Record of { fields : record_field list }
   | TExp_VariantConstructor of { tag : int; name : ident; arg : expr option }
-  | TExp_Array of { element_ty : ty; elements : expr list; size : expr }
+  | TExp_ArrayLit of { elements : expr list }
+  | TExp_ArrayAlloc of { size : expr; init : expr }
+  | TExp_Index of { array : expr; index : expr }
+  | TExp_IndexSet of { array : expr; index : expr; value : expr }
   | TExp_Lambda of lambda
   | TExp_Apply of { closure_fun : expr; args : expr list }
   | TExp_Let of letdef

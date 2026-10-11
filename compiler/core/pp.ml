@@ -33,7 +33,11 @@ let rec string_of_ty ty =
       Printf.sprintf "(%s) -> %s" param_str (string_of_ty ret)
   | CTy_Tuple ts ->
       Printf.sprintf "(%s)" (String.concat " * " (List.map string_of_ty ts))
-  | CTy_Array t -> Printf.sprintf "array<%s>" (string_of_ty t)
+  | CTy_Array t ->
+      (match t.ty_desc with
+        | CTy_Arrow _ -> Printf.sprintf "(%s)" (string_of_ty t)
+        | _ -> string_of_ty t)
+      ^ " array"
   | CTy_Defined { name; args = [] } -> name.name
   | CTy_Defined { name; args } ->
       Printf.sprintf "%s<%s>" name.name
@@ -71,10 +75,22 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
   | CExp_VariantConstructor { tag; arg = None } -> Printf.sprintf "ctor(%d)" tag
   | CExp_VariantConstructor { tag; arg = Some a } ->
       Printf.sprintf "ctor(%d, %s)" tag (string_of_expr ~indent a)
-  | CExp_Array { element_ty; elements; size } ->
-      Printf.sprintf "array<%s>[%s]{%s}" (string_of_ty element_ty)
-        (string_of_expr ~indent size)
+  | CExp_ArrayLit { elements } ->
+      Printf.sprintf "[| %s |]"
         (String.concat "; " (List.map (string_of_expr ~indent) elements))
+  | CExp_ArrayAlloc { size; init } ->
+      Printf.sprintf "[| %s: %s |]"
+        (string_of_expr ~indent size)
+        (string_of_expr ~indent init)
+  | CExp_Index { array; index } ->
+      Printf.sprintf "%s.[%s]"
+        (string_of_expr ~indent array)
+        (string_of_expr ~indent index)
+  | CExp_IndexSet { array; index; value } ->
+      Printf.sprintf "%s.[%s] := %s"
+        (string_of_expr ~indent array)
+        (string_of_expr ~indent index)
+        (string_of_expr ~indent value)
   | CExp_Tuple elements ->
       Printf.sprintf "(%s)"
         (String.concat ", " (List.map (string_of_expr ~indent) elements))

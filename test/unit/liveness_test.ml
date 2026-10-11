@@ -310,6 +310,51 @@ let test_dead_at_entry () =
   let live_map = L.analyze fn in
   print_live_map "test_dead_at_entry: live_map" fn live_map
 
+(* ── Test: loop keeps a reference live across the back-edge ────── *)
+
+let test_loop_borrow () =
+  let cond = i64_var "cond" in
+  let x = obj_var "x" in
+  (* bb0 (entry): create x, goto header *)
+  let s1 =
+    make_stmt 1
+      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      obj_ty
+  in
+  let term0 = make_term 10 (OR_Goto 201) in
+  let bb0 = make_block 200 200 [ s1 ] term0 in
+  (* bb1 (header): branch to body/exit *)
+  let term1 =
+    make_term 11 (OR_CondBr { cond; then_block = 202; else_block = 203 })
+  in
+  let bb1 = make_block 201 201 [] term1 in
+  (* bb2 (body): use x, back-edge to header *)
+  let s2 =
+    make_stmt 2
+      (OR_Call
+         {
+           dst = i64_var "_";
+           target = Direct "f";
+           args =
+             [ { operand = OR_OVar x; ownership_arg = OR_Ownership_borrow } ];
+         })
+      i64_ty
+  in
+  let term2 = make_term 12 (OR_Goto 201) in
+  let bb2 = make_block 202 202 [ s2 ] term2 in
+  (* bb3 (exit): return *)
+  let term3 =
+    make_term 13
+      (OR_Return { operand = None; ownership_ret = OR_Ownership_borrow })
+  in
+  let bb3 = make_block 203 203 [] term3 in
+  let fn =
+    make_fn "test_loop_borrow" ~locals:[ cond; x ] bb0 [ bb0; bb1; bb2; bb3 ]
+  in
+  print_fn "test_loop_borrow: input" fn;
+  let live_map = L.analyze fn in
+  print_live_map "test_loop_borrow: live_map" fn live_map
+
 (* ── Test: empty entry block — all seeded params should be dead at entry ── *)
 
 let test_empty_entry_block () =
@@ -346,5 +391,7 @@ let () =
   test_store_global_and_call ();
   Printf.printf "\n";
   test_dead_at_entry ();
+  Printf.printf "\n";
+  test_loop_borrow ();
   Printf.printf "\n";
   test_empty_entry_block ()
