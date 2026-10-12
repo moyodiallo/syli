@@ -923,7 +923,177 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       (ctx, I.CR_OVar obj_var)
   | CExp_VariantConstructor { tag; arg } ->
       lower_variant_constructor ctx e tag arg out_ty
-  | CExp_Array _ | CExp_Loop _ | CExp_Break _ | CExp_Continue | CExp_Return _ ->
+  | CExp_ArrayLit { elements } ->
+      let count = List.length elements in
+      let obj_ty = mk_ir_ty ctx.type_defs e.ty in
+      let ctx, obj_var = fresh_var ctx obj_ty in
+      let size_op : I.operand =
+        I.CR_OConstant (I.CR_IntLit (string_of_int count), i64_ir_ty ())
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Object_create { dst = obj_var; size = size_op }) obj_ty
+      in
+      let ctx =
+        List.fold_left
+          (fun ctx (i, elem) ->
+            let ctx, v = lower_expr ctx elem in
+            let vty = mk_ir_ty ctx.type_defs elem.ty in
+            let idx_op : I.operand =
+              I.CR_OConstant (I.CR_IntLit (string_of_int i), i64_ir_ty ())
+            in
+            let ctx, _ =
+              emit ctx
+                (I.CR_Object_set
+                   {
+                     obj = obj_var;
+                     field_idx = idx_op;
+                     value = v;
+                     value_ty = vty;
+                   })
+                vty
+            in
+            ctx)
+          ctx
+          (List.mapi (fun i elem -> (i, elem)) elements)
+      in
+      (ctx, I.CR_OVar obj_var)
+  | CExp_ArrayAlloc { size; init } ->
+      let ctx, n_op = lower_expr ctx size in
+      let ctx, init_op = lower_expr ctx init in
+      let init_var : I.var =
+        match init_op with
+        | I.CR_OVar v -> v
+        | _ ->
+            raise (Lowering_error "ArrayAlloc init must be a closure variable")
+      in
+      let elem_ty =
+        match e.ty.C.ty_desc with
+        | C.CTy_Array t -> mk_ir_ty ctx.type_defs t
+        | _ -> raise (Lowering_error "ArrayAlloc: expected an array type")
+      in
+      let obj_ty = mk_ir_ty ctx.type_defs e.ty in
+      let ctx, arr_var = fresh_var ctx obj_ty in
+      let ctx, _ =
+        emit ctx (I.CR_Object_create { dst = arr_var; size = n_op }) obj_ty
+      in
+      let i_ty = i64_ir_ty () in
+      let ctx, i_var = fresh_var ctx i_ty in
+      let zero_op : I.operand = I.CR_OConstant (I.CR_IntLit "0", i_ty) in
+      let zero_rv : I.rvalue =
+        { I.id = fresh_id (); node = I.CR_Move { src = zero_op }; ty = i_ty }
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Assign { dst = i_var; rvalue = zero_rv }) i_ty
+      in
+      let header_id = fresh_id () in
+      let body_id = fresh_id () in
+      let exit_id = fresh_id () in
+      let ctx = finish_block ctx (I.CR_Goto header_id) in
+      let ctx = { ctx with pending_merge_id = Some header_id } in
+      let cond_ty : I.ty = { I.id = fresh_id (); I.ir_type = I.CR_Bool } in
+      let ctx, cond_var = fresh_var ctx cond_ty in
+      let cond_rv : I.rvalue =
+        {
+          I.id = fresh_id ();
+          node = I.CR_BinOp { op = I.CR_Lt; lhs = I.CR_OVar i_var; rhs = n_op };
+          ty = cond_ty;
+        }
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Assign { dst = cond_var; rvalue = cond_rv }) cond_ty
+      in
+      let ctx =
+        finish_block ctx
+          (I.CR_CondBr
+             { cond = cond_var; then_block = body_id; else_block = exit_id })
+      in
+      let ctx = { ctx with pending_merge_id = Some body_id } in
+      let ctx, v_var = fresh_var ctx elem_ty in
+      let ctx, _ =
+        emit ctx
+          (I.CR_Call
+             {
+               dst = v_var;
+               target = I.Apply { closure = init_var };
+               args = [ I.CR_OVar i_var ];
+             })
+          elem_ty
+      in
+      let ctx, _ =
+        emit ctx
+          (I.CR_Object_set
+             {
+               obj = arr_var;
+               field_idx = I.CR_OVar i_var;
+               value = I.CR_OVar v_var;
+               value_ty = elem_ty;
+             })
+          elem_ty
+      in
+      let one_op : I.operand = I.CR_OConstant (I.CR_IntLit "1", i_ty) in
+      let ctx, next_var = fresh_var ctx i_ty in
+      let next_rv : I.rvalue =
+        {
+          I.id = fresh_id ();
+          node =
+            I.CR_BinOp { op = I.CR_Add; lhs = I.CR_OVar i_var; rhs = one_op };
+          ty = i_ty;
+        }
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Assign { dst = next_var; rvalue = next_rv }) i_ty
+      in
+      let move_rv : I.rvalue =
+        {
+          I.id = fresh_id ();
+          node = I.CR_Move { src = I.CR_OVar next_var };
+          ty = i_ty;
+        }
+      in
+      let ctx, _ =
+        emit ctx (I.CR_Assign { dst = i_var; rvalue = move_rv }) i_ty
+      in
+      let ctx = finish_block ctx (I.CR_Goto header_id) in
+      let ctx = { ctx with pending_merge_id = Some exit_id } in
+      (ctx, I.CR_OVar arr_var)
+  | CExp_Index { array; index } ->
+      let ctx, obj_op = lower_expr ctx array in
+      let ctx, idx_op = lower_expr ctx index in
+      let ctx, dst = fresh_var ctx out_ty in
+      let rv : I.rvalue =
+        {
+          I.id = dst.I.id;
+          node =
+            I.CR_Object_get
+              { obj = obj_op; field_idx = idx_op; value_ty = out_ty };
+          ty = out_ty;
+        }
+      in
+      let ctx, _ = emit ctx (I.CR_Assign { dst; rvalue = rv }) out_ty in
+      (ctx, I.CR_OVar dst)
+  | CExp_IndexSet { array; index; value } ->
+      let ctx, obj_op = lower_expr ctx array in
+      let obj_var : I.var =
+        match obj_op with
+        | I.CR_OVar v -> v
+        | _ -> raise (Lowering_error "IndexSet target must be a variable")
+      in
+      let ctx, idx_op = lower_expr ctx index in
+      let ctx, val_op = lower_expr ctx value in
+      let val_ty = mk_ir_ty ctx.type_defs value.ty in
+      let ctx, _ =
+        emit ctx
+          (I.CR_Object_set
+             {
+               obj = obj_var;
+               field_idx = idx_op;
+               value = val_op;
+               value_ty = val_ty;
+             })
+          val_ty
+      in
+      (ctx, void_null)
+  | CExp_Loop _ | CExp_Break _ | CExp_Continue | CExp_Return _ ->
       raise (Lowering_error "core form not lowered to SIR yet")
 
 and lower_match (ctx : ctx) (scrutinee : C.expr) (cases : C.pattern_case list)

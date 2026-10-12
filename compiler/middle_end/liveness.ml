@@ -75,106 +75,123 @@ let terminator_uses (term : terminator) : IntSet.t =
 let analyze (fn : function_oir) : t =
   let cfg = Cfg.build_cfg fn.blocks in
   let block_map = Cfg.build_block_map fn.blocks in
-  (* Initialise every statement's live info *)
-  let empty_info = { live_before = IntSet.empty; live_after = IntSet.empty } in
+  let entry_id = fn.entry_block.id in
+  let entry_params =
+    List.fold_left
+      (fun s (p : var) -> if is_ref_ty p.ty then IntSet.add p.id s else s)
+      IntSet.empty fn.params
+  in
+  let live_before_stmt (live : IntSet.t) (stmt : statement) : IntSet.t =
+    IntSet.union (ref_use_of_stmt stmt)
+      (IntSet.diff live (ref_def_of_stmt stmt))
+  in
+  let live_at_block_entry (live_at_end : IntSet.t) (b : block) : IntSet.t =
+    List.fold_left live_before_stmt live_at_end (List.rev b.statements)
+  in
+  let union_succ_entries (entries : IntSet.t IntMap.t) (block_id : int) :
+      IntSet.t =
+    List.fold_left
+      (fun live sid ->
+        match IntMap.find_opt sid entries with
+        | Some info -> IntSet.union live info
+        | None -> live)
+      IntSet.empty
+      (Cfg.get_succ cfg block_id)
+  in
+  let live_at_end_of (entries : IntSet.t IntMap.t) (b : block) : IntSet.t =
+    IntSet.union
+      (union_succ_entries entries b.id)
+      (terminator_uses b.terminator)
+  in
+  (* Process blocks so that successors are visited before predecessors. *)
+  let order = Cfg.compute_rpo cfg entry_id |> List.rev in
+  (* Phase 1: fixpoint on per-block live_entry. The transfer is monotone
+     (union-only), so iterating from empty converges for cyclic CFGs too. *)
+  let rec fixpoint (entries : IntSet.t IntMap.t) : IntSet.t IntMap.t =
+    let changed = ref false in
+    let entries' =
+      List.fold_left
+        (fun acc block_id ->
+          let b =
+            try IntMap.find block_id block_map
+            with Not_found -> failwith "liveness: block not found"
+          in
+          let live_at_first =
+            live_at_block_entry (live_at_end_of entries b) b
+          in
+          let new_entry =
+            if block_id = entry_id then IntSet.union entry_params live_at_first
+            else live_at_first
+          in
+          let old =
+            match IntMap.find_opt block_id entries with
+            | Some s -> s
+            | None -> IntSet.empty
+          in
+          if not (IntSet.equal old new_entry) then changed := true;
+          IntMap.add block_id new_entry acc)
+        entries order
+    in
+    if !changed then fixpoint entries' else entries'
+  in
+  let block_entries = fixpoint IntMap.empty in
+  (* Phase 2: per-statement live ranges, using the fixpointed block entries. *)
   let result =
     List.fold_left
-      (fun map (b : block) ->
-        List.fold_left
-          (fun map (stmt : statement) -> IntMap.add stmt.id empty_info map)
-          map b.statements)
-      IntMap.empty fn.blocks
-  in
-  (* Process blocks in reverse RPO so successors come before predecessors *)
-  let order = Cfg.compute_rpo cfg fn.entry_block.id |> List.rev in
-  let result, blocks =
-    List.fold_left
-      (fun (result, blocks) block_id ->
-        let b =
-          try IntMap.find block_id block_map
-          with Not_found -> failwith "liveness: block not found"
-        in
-        let stmts = b.statements in
-        (* live_after of the last statement = union of successor live_entry *)
-        let succ_ids = Cfg.get_succ cfg block_id in
-        let succ_live =
-          List.fold_left
-            (fun live sid ->
-              match IntMap.find_opt sid blocks with
-              | Some info -> IntSet.union live info.live_entry
-              | None -> live)
-            IntSet.empty succ_ids
-        in
-        let live_at_end =
-          IntSet.union succ_live (terminator_uses b.terminator)
-        in
-        (* Walk statements backward, threading the map *)
-        let live_at_first, result =
+      (fun result (b : block) ->
+        let _, result =
           List.fold_left
             (fun (live, map) (stmt : statement) ->
-              let uses = ref_use_of_stmt stmt in
-              let defs = ref_def_of_stmt stmt in
-              let live_before = IntSet.union uses (IntSet.diff live defs) in
-              let map =
-                IntMap.add stmt.id { live_before; live_after = live } map
-              in
-              (live_before, map))
-            (live_at_end, result) (List.rev stmts)
+              let live_after = live in
+              let live_before = live_before_stmt live stmt in
+              (live_before, IntMap.add stmt.id { live_before; live_after } map))
+            (live_at_end_of block_entries b, result)
+            (List.rev b.statements)
         in
-        (* liveness at block entry *)
-        let live_entry =
-          if block_id = fn.entry_block.id then
-            List.fold_left
-              (fun s (p : var) ->
-                if is_ref_ty p.ty then IntSet.add p.id s else s)
-              live_at_first fn.params
-          else live_at_first
-        in
-        ( result,
-          IntMap.add block_id
-            { live_entry; live_at_end; dead_entry = IntSet.empty }
-            blocks ))
-      (result, IntMap.empty) order
+        result)
+      IntMap.empty fn.blocks
   in
-  (* Compute dead_entry: separate pass after all live_entry values are final *)
+  (* Phase 3: dead_entry, using the fixpointed entries. *)
   let blocks =
     List.fold_left
       (fun blocks (block : block) ->
-        match IntMap.find_opt block.id blocks with
-        | Some info ->
-            let dead_entry =
-              if block.id = fn.entry_block.id then
-                match block.statements with
-                | first :: _ -> (
-                    (*The first instruction reveals the liveness*)
-                    match IntMap.find_opt first.id result with
-                    | Some i -> IntSet.diff info.live_entry i.live_before
-                    | None -> info.live_entry)
-                | [] -> IntSet.diff info.live_entry info.live_at_end
-              else
-                let pred_ids = Cfg.get_pred cfg block.id in
-                let dead_at_edge p_id =
-                  match IntMap.find_opt p_id blocks with
-                  | Some p_info ->
-                      IntSet.diff p_info.live_at_end info.live_entry
-                  | None -> IntSet.empty
-                in
-                match pred_ids with
-                | [] -> IntSet.empty
-                | p :: rest ->
-                    let init = dead_at_edge p in
-                    List.fold_left
-                      (fun acc p -> IntSet.inter acc (dead_at_edge p))
-                      init rest
+        let live_entry =
+          match IntMap.find_opt block.id block_entries with
+          | Some s -> s
+          | None -> IntSet.empty
+        in
+        let dead_entry =
+          if block.id = entry_id then
+            match block.statements with
+            | first :: _ -> (
+                (*The first instruction reveals the liveness*)
+                match IntMap.find_opt first.id result with
+                | Some i -> IntSet.diff live_entry i.live_before
+                | None -> live_entry)
+            | [] -> IntSet.diff live_entry (live_at_end_of block_entries block)
+          else
+            let pred_ids = Cfg.get_pred cfg block.id in
+            let dead_at_edge p_id =
+              let p =
+                try IntMap.find p_id block_map
+                with Not_found -> failwith "liveness: pred block not found"
+              in
+              IntSet.diff (live_at_end_of block_entries p) live_entry
             in
-            IntMap.add block.id
-              {
-                live_entry = info.live_entry;
-                live_at_end = info.live_at_end;
-                dead_entry;
-              }
-              blocks
-        | None -> blocks)
-      blocks fn.blocks
+            match pred_ids with
+            | [] -> IntSet.empty
+            | p :: rest ->
+                List.fold_left
+                  (fun acc p -> IntSet.inter acc (dead_at_edge p))
+                  (dead_at_edge p) rest
+        in
+        IntMap.add block.id
+          {
+            live_entry;
+            live_at_end = live_at_end_of block_entries block;
+            dead_entry;
+          }
+          blocks)
+      IntMap.empty fn.blocks
   in
   { stmts = result; blocks }

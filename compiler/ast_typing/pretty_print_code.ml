@@ -18,7 +18,11 @@ let rec string_of_ty (t : ty) : string =
   | TTy_Constant TTy_F64 -> "f64"
   | TTy_Constant TTy_String -> "string"
   | TTy_Constant TTy_Char -> "char"
-  | TTy_Array ty -> "array[" ^ string_of_ty ty ^ "]"
+  | TTy_Array ty ->
+      (match ty.ty_desc with
+        | TTy_Arrow _ -> "(" ^ string_of_ty ty ^ ")"
+        | _ -> string_of_ty ty)
+      ^ " array"
   | TTy_Tuple tys -> "(" ^ String.concat " * " (List.map string_of_ty tys) ^ ")"
   | TTy_Arrow (arg, ret) -> string_of_ty arg ^ " -> " ^ string_of_ty ret
   | TTy_Var i -> "'" ^ string_of_int i
@@ -80,10 +84,17 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
   | TExp_VariantConstructor { name; arg = None } -> name.name
   | TExp_VariantConstructor { name; arg = Some e } ->
       name.name ^ "(" ^ string_of_expr ~ind e ^ ")"
-  | TExp_Array { element_ty = _; elements; size } ->
-      "array["
-      ^ String.concat ", " (List.map (string_of_expr ~ind) elements)
-      ^ "]" ^ " size=" ^ string_of_expr ~ind size
+  | TExp_ArrayLit { elements } ->
+      "[| "
+      ^ String.concat "; " (List.map (string_of_expr ~ind) elements)
+      ^ " |]"
+  | TExp_ArrayAlloc { size; init } ->
+      "[| " ^ string_of_expr ~ind size ^ ": " ^ string_of_expr ~ind init ^ " |]"
+  | TExp_Index { array; index } ->
+      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "]"
+  | TExp_IndexSet { array; index; value } ->
+      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "] := "
+      ^ string_of_expr ~ind value
   | TExp_Lambda (lam : lambda) ->
       let params =
         List.map

@@ -58,9 +58,17 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
       List.fold_left (fun a f -> v.expr v a f.field_value) acc fields
   | Exp_VariantConstructor { arg; _ } ->
       Option.fold ~none:acc ~some:(v.expr v acc) arg
-  | Exp_Array { elements; size; _ } ->
-      let acc = List.fold_left (v.expr v) acc elements in
-      v.expr v acc size
+  | Exp_ArrayLit elements -> List.fold_left (v.expr v) acc elements
+  | Exp_ArrayAlloc { size; init } ->
+      let acc = v.expr v acc size in
+      v.expr v acc init
+  | Exp_Index { array; index } ->
+      let acc = v.expr v acc array in
+      v.expr v acc index
+  | Exp_IndexSet { array; index; value } ->
+      let acc = v.expr v acc array in
+      let acc = v.expr v acc index in
+      v.expr v acc value
   | Exp_Lambda lam -> visit_lambda v acc lam
   | Exp_Apply { closure_fun; args } ->
       let acc = v.expr v acc closure_fun in

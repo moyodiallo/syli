@@ -48,15 +48,24 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
               (st, Some inner')
         in
         (a, CExp_VariantConstructor { tag; arg = arg' })
-    | CExp_Array { element_ty; elements; size } ->
-        let a, element_ty' = t.ty t acc' element_ty in
-        let a', elements' =
-          List.fold_left_map (fun st el -> t.expr t st el) a elements
+    | CExp_ArrayLit { elements } ->
+        let a, elements' =
+          List.fold_left_map (fun st el -> t.expr t st el) acc' elements
         in
-        let a'', size' = t.expr t a' size in
-        ( a'',
-          CExp_Array
-            { element_ty = element_ty'; elements = elements'; size = size' } )
+        (a, CExp_ArrayLit { elements = elements' })
+    | CExp_ArrayAlloc { size; init } ->
+        let a, size' = t.expr t acc' size in
+        let a', init' = t.expr t a init in
+        (a', CExp_ArrayAlloc { size = size'; init = init' })
+    | CExp_Index { array; index } ->
+        let a, array' = t.expr t acc' array in
+        let a', index' = t.expr t a index in
+        (a', CExp_Index { array = array'; index = index' })
+    | CExp_IndexSet { array; index; value } ->
+        let a, array' = t.expr t acc' array in
+        let a', index' = t.expr t a index in
+        let a'', value' = t.expr t a' value in
+        (a'', CExp_IndexSet { array = array'; index = index'; value = value' })
     | CExp_Tuple elements ->
         let a, elements' =
           List.fold_left_map (fun st el -> t.expr t st el) acc' elements

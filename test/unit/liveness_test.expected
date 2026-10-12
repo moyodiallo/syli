@@ -98,6 +98,38 @@ end
   block 100: live_entry={x}  dead_entry={}
   block 101: live_entry={}  dead_entry={x}
 
+--- test_loop_borrow: input
+module Test :
+functions:
+public fn test_loop_borrow() -> i64:
+  entry: bb200
+
+  bb200:
+    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    goto bb201
+
+  bb201:
+
+    cond_br %cond:i64, bb202, bb203
+
+  bb202:
+    %_:i64 = #call_direct f (@borrow %x:obj_ptr)
+    goto bb201
+
+  bb203:
+
+    return
+end
+
+end
+--- test_loop_borrow: live_map
+  stmt 1: live_before={}  live_after={x}
+  stmt 2: live_before={x}  live_after={x}
+  block 200: live_entry={}  dead_entry={}
+  block 201: live_entry={x}  dead_entry={}
+  block 202: live_entry={x}  dead_entry={}
+  block 203: live_entry={}  dead_entry={x}
+
 --- test_empty_entry_block: input
 module Test :
 functions:

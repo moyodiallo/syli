@@ -135,19 +135,24 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
             (a', Some inner')
       in
       (acc', { e with expr_desc = Exp_VariantConstructor { name; arg = arg' } })
-  | Exp_Array { element_ty; elements; size } ->
-      let acc', element_ty' = t.ty t acc element_ty in
-      let acc'', elements' =
-        List.fold_left_map (fun a e' -> t.expr t a e') acc' elements
+  | Exp_ArrayLit elements ->
+      let acc, elements =
+        List.fold_left_map (fun a elt -> t.expr t a elt) acc elements
       in
-      let acc''', size' = t.expr t acc'' size in
-      ( acc''',
-        {
-          e with
-          expr_desc =
-            Exp_Array
-              { element_ty = element_ty'; elements = elements'; size = size' };
-        } )
+      (acc, { e with expr_desc = Exp_ArrayLit elements })
+  | Exp_ArrayAlloc { size; init } ->
+      let acc, size = t.expr t acc size in
+      let acc, init = t.expr t acc init in
+      (acc, { e with expr_desc = Exp_ArrayAlloc { size; init } })
+  | Exp_Index { array; index } ->
+      let acc, array = t.expr t acc array in
+      let acc, index = t.expr t acc index in
+      (acc, { e with expr_desc = Exp_Index { array; index } })
+  | Exp_IndexSet { array; index; value } ->
+      let acc, array = t.expr t acc array in
+      let acc, index = t.expr t acc index in
+      let acc, value = t.expr t acc value in
+      (acc, { e with expr_desc = Exp_IndexSet { array; index; value } })
   | Exp_Lambda lam ->
       let acc', lam' = transform_lambda t acc lam in
       (acc', { e with expr_desc = Exp_Lambda lam' })

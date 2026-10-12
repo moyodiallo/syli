@@ -143,19 +143,24 @@ let rec transform_expr (t : 'acc transformer) (acc : 'acc) (e : expr) :
           e with
           expr_desc = TExp_VariantConstructor { tag; name; arg = args' };
         } )
-  | TExp_Array { element_ty; elements; size } ->
-      let acc', element_ty' = t.ty t acc element_ty in
-      let acc'', elements' =
-        List.fold_left_map (fun a e' -> t.expr t a e') acc' elements
+  | TExp_ArrayLit { elements } ->
+      let acc, elements =
+        List.fold_left_map (fun a e' -> t.expr t a e') acc elements
       in
-      let acc''', size' = t.expr t acc'' size in
-      ( acc''',
-        {
-          e with
-          expr_desc =
-            TExp_Array
-              { element_ty = element_ty'; elements = elements'; size = size' };
-        } )
+      (acc, { e with expr_desc = TExp_ArrayLit { elements } })
+  | TExp_ArrayAlloc { size; init } ->
+      let acc, size = t.expr t acc size in
+      let acc, init = t.expr t acc init in
+      (acc, { e with expr_desc = TExp_ArrayAlloc { size; init } })
+  | TExp_Index { array; index } ->
+      let acc, array = t.expr t acc array in
+      let acc, index = t.expr t acc index in
+      (acc, { e with expr_desc = TExp_Index { array; index } })
+  | TExp_IndexSet { array; index; value } ->
+      let acc, array = t.expr t acc array in
+      let acc, index = t.expr t acc index in
+      let acc, value = t.expr t acc value in
+      (acc, { e with expr_desc = TExp_IndexSet { array; index; value } })
   | TExp_Lambda lam ->
       let acc', lam' = transform_lambda t acc lam in
       (acc', { e with expr_desc = TExp_Lambda lam' })

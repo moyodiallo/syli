@@ -84,12 +84,17 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
           }
     | Exp_VariantConstructor { name; arg } ->
         Exp_VariantConstructor { name; arg = Option.map (t.expr t) arg }
-    | Exp_Array { element_ty; elements; size } ->
-        Exp_Array
+    | Exp_ArrayLit elements -> Exp_ArrayLit (List.map (t.expr t) elements)
+    | Exp_ArrayAlloc { size; init } ->
+        Exp_ArrayAlloc { size = t.expr t size; init = t.expr t init }
+    | Exp_Index { array; index } ->
+        Exp_Index { array = t.expr t array; index = t.expr t index }
+    | Exp_IndexSet { array; index; value } ->
+        Exp_IndexSet
           {
-            element_ty = t.ty t element_ty;
-            elements = List.map (t.expr t) elements;
-            size = t.expr t size;
+            array = t.expr t array;
+            index = t.expr t index;
+            value = t.expr t value;
           }
     | Exp_Lambda lam -> Exp_Lambda (transform_lambda t lam)
     | Exp_Apply { closure_fun; args } ->
