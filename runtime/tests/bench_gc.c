@@ -197,7 +197,7 @@ static CounterSnapshot take_counter_snapshot(void)
 
     s.total_traced       = syli_state.total_objects_traced;
     s.total_released     = syli_state.total_objects_released;
-    s.total_memory_freed = syli_state.total_objects_memory_freed;
+    s.total_memory_freed = syli_state.total_objects_freed;
 
     s.generation_tracing    = syli_state.generation_tracing;
     s.tracing_generations   = syli_state.tracing_generations;

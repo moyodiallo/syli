@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define DEFAULT_GC_RELEASE_THRESHOLD            0
-#define DEFAULT_MEM_CYCLIC_OBJ_THRESHOLD        (512*1024)
+#define DEFAULT_MEM_CYCLIC_OBJ_THRESHOLD        (512*1024) /* Bytes */
 #define DEFAULT_GC_CANDIDATES_RATIO_THRESHOLD   0.2
 
 typedef struct {

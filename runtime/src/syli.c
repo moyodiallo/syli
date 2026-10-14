@@ -56,7 +56,7 @@ void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr)
         if (syli_object_refcount(obj) == 0) {
 
             if (syli_object_is_mono_imm(obj)) {
-                syli_state.total_objects_memory_freed++;
+                syli_state.total_objects_freed++;
 
                 // Freeing an object that is not cyclic and has no value pointer
                 free(obj);
@@ -149,7 +149,7 @@ obj_ptr syli_rt_ownership_alloc_object(
 
     // Track every cyclic object
     if (syli_object_is_cyclic(as_object(obj))) {
-        syli_state.cyclic_mem_alloc += syli_object_total_words(as_object(obj));
+        syli_state.cyclic_mem_alloc += syli_object_total_bytes(as_object(obj));
         syli_state.cyclic_obj_alloc++;
 
         if (syli_object_is_cyclic_mutable(obj)) {

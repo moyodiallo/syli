@@ -66,7 +66,7 @@ typedef struct Syli_state {
 
     size_t total_objects_traced;
     size_t total_objects_released;
-    size_t total_objects_memory_freed;
+    size_t total_objects_freed;
 
     size_t generation_tracing;
 

@@ -150,7 +150,8 @@ static inline uint64_t syli_object_make_header(ObjectZone zone,
     CyclicFlag cyclic, ObjectType type, ObjectImmutableFlag imm_flags,
     object_payload_t payload)
 {
-    return syli_object_make_header_ex(zone, cyclic, type, imm_flags, 3, payload);
+    return syli_object_make_header_ex(
+        zone, cyclic, type, imm_flags, 3, payload);
 }
 
 static inline uint32_t syli_object_make_mono_payload(size_t length)
@@ -373,18 +374,14 @@ static inline uint64_t syli_object_get_variant_tag(Object* o)
     return (o->header_word & GC_VARIANT_FLAGS_MASK) >> GC_VARIANT_SHIFT;
 }
 
-static inline size_t syli_object_total_words(Object* o)
+static inline size_t syli_object_total_bytes(Object* o)
 {
-    // header + meta_ref_count + data words (+ candidate index for
-    // mutable-cyclic). Data is byte-sized by the unit shift, so round the
-    // packed payload up to whole words.
-    size_t data_words
-        = (syli_object_size_bytes(o) + sizeof(uint64_t) - 1) / sizeof(uint64_t);
-    size_t words = 2 + data_words;
+    // header + meta_ref_count + payload bytes (+ candidate index )
+    size_t total = 2 * sizeof(uint64_t) + syli_object_size_bytes(o);
     if (syli_object_is_cyclic_mutable(o)) {
-        words += 1;
+        total += sizeof(uint64_t);
     }
-    return words;
+    return total;
 }
 
 #endif /* HEADER_OBJECT_H */

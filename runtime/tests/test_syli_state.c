@@ -56,7 +56,7 @@ void test_state_init()
     assert(syli_state.checking_steps == 0);
     assert(syli_state.total_objects_traced == 0);
     assert(syli_state.total_objects_released == 0);
-    assert(syli_state.total_objects_memory_freed == 0);
+    assert(syli_state.total_objects_freed == 0);
 
     assert(syli_state.generation_tracing == 0);
 

@@ -101,7 +101,7 @@ static void test_releasing_waitlist_gets_drained(void)
     assert(vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0);
     assert(vector_size_obj_ptr(&syli_state.releasing_worklist) == 0);
     assert(syli_state.releasing_steps > 0);
-    assert(syli_state.total_objects_memory_freed >= 2);
+    assert(syli_state.total_objects_freed >= 2);
 
     syli_state_destroy();
 
@@ -141,10 +141,10 @@ static void test_roots_protect_created_objects(void)
 
     assert(syli_state.tracing_generations > 0);
     assert(syli_state.total_objects_traced == created);
-    assert(syli_state.total_objects_memory_freed == 0);
+    assert(syli_state.total_objects_freed == 0);
 
     printf("  created=%zu traced=%zu freed=%zu\n", created,
-        syli_state.total_objects_traced, syli_state.total_objects_memory_freed);
+        syli_state.total_objects_traced, syli_state.total_objects_freed);
     syli_print_gc_state();
 
     syli_state_destroy();

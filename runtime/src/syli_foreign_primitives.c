@@ -79,7 +79,7 @@ void syli_print_gc_state(void)
         gc_current_cyclic_mem(), syli_state.cyclic_mem_alloc,
         syli_state.cyclic_mem_dealloc, syli_state.cyclic_obj_alloc,
         syli_state.cyclic_obj_dealloc, syli_state.total_objects_traced,
-        syli_state.total_objects_memory_freed,
+        syli_state.total_objects_freed,
         vector_size_obj_ptr(&syli_state.releasing_waitlist),
         vector_size_obj_ptr(&syli_state.tracing_worklist));
 }

@@ -55,7 +55,7 @@ void syli_state_init()
 
     syli_state.total_objects_traced       = 0;
     syli_state.total_objects_released     = 0;
-    syli_state.total_objects_memory_freed = 0;
+    syli_state.total_objects_freed = 0;
 
     syli_state.generation_tracing = 0;
 

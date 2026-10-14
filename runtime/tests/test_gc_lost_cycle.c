@@ -126,7 +126,7 @@ static void test_two_cycle(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 2);
+    assert(syli_state.total_objects_freed == 2);
 
     syli_state_destroy();
 
@@ -157,7 +157,7 @@ static void test_multiply_referenced_cycle(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 2);
+    assert(syli_state.total_objects_freed == 2);
 
     syli_state_destroy();
 
@@ -189,7 +189,7 @@ static void test_three_cycle(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 3);
+    assert(syli_state.total_objects_freed == 3);
 
     syli_state_destroy();
 
@@ -222,7 +222,7 @@ static void test_zero_refcount_candidate_arc_released(void)
     run_gc_until(candidates_empty_and_releasing_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 2);
+    assert(syli_state.total_objects_freed == 2);
 
     syli_state_destroy();
 
@@ -266,7 +266,7 @@ static void test_unmarked_child_with_refs(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 4);
+    assert(syli_state.total_objects_freed == 4);
 
     syli_state_destroy();
 
