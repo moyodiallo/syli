@@ -121,12 +121,12 @@ by the tag in the object header (get_tag is an inlinable function):
       switch %Sy_cir_var_1:i64 [1: bb1, 0: bb2 default: bb3]
   
     bb2:
-      %Sy_cir_var_3:i64 = obj_get(%s:obj_ptr, 0:i64):i64
+      %Sy_cir_var_3:i64 = obj_get(%s:obj_ptr, variant(0)[0]):i64
       %Sy_cir_var_0:i64 = move(%Sy_cir_var_3:i64)
       goto bb4
   
     bb1:
-      %Sy_cir_var_2:i64 = obj_get(%s:obj_ptr, 0:i64):i64
+      %Sy_cir_var_2:i64 = obj_get(%s:obj_ptr, variant(1)[0]):i64
       %Sy_cir_var_0:i64 = move(%Sy_cir_var_2:i64)
       goto bb4
   
@@ -170,7 +170,7 @@ constant `11` immediate to its plain tag, so a single switch discriminates:
       goto bb4
   
     bb1:
-      %Sy_cir_var_2:i64 = obj_get(%x:obj_ptr, 0:i64):i64
+      %Sy_cir_var_2:i64 = obj_get(%x:obj_ptr, variant(1)[0]):i64
       %Sy_cir_var_0:i64 = move(%Sy_cir_var_2:i64)
       goto bb4
   
@@ -240,9 +240,9 @@ projection `obj_get(%v, 0)` is emitted a single time and reused by both fields:
       goto bb4
   
     bb1:
-      %Sy_cir_var_2:obj_ptr = obj_get(%v:obj_ptr, 0:i64):obj_ptr
-      %Sy_cir_var_3:i64 = obj_get(%Sy_cir_var_2:obj_ptr, 1:i64):i64
-      %Sy_cir_var_4:i64 = obj_get(%Sy_cir_var_2:obj_ptr, 0:i64):i64
+      %Sy_cir_var_2:obj_ptr = obj_get(%v:obj_ptr, variant(1)[0]):obj_ptr
+      %Sy_cir_var_3:i64 = obj_get(%Sy_cir_var_2:obj_ptr, field[1]):i64
+      %Sy_cir_var_4:i64 = obj_get(%Sy_cir_var_2:obj_ptr, field[0]):i64
       %Sy_cir_var_0:i64 = move(%Sy_cir_var_4:i64)
       goto bb4
   

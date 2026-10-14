@@ -87,7 +87,7 @@ let string_of_rvalue (rv : rvalue) : string =
       Printf.sprintf "#runtime_call %s(%s):%s"
         (runtime_op_name_to_string fn_name)
         args_str ret_str
-  | RR_Object_load { obj; field_idx; value_ty } ->
+  | RR_Object_load { obj; field_idx; value_ty; _ } ->
       Printf.sprintf "obj_get(%s, %s):%s" (operand_to_string obj)
         (operand_to_string field_idx)
         (string_of_ty value_ty)
@@ -122,7 +122,7 @@ let string_of_statement (stmt : statement) : string =
       Printf.sprintf "  %s = #runtime_call %s(%s)" (var_to_string dst)
         (runtime_op_name_to_string call.fn_name)
         args_str
-  | RR_Object_store { obj; field_idx; value; value_ty } ->
+  | RR_Object_store { obj; field_idx; value; value_ty; _ } ->
       Printf.sprintf "  obj_set(%s, %s, %s):%s" (operand_to_string obj)
         (operand_to_string field_idx)
         (operand_to_string value) (string_of_ty value_ty)

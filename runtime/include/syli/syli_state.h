@@ -112,13 +112,6 @@ void syli_state_init();
 void syli_state_destroy();
 
 // ========================
-// Allocation
-// ========================
-
-// ARC allocations
-Object* syli_state_alloc_object(object_header_t header, size_t length);
-
-// ========================
 // Garbage collection
 // ========================
 

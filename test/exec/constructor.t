@@ -87,3 +87,20 @@ Nested variants:
   $ dune exec sylic -- build test_ctor_nested.sy
   $ ./test_ctor_nested.exe
   7042
+
+A constructor payload of sub-word fields packs its cells; matching reads them
+back at the constructor's own cell width:
+  $ cat >test_ctor_pack.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > type t = A of (bool, bool) | B of i64
+  > let first x = match x with A (p, q) -> if p then 1 else 0 | B n -> n
+  > let second x = match x with A (p, q) -> if q then 1 else 0 | B n -> n
+  > let main () =
+  >   syli_print_i64 (first (A (false, true)))
+  >   syli_print_i64 (second (A (false, true)))
+  >   syli_print_i64 (first (B 9))
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_ctor_pack.sy
+  $ ./test_ctor_pack.exe
+  019

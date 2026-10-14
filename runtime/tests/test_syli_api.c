@@ -12,19 +12,19 @@
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
 static obj_ptr make_object(ObjectZone zone, CyclicFlag cyclic, ObjectType type,
-    ObjectImmutableFlag imm_flags, size_t words)
+    ObjectImmutableFlag imm_flags, size_t length)
 {
     object_payload_t payload;
     switch (type) {
     case Type_MonoImm:
     case Type_MonoRef:
-        payload = syli_object_make_mono_payload(words);
+        payload = syli_object_make_mono_payload(length);
         break;
     case Type_MixedOrder:
-        payload = syli_object_make_order_payload(words, 0);
+        payload = syli_object_make_order_payload(length, 0);
         break;
     case Type_MixedBitmap:
-        payload = syli_object_make_bitmap_payload(words, 0);
+        payload = syli_object_make_bitmap_payload(length, 0);
         break;
     default:
         return (obj_ptr)NULL;
@@ -32,7 +32,7 @@ static obj_ptr make_object(ObjectZone zone, CyclicFlag cyclic, ObjectType type,
 
     object_header_t header
         = syli_object_make_header(zone, cyclic, type, imm_flags, payload);
-    return syli_rt_ownership_alloc_object(header, 1, words);
+    return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
 static void test_rt_rc_alloc_object(void)
@@ -246,6 +246,39 @@ static void test_rt_get_object_length(void)
     syli_state_destroy();
     printf("✓ syli_rt_get_object_length returns correct length for all "
            "types\n\n");
+}
+
+static void test_rt_get_object_size(void)
+{
+    printf("Test 7: syli_rt_get_object_size()\n");
+
+    syli_state_init();
+
+    {
+        obj_ptr mono
+            = make_object(Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 5);
+        assert(mono != NULL);
+        assert(syli_object_unit_shift(syli_object_of_obj_ptr(mono)) == 3);
+        assert(syli_object_unit_bytes(syli_object_of_obj_ptr(mono)) == 8);
+        assert(syli_rt_get_object_size(syli_object_of_obj_ptr(mono)) == 40);
+        syli_free_ptr(mono);
+    }
+
+    {
+        /* An i8-celled (unit shift 0) object: 3 slots = 3 bytes. */
+        object_payload_t payload = syli_object_make_mono_payload(3);
+        object_header_t header = syli_object_make_header_ex(
+            Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0, payload);
+        obj_ptr packed = syli_rt_ownership_alloc_object(header, 1, 3);
+        assert(packed != NULL);
+        assert(syli_object_unit_shift(syli_object_of_obj_ptr(packed)) == 0);
+        assert(syli_object_size_bytes(syli_object_of_obj_ptr(packed)) == 3);
+        assert(syli_rt_get_object_size(syli_object_of_obj_ptr(packed)) == 3);
+        syli_free_ptr(packed);
+    }
+
+    syli_state_destroy();
+    printf("✓ syli_rt_get_object_size returns correct byte size\n\n");
 }
 
 static void test_rt_gc_cycle(void)
@@ -545,6 +578,7 @@ int main(void)
     test_rt_object_decr_n();
     test_rt_get_object_tag();
     test_rt_get_object_length();
+    test_rt_get_object_size();
     test_rt_gc_cycle();
     test_rt_object_notify_mutation();
     test_rt_ownership_own();

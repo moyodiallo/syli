@@ -19,17 +19,17 @@ static uint64_t time_diff_ns(
         + (uint64_t)(end->tv_nsec - start->tv_nsec);
 }
 
-static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_ref_object(size_t length, CyclicFlag cyclic)
 {
-    object_payload_t payload = syli_object_make_mono_payload(words);
+    object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
     if (cyclic == Cyclic) {
         header |= GC_CYCLIC_MUTABLE_MASK;
     }
-    obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, words);
+    obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, length);
     Object* o   = syli_object_of_obj_ptr(obj);
-    memset(syli_object_data(o), 0, words * sizeof(uint64_t));
+    memset(syli_object_data(o), 0, length * sizeof(uint64_t));
     return obj;
 }
 

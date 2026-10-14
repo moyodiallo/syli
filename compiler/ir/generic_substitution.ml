@@ -14,14 +14,8 @@ and subst_ir_type subst = function
   | CR_Arrow (args, ret) ->
       CR_Arrow (List.map (apply_subst_ty subst) args, apply_subst_ty subst ret)
   | CR_Obj_Ptr -> CR_Obj_Ptr
-  | CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
-      CR_Obj
-        {
-          named;
-          obj_kind = subst_obj_kind subst obj_kind;
-          tag_variant;
-          cyclic_prop;
-        }
+  | CR_Obj { named; obj_kind; cyclic_prop } ->
+      CR_Obj { named; obj_kind = subst_obj_kind subst obj_kind; cyclic_prop }
   | other -> other
 
 and subst_obj_kind subst = function
@@ -60,6 +54,12 @@ let subst_operand subst = function
   | CR_OConstant (c, ty) -> CR_OConstant (c, apply_subst_ty subst ty)
   | CR_OVar v -> CR_OVar (subst_var subst v)
 
+let subst_projection subst = function
+  | CR_Project_field field_idx -> CR_Project_field field_idx
+  | CR_Project_array index -> CR_Project_array (subst_operand subst index)
+  | CR_Project_variant { tag; field_idx } ->
+      CR_Project_variant { tag; field_idx }
+
 let rec subst_rvalue subst (rvalue : rvalue) : rvalue =
   let node : rvalue_node =
     match rvalue.node with
@@ -68,15 +68,16 @@ let rec subst_rvalue subst (rvalue : rvalue) : rvalue =
           { op; lhs = subst_operand subst lhs; rhs = subst_operand subst rhs }
     | CR_UnOp { op; operand } ->
         CR_UnOp { op; operand = subst_operand subst operand }
-    | CR_Object_get { obj; field_idx; value_ty } ->
+    | CR_Object_get { obj; projection; value_ty } ->
         CR_Object_get
           {
             obj = subst_operand subst obj;
-            field_idx = subst_operand subst field_idx;
+            projection = subst_projection subst projection;
             value_ty = apply_subst_ty subst value_ty;
           }
     | CR_Object_length { obj } ->
         CR_Object_length { obj = subst_operand subst obj }
+    | CR_Object_size { obj } -> CR_Object_size { obj = subst_operand subst obj }
     | CR_Object_get_tag { obj } ->
         CR_Object_get_tag { obj = subst_operand subst obj }
     | CR_Cast { src; to_ty } ->
@@ -93,17 +94,17 @@ let subst_statement subst stmt =
     | CR_Assign { dst; rvalue } ->
         CR_Assign
           { dst = subst_var subst dst; rvalue = subst_rvalue subst rvalue }
-    | CR_Object_set { obj; field_idx; value; value_ty } ->
+    | CR_Object_set { obj; projection; value; value_ty } ->
         CR_Object_set
           {
             obj = subst_var subst obj;
-            field_idx = subst_operand subst field_idx;
+            projection = subst_projection subst projection;
             value = subst_operand subst value;
             value_ty = apply_subst_ty subst value_ty;
           }
-    | CR_Object_create { dst; size } ->
+    | CR_Object_create { dst; length } ->
         CR_Object_create
-          { dst = subst_var subst dst; size = subst_operand subst size }
+          { dst = subst_var subst dst; length = subst_operand subst length }
     | CR_Call { dst; target; args } ->
         let subst_target = function
           | Direct _ as d -> d

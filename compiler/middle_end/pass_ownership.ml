@@ -63,8 +63,9 @@ let annotate_function (fn : function_oir) : function_oir =
   let live_map = analyze fn in
   let var_map = build_var_map fn in
   let release_tmp_counter = ref 0 in
-  let mk_get_release_tmp_value_statement (obj : var) (field_idx : operand)
-      (value_ty : ty) =
+  let mk_release_tmp_value_statement
+      (build_get : var -> projection -> ty -> rvalue_node) (obj : var)
+      (projection : projection) (value_ty : ty) =
     incr release_tmp_counter;
     let dst =
       {
@@ -83,14 +84,7 @@ let annotate_function (fn : function_oir) : function_oir =
               rvalue =
                 {
                   id = fresh_id ();
-                  node =
-                    OR_Object_get
-                      {
-                        obj = OR_OVar obj;
-                        field_idx;
-                        value_ty;
-                        ownership_get = OR_Ownership_transfer;
-                      };
+                  node = build_get obj projection value_ty;
                   ty = value_ty;
                 };
             };
@@ -98,6 +92,19 @@ let annotate_function (fn : function_oir) : function_oir =
       }
     in
     (dst, stmt)
+  in
+  let mk_get_release_tmp_value_statement (obj : var) (projection : projection)
+      (value_ty : ty) =
+    mk_release_tmp_value_statement
+      (fun obj projection value_ty ->
+        OR_Object_get
+          {
+            obj = OR_OVar obj;
+            projection;
+            value_ty;
+            ownership_get = OR_Ownership_transfer;
+          })
+      obj projection value_ty
   in
   let blocks =
     List.map
@@ -116,7 +123,7 @@ let annotate_function (fn : function_oir) : function_oir =
                             OR_Object_get
                               {
                                 obj = OR_OVar src;
-                                field_idx;
+                                projection;
                                 value_ty;
                                 ownership_get = OR_Ownership_unknown;
                               };
@@ -138,7 +145,7 @@ let annotate_function (fn : function_oir) : function_oir =
                           OR_Object_get
                             {
                               obj = OR_OVar src;
-                              field_idx;
+                              projection;
                               value_ty;
                               ownership_get;
                             };
@@ -149,7 +156,7 @@ let annotate_function (fn : function_oir) : function_oir =
                 | OR_Object_set
                     ({
                        obj;
-                       field_idx;
+                       projection;
                        value;
                        value_ty;
                        ownership_set = OR_Ownership_unknown;
@@ -176,7 +183,7 @@ let annotate_function (fn : function_oir) : function_oir =
                           | _ -> IntSet.empty
                       in
                       let old_var, old_stmt =
-                        mk_get_release_tmp_value_statement obj field_idx
+                        mk_get_release_tmp_value_statement obj projection
                           value_ty
                       in
                       ( [

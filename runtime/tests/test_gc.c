@@ -13,21 +13,21 @@
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-static obj_ptr make_mono_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_mono_ref_object(size_t length, CyclicFlag cyclic)
 {
-    object_payload_t payload = syli_object_make_mono_payload(words);
+    object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header   = syli_object_make_header(
         Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
-    return syli_rt_ownership_alloc_object(header, 1, words);
+    return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
-static obj_ptr make_trackable_object(size_t words)
+static obj_ptr make_trackable_object(size_t length)
 {
-    object_payload_t payload = syli_object_make_mono_payload(words);
+    object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header
         = syli_object_make_header(Zone_GcLocal, Cyclic, Type_MonoRef,
             (ObjectImmutableFlag)(Flag_HasPointers | Flag_Traceable), payload);
-    return syli_rt_ownership_alloc_object(header, 1, words);
+    return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
 static bool releasing_drained(void)

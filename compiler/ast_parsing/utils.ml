@@ -15,6 +15,7 @@ let string_of_token = function
   | CHAR c -> Printf.sprintf "CHAR(%s)" c
   | FLOAT f -> Printf.sprintf "FLOAT(%s)" f
   | BOOL_VAL b -> Printf.sprintf "BOOL_VAL(%s)" b
+  | TYPE_VAR v -> Printf.sprintf "TYPE_VAR(%s)" v
   | TY_INT64 -> "INT64"
   | TY_INT32 -> "INT32"
   | TY_INT16 -> "INT16"

@@ -18,7 +18,6 @@ let obj_ty : ty =
         {
           named = Some "Obj";
           obj_kind = OR_Record_kind { fields = [] };
-          tag_variant = None;
           cyclic_prop = Acyclic;
         };
   }
@@ -123,12 +122,14 @@ let test_single_block () =
   let y = obj_var "y" in
   let s1 =
     make_stmt 1
-      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = x; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s2 =
     make_stmt 2
-      (OR_Object_create { dst = y; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = y; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s3 =
@@ -171,7 +172,8 @@ let test_two_blocks () =
   (* bb1 (entry): create x, branch on cond *)
   let s1 =
     make_stmt 1
-      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = x; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let term1 =
@@ -217,7 +219,8 @@ let test_store_global_and_call () =
   (* create x, store x to global, create y, call fn(y) *)
   let s1 =
     make_stmt 1
-      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = x; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s2 =
@@ -232,7 +235,8 @@ let test_store_global_and_call () =
   in
   let s3 =
     make_stmt 3
-      (OR_Object_create { dst = y; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = y; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let s4 =
@@ -274,7 +278,8 @@ let test_dead_at_entry () =
   let x = obj_var "x" in
   let s1 =
     make_stmt 1
-      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = x; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let term1 =
@@ -318,7 +323,8 @@ let test_loop_borrow () =
   (* bb0 (entry): create x, goto header *)
   let s1 =
     make_stmt 1
-      (OR_Object_create { dst = x; size = OR_OConstant (OR_IntLit "8", i64_ty) })
+      (OR_Object_create
+         { dst = x; length = OR_OConstant (OR_IntLit "8", i64_ty) })
       obj_ty
   in
   let term0 = make_term 10 (OR_Goto 201) in

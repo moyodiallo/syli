@@ -85,18 +85,18 @@ Closure with free variables:
   define i64 @syliTest_multi.apply() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %sy2_add = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
+    %sy2_add = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377926991530688514, i32 1, i32 2)
     ; nop
     %Sy_oir_accum_fn_0 = bitcast ptr @__make_closure_accum.sy2_add.45_ret_i64 to ptr
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_add)
-    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
     store ptr %Sy_oir_accum_fn_0, ptr addrspace(1) %Sy_llvm_tmp_1
     %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_add)
-    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i64 1
     store i64 1, ptr addrspace(1) %Sy_llvm_tmp_3
     ; nop
     %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_add)
-    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i64 0
     %Sy_accum_ptr_1 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_5
     %Sy_cir_var_0 = call i64 %Sy_accum_ptr_1(i64 1, i64 2, ptr addrspace(1) %sy2_add, i64 0)
     ; nop

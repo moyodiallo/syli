@@ -7,10 +7,6 @@ let void_ty : ty = { id = fresh_id (); ir_type = OR_Void }
 let fn_ptr_ty : ty = { id = fresh_id (); ir_type = OR_FnPtr }
 let obj_ptr_ty () : ty = { id = fresh_id (); ir_type = OR_Obj_Ptr }
 let fresh_var name ty : var = { id = fresh_id (); name; ty }
-
-let int_operand (value : int) : operand =
-  OR_OConstant (OR_IntLit (string_of_int value), i64_ty)
-
 let null_operand (ty : ty) : operand = OR_OConstant (OR_Null, ty)
 let make_rvalue node ty : rvalue = { id = fresh_id (); node; ty }
 let make_statement node ty : statement = { id = fresh_id (); node; ty }
@@ -53,7 +49,7 @@ let stored_slot_loads (clos_var : var) (field_base : int) (tys : ty list) :
                        (OR_Object_get
                           {
                             obj = OR_OVar clos_var;
-                            field_idx = int_operand (field_base + idx);
+                            projection = OR_Project_field (field_base + idx);
                             value_ty = obj_var.ty;
                             ownership_get = OR_Ownership_unknown;
                           })
@@ -74,7 +70,7 @@ let stored_slot_loads (clos_var : var) (field_base : int) (tys : ty list) :
                        (OR_Object_get
                           {
                             obj = OR_OVar clos_var;
-                            field_idx = int_operand (field_base + idx);
+                            projection = OR_Project_field (field_base + idx);
                             value_ty = i64_ty;
                             ownership_get = OR_Ownership_unknown;
                           })
@@ -157,7 +153,7 @@ let build_partial_closure_accum_dispatch ~(stored_tys : ty list)
                (OR_Object_get
                   {
                     obj = OR_OVar clos_var;
-                    field_idx = int_operand 1;
+                    projection = OR_Project_field 1;
                     value_ty = i64_ty;
                     ownership_get = OR_Ownership_unknown;
                   })
@@ -194,7 +190,7 @@ let build_partial_closure_accum_dispatch ~(stored_tys : ty list)
                (OR_Object_get
                   {
                     obj = OR_OVar clos_var;
-                    field_idx = int_operand 2;
+                    projection = OR_Project_field 2;
                     value_ty = clos_ty;
                     ownership_get = OR_Ownership_unknown;
                   })
@@ -213,7 +209,7 @@ let build_partial_closure_accum_dispatch ~(stored_tys : ty list)
                (OR_Object_get
                   {
                     obj = OR_OVar parent_clos_var;
-                    field_idx = int_operand 0;
+                    projection = OR_Project_field 0;
                     value_ty = fn_ptr_ty;
                     ownership_get = OR_Ownership_unknown;
                   })
@@ -234,7 +230,7 @@ let build_partial_closure_accum_dispatch ~(stored_tys : ty list)
                      (OR_Object_get
                         {
                           obj = OR_OVar clos_var;
-                          field_idx = int_operand (3 + i);
+                          projection = OR_Project_field (3 + i);
                           value_ty = i64_ty;
                           ownership_get = OR_Ownership_unknown;
                         })
@@ -359,7 +355,7 @@ let build_partial_closure_accum ~(stored_tys : ty list) ~(args_size : int)
                (OR_Object_get
                   {
                     obj = OR_OVar clos_var;
-                    field_idx = int_operand 1;
+                    projection = OR_Project_field 1;
                     value_ty = closure_obj_ptr_ty;
                     ownership_get = OR_Ownership_unknown;
                   })
@@ -378,7 +374,7 @@ let build_partial_closure_accum ~(stored_tys : ty list) ~(args_size : int)
                (OR_Object_get
                   {
                     obj = OR_OVar parent_clos_var;
-                    field_idx = int_operand 0;
+                    projection = OR_Project_field 0;
                     value_ty = fn_ptr_ty;
                     ownership_get = OR_Ownership_unknown;
                   })
@@ -399,7 +395,7 @@ let build_partial_closure_accum ~(stored_tys : ty list) ~(args_size : int)
                      (OR_Object_get
                         {
                           obj = OR_OVar clos_var;
-                          field_idx = int_operand (2 + i);
+                          projection = OR_Project_field (2 + i);
                           value_ty = i64_ty;
                           ownership_get = OR_Ownership_unknown;
                         })

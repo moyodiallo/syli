@@ -5,8 +5,8 @@ public fn test_single() -> i64:
   entry: bb10
 
   bb10:
-    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
-    %y:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %x:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
+    %y:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
     %_:i64 = #call_direct f (@borrow %x:obj_ptr)
     %_:i64 = #call_direct f (@borrow %y:obj_ptr)
     return
@@ -27,7 +27,7 @@ public fn test_two_blocks() -> i64:
   entry: bb20
 
   bb20:
-    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %x:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
     cond_br %cond:i64, bb100, bb101
 
   bb100:
@@ -54,9 +54,9 @@ public fn test_store_global_and_call() -> i64:
   entry: bb10
 
   bb10:
-    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %x:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
     store_global g_x = @share %x:obj_ptr
-    %y:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %y:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
     %y:obj_ptr = #call_direct fn (@borrow %y:obj_ptr)
     %_:i64 = #call_direct f (@borrow %x:obj_ptr)
     return
@@ -78,7 +78,7 @@ public fn test_dead_at_entry() -> i64:
   entry: bb20
 
   bb20:
-    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %x:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
     cond_br %cond:i64, bb100, bb101
 
   bb100:
@@ -105,7 +105,7 @@ public fn test_loop_borrow() -> i64:
   entry: bb200
 
   bb200:
-    %x:Obj{{card=0 []} tag=- acyclic} = object_create{size=8:i64}
+    %x:Obj{{card=0 []} acyclic} = object_create{length=8:i64}
     goto bb201
 
   bb201:

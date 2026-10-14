@@ -102,6 +102,8 @@ rule token = parse
   | ['0'-'9']+ as num              { INT num }
   | ['0'-'9']+ '.' ['0'-'9']* as f { FLOAT f }
   | ''' [^'''] ''' as c            { CHAR (String.get c 1 |> String.make 1) }
+  | "'" ['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* as v
+    { TYPE_VAR (String.sub v 1 (String.length v - 1)) }
   | '"' { string (Buffer.create 64) lexbuf }
 
   (* --- Punctuation and operators --- *)

@@ -25,9 +25,9 @@ An anonymous record payload is flattened into the constructor block:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:syliTest_ctor_anonrec.shape{{variant [0{0:i64; 1:i64}]} tag=0 acyclic} = object_create{size=2:i64}
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 7:i64):i64
-      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 8:i64):i64
+      %Sy_cir_var_0:syliTest_ctor_anonrec.shape{{variant [0{0:i64; 1:i64}]} acyclic} = object_create{length=2:i64}
+      obj_set(%Sy_cir_var_0:obj_ptr, field[0], 7:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, field[1], 8:i64):i64
       return %Sy_cir_var_0:obj_ptr
   end
   
@@ -72,8 +72,8 @@ tag 0):
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:syliTest_ctor_mixed.option{{variant [1{0:i64}]} tag=1 acyclic} = object_create{size=1:i64}
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 3:i64):i64
+      %Sy_cir_var_0:syliTest_ctor_mixed.option{{variant [1{0:i64}]} acyclic} = object_create{length=1:i64}
+      obj_set(%Sy_cir_var_0:obj_ptr, field[0], 3:i64):i64
       return %Sy_cir_var_0:obj_ptr
   end
   

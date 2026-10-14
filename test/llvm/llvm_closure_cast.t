@@ -53,25 +53,25 @@ Closure as an argument with multiple captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} unknown_cyclic} = object_create{length=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.61_ret_i64)
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, field[0], %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, field[1], 1:i64):i64
       
       %Sy_cir_var_1:bool = cast(true:bool as bool)
       cond_br %Sy_cir_var_1:bool, bb1, bb2
   
     bb2:
       gc_cycle
-      %Sy_cir_var_5:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=3:i32}
+      %Sy_cir_var_5:obj{{card=3 [0:fn_ptr; 1:i64; 2:obj_ptr]} unknown_cyclic} = object_create{length=3:i32}
       
       %Sy_oir_accum_fn_1:fn_ptr = addr_fn(__partial_closure_accum.dispatch.clos0_arg2_ret_i64)
-      obj_set(%Sy_cir_var_5:obj_ptr, 0:i32, %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
-      obj_set(%Sy_cir_var_5:obj_ptr, 1:i32, 1:i64):i64
-      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_5:obj_ptr, 2:i32):obj_ptr
+      obj_set(%Sy_cir_var_5:obj_ptr, field[0], %Sy_oir_accum_fn_1:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_5:obj_ptr, field[1], 1:i64):i64
+      %Sy_oir_release_tmp_1:obj_ptr = @transfer obj_get(%Sy_cir_var_5:obj_ptr, field[2]):obj_ptr
       release(%Sy_oir_release_tmp_1:obj_ptr)
-      obj_set(%Sy_cir_var_5:obj_ptr, 2:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
+      obj_set(%Sy_cir_var_5:obj_ptr, field[2], @own %Sy_cir_var_0:obj_ptr):obj_ptr
       
       %Sy_cir_var_6:i64 = #call_direct syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64 (@transfer %Sy_cir_var_5:obj_ptr, 1.0f:f64, 2.0f:f64)
       %Sy_cir_var_2:i64 = move(%Sy_cir_var_6:i64)
@@ -79,13 +79,13 @@ Closure as an argument with multiple captured variables:
   
     bb1:
       gc_cycle
-      %Sy_cir_var_3:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} tag=0 unknown_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_3:obj{{card=2 [0:fn_ptr; 1:obj_ptr]} unknown_cyclic} = object_create{length=2:i32}
       
       %Sy_oir_accum_fn_2:fn_ptr = addr_fn(__partial_closure_accum.clos0_arg2_ret_i64)
-      obj_set(%Sy_cir_var_3:obj_ptr, 0:i32, %Sy_oir_accum_fn_2:fn_ptr):fn_ptr
-      %Sy_oir_release_tmp_2:obj_ptr = @transfer obj_get(%Sy_cir_var_3:obj_ptr, 1:i32):obj_ptr
+      obj_set(%Sy_cir_var_3:obj_ptr, field[0], %Sy_oir_accum_fn_2:fn_ptr):fn_ptr
+      %Sy_oir_release_tmp_2:obj_ptr = @transfer obj_get(%Sy_cir_var_3:obj_ptr, field[1]):obj_ptr
       release(%Sy_oir_release_tmp_2:obj_ptr)
-      obj_set(%Sy_cir_var_3:obj_ptr, 1:i32, @own %Sy_cir_var_0:obj_ptr):obj_ptr
+      obj_set(%Sy_cir_var_3:obj_ptr, field[1], @own %Sy_cir_var_0:obj_ptr):obj_ptr
       
       %Sy_cir_var_4:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_cir_var_3:obj_ptr, 3:i64, 4:i64)
       %Sy_cir_var_2:i64 = move(%Sy_cir_var_4:i64)
@@ -100,7 +100,7 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, field[0]):fn_ptr
       %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, %y:i64, @transfer %f:obj_ptr, 0:i64)
       
       return %Sy_cir_var_0:i64
@@ -110,7 +110,7 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, field[0]):fn_ptr
       %Sy_apply_cast_1:i64 = cast(%x:f64 as i64)
       %Sy_apply_cast_2:i64 = cast(%y:f64 as i64)
       %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%Sy_apply_cast_1:i64, %Sy_apply_cast_2:i64, @transfer %f:obj_ptr, 0:i64)
@@ -138,7 +138,7 @@ Closure as an argument with multiple captured variables:
     entry: bb-1
   
     bb-1:
-      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, field[1]):i64
       release(%Sy_oir_clos:obj_ptr)
       switch %Sy_oir_dp_id:i64 [1: bb1, 0: bb0]
   
@@ -155,9 +155,9 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 1:i64):obj_ptr
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, field[1]):obj_ptr
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, field[0]):fn_ptr
       %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_x0:i64, %Sy_oir_x1:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_dp_id:i64)
       return %Sy_oir_rst:i64
   end
@@ -166,11 +166,11 @@ Closure as an argument with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_oir_dp_clos:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_dp_clos:i64 = obj_get(%Sy_oir_clos:obj_ptr, field[1]):i64
       %Sy_oir_accum_dp_id:i64 = %Sy_oir_dp_id:i64 + %Sy_oir_dp_clos:i64
-      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, 2:i64):obj_ptr
+      %Sy_oir_p_clos:obj_ptr = @share obj_get(%Sy_oir_clos:obj_ptr, field[2]):obj_ptr
       release(%Sy_oir_clos:obj_ptr)
-      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, 0:i64):fn_ptr
+      %Sy_oir_p_accum:fn_ptr = obj_get(%Sy_oir_p_clos:obj_ptr, field[0]):fn_ptr
       %Sy_oir_rst:i64 = #call_direct_fn_ptr(%Sy_oir_p_accum:fn_ptr)  (%Sy_oir_x0:i64, %Sy_oir_x1:i64, @transfer %Sy_oir_p_clos:obj_ptr, %Sy_oir_accum_dp_id:i64)
       return %Sy_oir_rst:i64
   end
@@ -231,35 +231,35 @@ Closure as an argument with multiple captured variables:
   bb0:
     %Sy_cir_var_2 = alloca i64
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621890, i32 1, i32 2)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377926991530688514, i32 1, i32 2)
     ; nop
     %Sy_oir_accum_fn_0 = bitcast ptr @__make_closure_accum.dispatch.61_ret_i64 to ptr
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
-    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
     store ptr %Sy_oir_accum_fn_0, ptr addrspace(1) %Sy_llvm_tmp_1
     %Sy_llvm_tmp_2 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
-    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_3 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_2, i32 0, i32 2, i64 1
     store i64 1, ptr addrspace(1) %Sy_llvm_tmp_3
     ; nop
     br i1 true, label %bb1, label %bb2
   bb2:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_5 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748355, i32 1, i32 3)
+    %Sy_cir_var_5 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251424436516814979, i32 1, i32 3)
     ; nop
     %Sy_oir_accum_fn_1 = bitcast ptr @__partial_closure_accum.dispatch.clos0_arg2_ret_i64 to ptr
     %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_5)
-    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i64 0
     store ptr %Sy_oir_accum_fn_1, ptr addrspace(1) %Sy_llvm_tmp_5
     %Sy_llvm_tmp_6 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_5)
-    %Sy_llvm_tmp_7 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_6, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_7 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_6, i32 0, i32 2, i64 1
     store i64 1, ptr addrspace(1) %Sy_llvm_tmp_7
     %Sy_llvm_tmp_8 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_5)
-    %Sy_llvm_tmp_9 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_8, i32 0, i32 2, i32 2
+    %Sy_llvm_tmp_9 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_8, i32 0, i32 2, i64 2
     %Sy_oir_release_tmp_1 = load ptr addrspace(1), ptr addrspace(1) %Sy_llvm_tmp_9
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_oir_release_tmp_1)
     %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_10 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_5)
-    %Sy_llvm_tmp_11 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_10, i32 0, i32 2, i32 2
+    %Sy_llvm_tmp_11 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_10, i32 0, i32 2, i64 2
     store ptr addrspace(1) %Sy_rir_tmp_0, ptr addrspace(1) %Sy_llvm_tmp_11
     call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_5, ptr addrspace(1) %Sy_rir_tmp_0)
     ; nop
@@ -268,19 +268,19 @@ Closure as an argument with multiple captured variables:
     br label %bb3
   bb1:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_3 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748290, i32 1, i32 2)
+    %Sy_cir_var_3 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251424436516814914, i32 1, i32 2)
     ; nop
     %Sy_oir_accum_fn_2 = bitcast ptr @__partial_closure_accum.clos0_arg2_ret_i64 to ptr
     %Sy_llvm_tmp_12 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_3)
-    %Sy_llvm_tmp_13 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_12, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_13 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_12, i32 0, i32 2, i64 0
     store ptr %Sy_oir_accum_fn_2, ptr addrspace(1) %Sy_llvm_tmp_13
     %Sy_llvm_tmp_14 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_3)
-    %Sy_llvm_tmp_15 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_14, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_15 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_14, i32 0, i32 2, i64 1
     %Sy_oir_release_tmp_2 = load ptr addrspace(1), ptr addrspace(1) %Sy_llvm_tmp_15
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_oir_release_tmp_2)
     %Sy_rir_tmp_1 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_16 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_3)
-    %Sy_llvm_tmp_17 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_16, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_17 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_16, i32 0, i32 2, i64 1
     store ptr addrspace(1) %Sy_rir_tmp_1, ptr addrspace(1) %Sy_llvm_tmp_17
     call void @syli_inlinable_ownership_notify_mutation(ptr addrspace(1) %Sy_cir_var_3, ptr addrspace(1) %Sy_rir_tmp_1)
     ; nop
@@ -294,7 +294,7 @@ Closure as an argument with multiple captured variables:
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
-    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
     %Sy_accum_ptr_0 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_1
     %Sy_cir_var_0 = call i64 %Sy_accum_ptr_0(i64 %x, i64 %y, ptr addrspace(1) %f, i64 0)
     ; nop
@@ -304,7 +304,7 @@ Closure as an argument with multiple captured variables:
   define i64 @syliTest_multi.apply__fn_f64_f64_i64__f64__f64_ret_i64(ptr addrspace(1) %f, double %x, double %y) gc "statepoint-example" {
   bb0:
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
-    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
     %Sy_accum_ptr_0 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_1
     %Sy_apply_cast_1 = bitcast double %x to i64
     %Sy_apply_cast_2 = bitcast double %y to i64

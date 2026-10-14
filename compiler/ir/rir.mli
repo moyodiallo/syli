@@ -7,6 +7,7 @@ val values_offset : int
 
 type runtime_op_name =
   | RR_RT_get_object_length
+  | RR_RT_get_object_size
   | RR_RT_get_object_tag
   | RR_RT_gc_cycle
   | RR_RT_object_check_mutation
@@ -76,7 +77,12 @@ and rvalue_node =
   | RR_BinOp of { op : binop; lhs : operand; rhs : operand }
   | RR_UnOp of { op : unop; operand : operand }
   | RR_Runtime_call of runtime_call
-  | RR_Object_load of { obj : operand; field_idx : operand; value_ty : ty }
+  | RR_Object_load of {
+      obj : operand;
+      field_idx : operand;
+      value_ty : ty;
+      cell_shift : int;
+    }
   | RR_CastBit of { src : operand; to_ty : ty }
   | RR_CastIntToPtr of { src : operand; to_ty : ty }
   | RR_CastPtrToInt of { src : operand; to_ty : ty }
@@ -91,6 +97,7 @@ and statement_node =
       field_idx : operand;
       value : operand;
       value_ty : ty;
+      cell_shift : int;
     }
   | RR_Store_global of { global : qualified_name; value : operand }
   | RR_Move of { dst : var; src : operand }

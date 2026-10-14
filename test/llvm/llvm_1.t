@@ -773,7 +773,7 @@ Tuple emits syli_object_create and syli_object_set runtime calls:
   define ptr addrspace(1) @__init_global.syliTest_tuple.pair() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2, i32 1, i64 2)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 26388279066626, i32 1, i64 2)
     ; nop
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
@@ -892,7 +892,7 @@ Triple tuple emits three object_set calls:
   define ptr addrspace(1) @__init_global.syliTest_triple.triple() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 1873497444986126467, i32 1, i64 3)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 1873523833265193091, i32 1, i64 3)
     ; nop
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0

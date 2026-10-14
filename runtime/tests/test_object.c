@@ -15,9 +15,9 @@ void test_object_allocation()
 
     syli_state_init();
 
-    size_t word_size = 4;
+    size_t length = 4;
 
-    object_payload_t payload = syli_object_make_mono_payload(word_size);
+    object_payload_t payload = syli_object_make_mono_payload(length);
 
     object_header_t header = syli_object_make_header(
         Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
@@ -25,7 +25,7 @@ void test_object_allocation()
     uint64_t meta_ref_count = make_meta_refcount(
         Meta_Flags_Cyclic_Candidate, syli_state.tracing_current_bit_mark);
 
-    Object* obj = syli_object_alloc(header, meta_ref_count, word_size);
+    Object* obj = syli_object_alloc(header, meta_ref_count, length);
 
     gc_mark_tag_object(obj);
 
@@ -35,7 +35,7 @@ void test_object_allocation()
     assert(syli_object_has_flags(obj, Meta_Flags_Cyclic_Candidate) == true);
     assert(gc_is_object_mark_tagged(obj) == true);
     assert(syli_object_payload(obj) == payload);
-    assert(syli_object_length(obj) == word_size);
+    assert(syli_object_length(obj) == length);
 
     free(obj);
     syli_state_destroy();
@@ -48,9 +48,9 @@ void test_object_allocation_and_refcounting()
 
     syli_state_init();
 
-    size_t word_size = 2;
+    size_t length = 2;
 
-    object_payload_t payload = syli_object_make_mono_payload(word_size);
+    object_payload_t payload = syli_object_make_mono_payload(length);
 
     object_header_t header = syli_object_make_header(
         Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
@@ -60,7 +60,7 @@ void test_object_allocation_and_refcounting()
 
     gc_next_marking_generation(); // the object is no longer tagged as marked.
 
-    Object* obj = syli_object_alloc(header, meta_ref_count, word_size);
+    Object* obj = syli_object_alloc(header, meta_ref_count, length);
 
     assert(obj != NULL);
     assert(syli_object_get_zone(obj) == Zone_GcLocal);
@@ -68,7 +68,7 @@ void test_object_allocation_and_refcounting()
     assert(syli_object_has_flags(obj, Meta_Flags_Cyclic_Candidate) == true);
     assert(gc_is_object_mark_tagged(obj) == false);
     assert(syli_object_payload(obj) == payload);
-    assert(syli_object_length(obj) == word_size);
+    assert(syli_object_length(obj) == length);
 
     // Increment ref count
     syli_object_decr(obj);
@@ -99,9 +99,9 @@ void test_object_meta_flags()
 
     syli_state_init();
 
-    size_t word_size = 1;
+    size_t length = 1;
 
-    object_payload_t payload = syli_object_make_mono_payload(word_size);
+    object_payload_t payload = syli_object_make_mono_payload(length);
 
     object_header_t header = syli_object_make_header(
         Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
@@ -110,7 +110,7 @@ void test_object_meta_flags()
         = make_meta_refcount(Meta_Flags_Children_Released | Meta_Flags_Tracing,
             syli_state.tracing_current_bit_mark);
 
-    Object* obj = syli_object_alloc(header, meta_ref_count, word_size);
+    Object* obj = syli_object_alloc(header, meta_ref_count, length);
 
     assert(obj != NULL);
     assert(syli_object_has_flags(obj, Meta_Flags_Children_Released) == true);

@@ -6,21 +6,22 @@
 #include "syli/object.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 GCObject* syli_rt_rc_alloc_object(
-    object_header_t header, size_t refcount, size_t words)
+    object_header_t header, size_t refcount, size_t length)
 {
     // Tag the object with the current generation's mark value
     uint64_t meta_ref_count = refcount | syli_state.tracing_current_bit_mark;
 
-    GCObject* obj = (GCObject*)syli_object_alloc(header, meta_ref_count, words);
+    GCObject* obj = (GCObject*)syli_object_alloc(header, meta_ref_count, length);
 
     // Initialize the object fields to 0
     // TODO: this will be removed once put in the language level
     //       the initialization is handled by the compiler
-    for (size_t i = 0; i < words; i++) {
-        obj->value[i] = 0;
-    }
+    size_t unit_shift = (header & GC_UNIT_MASK) >> GC_UNIT_SHIFT_BITS;
+    size_t data_bytes = length << unit_shift;
+    memset(obj->value, 0, data_bytes);
 
     return obj;
 }
@@ -58,7 +59,6 @@ void syli_rt_object_decr(Object* obj, obj_ptr obj_ptr)
                 syli_state.total_objects_memory_freed++;
 
                 // Freeing an object that is not cyclic and has no value pointer
-                gc_account_cyclic_free(obj);
                 free(obj);
                 return;
             }
@@ -92,7 +92,15 @@ uint64_t syli_rt_get_object_tag(Object* obj)
 uint64_t syli_rt_get_object_length(Object* obj)
 {
     assert(obj != NULL);
-    return syli_object_length(obj);
+    Object* raw = (Object*)((uintptr_t)obj & ~(uintptr_t)3);
+    return syli_object_length(raw);
+}
+
+uint64_t syli_rt_get_object_size(Object* obj)
+{
+    assert(obj != NULL);
+    Object* raw = (Object*)((uintptr_t)obj & ~(uintptr_t)3);
+    return syli_object_size_bytes(raw);
 }
 
 void syli_match_failure(void)
@@ -134,9 +142,9 @@ void syli_rt_gc_cycle() { syli_state_gc_cycle(); }
  ************************************************/
 
 obj_ptr syli_rt_ownership_alloc_object(
-    object_header_t header, size_t refcount, size_t words)
+    object_header_t header, size_t refcount, size_t length)
 {
-    GCObject* obj = syli_rt_rc_alloc_object(header, refcount, words);
+    GCObject* obj = syli_rt_rc_alloc_object(header, refcount, length);
     obj_ptr ptr   = syli_ownership_set_own(obj);
 
     // Track every cyclic object

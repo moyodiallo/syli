@@ -80,18 +80,18 @@
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} tag=0 unknown_cyclic} = object_create{size=2:i32}
+      %Sy_cir_var_0:obj{{card=2 [0:fn_ptr; 1:i64]} unknown_cyclic} = object_create{length=2:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.dispatch.36_ret_i64)
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
-      obj_set(%Sy_cir_var_0:obj_ptr, 1:i32, 1:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, field[0], %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, field[1], 1:i64):i64
       
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%Sy_cir_var_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%Sy_cir_var_0:obj_ptr, field[0]):fn_ptr
       %Sy_apply_cast_2:i64 = cast(1.0f:f64 as i64)
       %Sy_apply_tmp_3:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_apply_cast_2:i64, @borrow %Sy_cir_var_0:obj_ptr, 1:i64)
       %Sy_cir_var_1:f64 = cast(%Sy_apply_tmp_3:i64 as f64)
       
-      %Sy_accum_ptr_4:fn_ptr = obj_get(%Sy_cir_var_0:obj_ptr, 0:i32):fn_ptr
+      %Sy_accum_ptr_4:fn_ptr = obj_get(%Sy_cir_var_0:obj_ptr, field[0]):fn_ptr
       %Sy_cir_var_2:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_4:fn_ptr)  (1:i64, @transfer %Sy_cir_var_0:obj_ptr, 0:i64)
       
       %Sy_cir_var_3:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_cir_var_2:i64)
@@ -119,7 +119,7 @@
     entry: bb-1
   
     bb-1:
-      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, 1:i64):i64
+      %Sy_oir_imm0:i64 = obj_get(%Sy_oir_clos:obj_ptr, field[1]):i64
       release(%Sy_oir_clos:obj_ptr)
       switch %Sy_oir_dp_id:i64 [0: bb0, 1: bb1]
   

@@ -29,10 +29,10 @@ Closure with multiple captured variables:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{{card=1 [0:fn_ptr]} tag=0 unknown_cyclic} = object_create{size=1:i32}
+      %Sy_cir_var_0:obj{{card=1 [0:fn_ptr]} unknown_cyclic} = object_create{length=1:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.syliTest_multi.add.91_ret_i64)
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%Sy_cir_var_0:obj_ptr, field[0], %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       
       %Sy_cir_var_1:i64 = #call_direct syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64 (@transfer %Sy_cir_var_0:obj_ptr, 3:i64, 4:i64)
       %Sy_cir_var_2:void = #call_direct syliTest_multi.syli_print_i64 (%Sy_cir_var_1:i64)
@@ -59,7 +59,7 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, 0:i32):fn_ptr
+      %Sy_accum_ptr_0:fn_ptr = obj_get(%f:obj_ptr, field[0]):fn_ptr
       %Sy_cir_var_0:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_0:fn_ptr)  (%x:i64, %y:i64, @transfer %f:obj_ptr, 0:i64)
       
       return %Sy_cir_var_0:i64
@@ -111,11 +111,11 @@ Closure with multiple captured variables:
   define void @syliTest_multi.main() gc "statepoint-example" {
   bb0:
     call void @syli_rt_gc_cycle()
-    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377900603251621889, i32 1, i32 1)
+    %Sy_cir_var_0 = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 2377926991530688513, i32 1, i32 1)
     ; nop
     %Sy_oir_accum_fn_0 = bitcast ptr @__make_closure_accum.syliTest_multi.add.91_ret_i64 to ptr
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
-    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
     store ptr %Sy_oir_accum_fn_0, ptr addrspace(1) %Sy_llvm_tmp_1
     ; nop
     %Sy_cir_var_1 = call i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %Sy_cir_var_0, i64 3, i64 4)
@@ -138,7 +138,7 @@ Closure with multiple captured variables:
   define i64 @syliTest_multi.apply__fn_i64_i64_i64__i64__i64_ret_i64(ptr addrspace(1) %f, i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %f)
-    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 0
     %Sy_accum_ptr_0 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_1
     %Sy_cir_var_0 = call i64 %Sy_accum_ptr_0(i64 %x, i64 %y, ptr addrspace(1) %f, i64 0)
     ; nop
