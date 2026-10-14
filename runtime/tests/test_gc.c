@@ -17,7 +17,7 @@ static obj_ptr make_mono_ref_object(size_t length, CyclicFlag cyclic)
 {
     object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
+        Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
@@ -26,7 +26,7 @@ static obj_ptr make_trackable_object(size_t length)
     object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header
         = syli_object_make_header(Zone_GcLocal, Cyclic, Type_MonoRef,
-            (ObjectImmutableFlag)(Flag_HasPointers | Flag_Traceable), payload);
+            (ObjectImmutableFlag)(Flag_HasPointers | Flag_Traceable), GC_UNIT_SHIFT_I64, payload);
     return syli_rt_ownership_alloc_object(header, 1, length);
 }
 

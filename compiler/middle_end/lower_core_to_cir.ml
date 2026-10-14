@@ -473,8 +473,8 @@ let rec occurrence_ty (ctx : ctx) (occ : PM.occurrence) : ctx * C.ty =
       let ctx = { ctx with occ_types = IntMap.add occ.PM.id t ctx.occ_types } in
       (ctx, t)
 
-let emit_object_get ?(obj_tag : int option) (ctx : ctx) (obj : I.var)
-    (idx : int) (value_ty : I.ty) : ctx * I.var =
+let emit_object_get (obj_tag : int option) (ctx : ctx) (obj : I.var) (idx : int)
+    (value_ty : I.ty) : ctx * I.var =
   let ctx, dst = fresh_var ctx value_ty in
   let projection : I.projection =
     match obj_tag with
@@ -511,7 +511,7 @@ let rec materialize_occ (ctx : ctx) (occ : PM.occurrence) : ctx * I.var =
               let ctx, occ_ty = occurrence_ty ctx occ in
               let value_ty = mk_ir_ty ctx.type_defs occ_ty in
               emit_object_get
-                ?obj_tag:(payload_tag_of_occ ctx occ)
+                (payload_tag_of_occ ctx occ)
                 ctx parent_var 0 value_ty
         | PM.Occ_Field (parent, idx) | PM.Occ_Tuple (parent, idx) ->
             let ctx, parent_var = materialize_occ ctx parent in
@@ -522,7 +522,7 @@ let rec materialize_occ (ctx : ctx) (occ : PM.occurrence) : ctx * I.var =
                 payload_tag_of_occ ctx parent
               else None
             in
-            emit_object_get ?obj_tag ctx parent_var idx value_ty
+            emit_object_get obj_tag ctx parent_var idx value_ty
       in
       let ctx =
         {

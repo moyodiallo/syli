@@ -72,6 +72,11 @@ typedef uint32_t object_payload_t;
 #define GC_CYCLIC_MUTABLE_MASK  (0x1ULL << 47) // bit 47 (mutable cyclic)
 #define GC_UNIT_SHIFT_BITS      43
 #define GC_UNIT_MASK            (0xFULL << GC_UNIT_SHIFT_BITS) // bits 46-43
+/* Unit shift encodes the element cell width (header bits 46-43). */
+#define GC_UNIT_SHIFT_I8        0
+#define GC_UNIT_SHIFT_I16       1
+#define GC_UNIT_SHIFT_I32       2
+#define GC_UNIT_SHIFT_I64       3
 #define GC_VARIANT_SHIFT        48
 #define GC_VARIANT_FLAGS_MASK   (0xFFULL << GC_VARIANT_SHIFT) // bits 55-48
 #define GC_IMMUTABLE_FLAGS_MASK (0x3ULL << 57) // bits 58-57
@@ -129,7 +134,7 @@ typedef struct Object {
  * Header Construction
  * ============================================================ */
 
-static inline uint64_t syli_object_make_header_ex(ObjectZone zone,
+static inline uint64_t syli_object_make_header(ObjectZone zone,
     CyclicFlag cyclic, ObjectType type, ObjectImmutableFlag imm_flags,
     unsigned unit_shift, object_payload_t payload)
 {
@@ -138,20 +143,12 @@ static inline uint64_t syli_object_make_header_ex(ObjectZone zone,
     assert(cyclic == Cyclic || cyclic == Acyclic);
     assert(type == Type_MonoImm || type == Type_MonoRef
         || type == Type_MixedOrder || type == Type_MixedBitmap);
-    assert(unit_shift <= 3);
+    assert(unit_shift <= GC_UNIT_SHIFT_I64);
 
     return ((uint64_t)zone | (uint64_t)cyclic | (uint64_t)type
         | (uint64_t)imm_flags
         | ((uint64_t)(unit_shift & 0xF) << GC_UNIT_SHIFT_BITS)
         | ((uint64_t)payload & GC_PAYLOAD_MASK));
-}
-
-static inline uint64_t syli_object_make_header(ObjectZone zone,
-    CyclicFlag cyclic, ObjectType type, ObjectImmutableFlag imm_flags,
-    object_payload_t payload)
-{
-    return syli_object_make_header_ex(
-        zone, cyclic, type, imm_flags, 3, payload);
 }
 
 static inline uint32_t syli_object_make_mono_payload(size_t length)

@@ -63,9 +63,8 @@ let annotate_function (fn : function_oir) : function_oir =
   let live_map = analyze fn in
   let var_map = build_var_map fn in
   let release_tmp_counter = ref 0 in
-  let mk_release_tmp_value_statement
-      (build_get : var -> projection -> ty -> rvalue_node) (obj : var)
-      (projection : projection) (value_ty : ty) =
+  let mk_get_release_tmp (obj : var) (projection : projection) (value_ty : ty) :
+      var * statement =
     incr release_tmp_counter;
     let dst =
       {
@@ -74,37 +73,24 @@ let annotate_function (fn : function_oir) : function_oir =
         ty = value_ty;
       }
     in
-    let stmt =
+    let rvalue : rvalue =
       {
         id = fresh_id ();
         node =
-          OR_Assign
+          OR_Object_get
             {
-              dst;
-              rvalue =
-                {
-                  id = fresh_id ();
-                  node = build_get obj projection value_ty;
-                  ty = value_ty;
-                };
+              obj = OR_OVar obj;
+              projection;
+              value_ty;
+              ownership_get = OR_Ownership_transfer;
             };
         ty = value_ty;
       }
     in
+    let stmt =
+      { id = fresh_id (); node = OR_Assign { dst; rvalue }; ty = value_ty }
+    in
     (dst, stmt)
-  in
-  let mk_get_release_tmp_value_statement (obj : var) (projection : projection)
-      (value_ty : ty) =
-    mk_release_tmp_value_statement
-      (fun obj projection value_ty ->
-        OR_Object_get
-          {
-            obj = OR_OVar obj;
-            projection;
-            value_ty;
-            ownership_get = OR_Ownership_transfer;
-          })
-      obj projection value_ty
   in
   let blocks =
     List.map
@@ -183,8 +169,7 @@ let annotate_function (fn : function_oir) : function_oir =
                           | _ -> IntSet.empty
                       in
                       let old_var, old_stmt =
-                        mk_get_release_tmp_value_statement obj projection
-                          value_ty
+                        mk_get_release_tmp obj projection value_ty
                       in
                       ( [
                           old_stmt;

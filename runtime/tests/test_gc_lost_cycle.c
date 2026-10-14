@@ -19,7 +19,7 @@ static obj_ptr make_cons(obj_ptr tail)
 {
     object_payload_t payload = syli_object_make_bitmap_payload(2, 0x1);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     header |= GC_CYCLIC_MUTABLE_MASK;
     obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, 2);
     Object* o      = syli_object_of_obj_ptr(obj);
@@ -40,7 +40,7 @@ static obj_ptr make_plain_cons(obj_ptr tail)
 {
     object_payload_t payload = syli_object_make_bitmap_payload(2, 0x1);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, 2);
     Object* o      = syli_object_of_obj_ptr(obj);
     uint64_t* data = syli_object_data(o);
@@ -54,7 +54,7 @@ static obj_ptr make_two_refs(obj_ptr a, obj_ptr b)
 {
     object_payload_t payload = syli_object_make_bitmap_payload(2, 0x3);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     header |= GC_CYCLIC_MUTABLE_MASK;
     obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, 2);
     Object* o      = syli_object_of_obj_ptr(obj);

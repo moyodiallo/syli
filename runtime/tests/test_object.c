@@ -20,7 +20,7 @@ void test_object_allocation()
     object_payload_t payload = syli_object_make_mono_payload(length);
 
     object_header_t header = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, payload);
 
     uint64_t meta_ref_count = make_meta_refcount(
         Meta_Flags_Cyclic_Candidate, syli_state.tracing_current_bit_mark);
@@ -53,7 +53,7 @@ void test_object_allocation_and_refcounting()
     object_payload_t payload = syli_object_make_mono_payload(length);
 
     object_header_t header = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, payload);
 
     uint64_t meta_ref_count = make_meta_refcount(
         Meta_Flags_Cyclic_Candidate, syli_state.tracing_current_bit_mark);
@@ -104,7 +104,7 @@ void test_object_meta_flags()
     object_payload_t payload = syli_object_make_mono_payload(length);
 
     object_header_t header = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, payload);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, payload);
 
     uint64_t meta_ref_count
         = make_meta_refcount(Meta_Flags_Children_Released | Meta_Flags_Tracing,

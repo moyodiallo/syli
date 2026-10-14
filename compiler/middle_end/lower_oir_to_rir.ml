@@ -438,8 +438,8 @@ let lower_terminator (ctx : ctx) (term : Oir.terminator) : ctx * Rir.terminator
   in
   (ctx, { id = fresh_global_id (); node })
 
-let alloc_call ~(header : Rir.operand) (dst' : Rir.var) (length : Rir.operand)
-    ~(ret_ty : Rir.ty) : Rir.runtime_call =
+let alloc_call ~(header : Rir.operand) (length : Rir.operand) ~(ret_ty : Rir.ty)
+    : Rir.runtime_call =
   {
     fn_name = RR_RT_object_alloc;
     args = [ header; int_operand 1; length ];
@@ -451,15 +451,13 @@ let alloc_call_stmt (dst' : Rir.var) (call : Rir.runtime_call) (ty : Rir.ty) :
   { id = fresh_global_id (); node = RR_Runtime_call { dst = dst'; call }; ty }
 
 let runtime_call_of_object_create ctx (dst : Oir.var) (dst' : Rir.var)
-    (length : Rir.operand) ~(stmt_ty : Oir.ty) : ctx * Rir.statement list =
+    (length : Rir.operand) (stmt_ty : Oir.ty) : ctx * Rir.statement list =
   let ret_ty = lower_ty dst.ty in
-  let call =
-    alloc_call ~header:(header_operand_of_obj dst.ty) dst' length ~ret_ty
-  in
+  let call = alloc_call ~header:(header_operand_of_obj dst.ty) length ~ret_ty in
   (ctx, [ alloc_call_stmt dst' call (lower_ty stmt_ty) ])
 
 let runtime_call_of_array_object_create ctx (dst : Oir.var) (dst' : Rir.var)
-    (length : Rir.operand) ~(stmt_ty : Oir.ty) : ctx * Rir.statement list =
+    (length : Rir.operand) (stmt_ty : Oir.ty) : ctx * Rir.statement list =
   let ret_ty = lower_ty dst.ty in
   let base = header_operand_of_obj dst.ty in
   let hdr_ty = i64_ty () in
@@ -482,7 +480,7 @@ let runtime_call_of_array_object_create ctx (dst : Oir.var) (dst' : Rir.var)
       ty = hdr_ty;
     }
   in
-  let call = alloc_call ~header:(RR_OVar hdr_var) dst' length ~ret_ty in
+  let call = alloc_call ~header:(RR_OVar hdr_var) length ~ret_ty in
   (ctx, [ assign; alloc_call_stmt dst' call (lower_ty stmt_ty) ])
 
 let oir_is_ptr (t : Oir.ir_type) : bool =
@@ -794,9 +792,8 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
         | _ -> false
       in
       if is_array then
-        runtime_call_of_array_object_create ctx dst dst' length'
-          ~stmt_ty:stmt.ty
-      else runtime_call_of_object_create ctx dst dst' length' ~stmt_ty:stmt.ty
+        runtime_call_of_array_object_create ctx dst dst' length' stmt.ty
+      else runtime_call_of_object_create ctx dst dst' length' stmt.ty
   | OR_Call { dst; target; args } ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, target' = lower_call_target ctx target in

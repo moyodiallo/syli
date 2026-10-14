@@ -31,7 +31,7 @@ static obj_ptr make_object(ObjectZone zone, CyclicFlag cyclic, ObjectType type,
     }
 
     object_header_t header
-        = syli_object_make_header(zone, cyclic, type, imm_flags, payload);
+        = syli_object_make_header(zone, cyclic, type, imm_flags, GC_UNIT_SHIFT_I64, payload);
     return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
@@ -66,7 +66,7 @@ static void test_rt_rc_alloc_object(void)
 
     object_payload_t order_payload = syli_object_make_order_payload(2, 1);
     object_header_t order_header   = syli_object_make_header(Zone_GcLocal,
-        Acyclic, Type_MixedOrder, Flag_HasPointers, order_payload);
+        Acyclic, Type_MixedOrder, Flag_HasPointers, GC_UNIT_SHIFT_I64, order_payload);
     obj_ptr mixed = syli_rt_ownership_alloc_object(order_header, 5, 3);
     assert(mixed != NULL);
     Object* m = syli_object_of_obj_ptr(mixed);
@@ -76,7 +76,7 @@ static void test_rt_rc_alloc_object(void)
 
     object_payload_t bitmap_payload = syli_object_make_bitmap_payload(4, 0b101);
     object_header_t bitmap_header   = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MixedBitmap, Flag_None, bitmap_payload);
+        Zone_GcLocal, Acyclic, Type_MixedBitmap, Flag_None, GC_UNIT_SHIFT_I64, bitmap_payload);
     obj_ptr bitmap = syli_rt_ownership_alloc_object(bitmap_header, 1, 4);
     assert(bitmap != NULL);
     Object* b = syli_object_of_obj_ptr(bitmap);
@@ -115,7 +115,7 @@ static void test_rt_object_incr_decr(void)
 
     Object static_obj;
     static_obj.header_word = syli_object_make_header(
-        Zone_Static, Acyclic, Type_MonoImm, Flag_None, 0);
+        Zone_Static, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
 
     uint64_t before_header = static_obj.header_word;
     syli_rt_object_incr(&static_obj);
@@ -155,7 +155,7 @@ static void test_rt_object_decr_n(void)
 
     Object static_obj;
     static_obj.header_word = syli_object_make_header(
-        Zone_Static, Acyclic, Type_MonoImm, Flag_None, 0);
+        Zone_Static, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
     uint64_t before_header = static_obj.header_word;
     syli_rt_object_decr_n(&static_obj, 5);
     assert(static_obj.header_word == before_header);
@@ -173,7 +173,7 @@ static void test_rt_get_object_tag(void)
 
     uint64_t variant_tag  = (uint64_t)0xAB;
     object_header_t header = syli_object_make_header(Zone_GcLocal, Acyclic,
-        Type_MonoImm, Flag_None, syli_object_make_mono_payload(0));
+        Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, syli_object_make_mono_payload(0));
     header |= variant_tag << GC_VARIANT_SHIFT;
 
     obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, 0);
@@ -184,7 +184,7 @@ static void test_rt_get_object_tag(void)
 
     object_header_t header_no_variant
         = syli_object_make_header(Zone_GcLocal, Acyclic, Type_MonoRef,
-            Flag_HasPointers, syli_object_make_mono_payload(0));
+            Flag_HasPointers, GC_UNIT_SHIFT_I64, syli_object_make_mono_payload(0));
     obj_ptr no_variant
         = syli_rt_ownership_alloc_object(header_no_variant, 1, 0);
     assert(no_variant != NULL);
@@ -225,7 +225,7 @@ static void test_rt_get_object_length(void)
     {
         object_payload_t order_payload = syli_object_make_order_payload(3, 2);
         object_header_t order_header   = syli_object_make_header(Zone_GcLocal,
-            Acyclic, Type_MixedOrder, Flag_HasPointers, order_payload);
+            Acyclic, Type_MixedOrder, Flag_HasPointers, GC_UNIT_SHIFT_I64, order_payload);
         obj_ptr mixed = syli_rt_ownership_alloc_object(order_header, 1, 5);
         assert(mixed != NULL);
         assert(syli_rt_get_object_length(syli_object_of_obj_ptr(mixed)) == 5);
@@ -236,7 +236,7 @@ static void test_rt_get_object_length(void)
         object_payload_t bitmap_payload
             = syli_object_make_bitmap_payload(4, 0xF);
         object_header_t bitmap_header = syli_object_make_header(Zone_GcLocal,
-            Acyclic, Type_MixedBitmap, Flag_HasPointers, bitmap_payload);
+            Acyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, bitmap_payload);
         obj_ptr bitmap = syli_rt_ownership_alloc_object(bitmap_header, 1, 4);
         assert(bitmap != NULL);
         assert(syli_rt_get_object_length(syli_object_of_obj_ptr(bitmap)) == 4);
@@ -267,8 +267,8 @@ static void test_rt_get_object_size(void)
     {
         /* An i8-celled (unit shift 0) object: 3 slots = 3 bytes. */
         object_payload_t payload = syli_object_make_mono_payload(3);
-        object_header_t header = syli_object_make_header_ex(
-            Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0, payload);
+        object_header_t header = syli_object_make_header(
+            Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I8, payload);
         obj_ptr packed = syli_rt_ownership_alloc_object(header, 1, 3);
         assert(packed != NULL);
         assert(syli_object_unit_shift(syli_object_of_obj_ptr(packed)) == 0);
@@ -430,7 +430,7 @@ static void test_rt_object_notify_mutation(void)
 
         Object static_obj;
         static_obj.header_word = syli_object_make_header(
-            Zone_Static, Acyclic, Type_MonoImm, Flag_None, 0);
+            Zone_Static, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
 
         obj_ptr target
             = make_object(Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 1);
@@ -512,7 +512,7 @@ static void test_rt_object_notify_mutation(void)
 
         Object static_obj;
         static_obj.header_word = syli_object_make_header(
-            Zone_Static, Acyclic, Type_MonoImm, Flag_None, 0);
+            Zone_Static, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
 
         obj_ptr target
             = make_object(Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 1);

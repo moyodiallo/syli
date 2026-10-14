@@ -33,7 +33,7 @@ let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
 let lltype_of_ty (t : Rir.ty) : lltype = lltype_of_ir_type t.ty
 let lltype_of_var (v : Rir.var) : lltype = lltype_of_ty v.ty
 
-(** LLVM integer type for an object slot cell, given its log2-byte shift. *)
+(** LLVM integer type for an object slot cell *)
 let lltype_of_cell_shift (shift : int) : lltype =
   match shift with
   | 0 -> LV_I8
