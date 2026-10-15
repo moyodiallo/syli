@@ -162,8 +162,6 @@ and expr_desc =
   | Exp_VariantConstructor of { name : ident; arg : expr option }
   | Exp_ArrayLit of expr list
   | Exp_ArrayAlloc of { size : expr; init : expr }
-  | Exp_Index of { array : expr; index : expr }
-  | Exp_IndexSet of { array : expr; index : expr; value : expr }
   | Exp_Lambda of lambda
   | Exp_Apply of { closure_fun : expr; args : expr list }
   | Exp_Let of letdef

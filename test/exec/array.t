@@ -1,6 +1,7 @@
 Array literal + index get:
   $ cat >test_arr.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let main () =
   >   let a = [| 10; 20; 30 |]
   >   syli_print_i64 (a.[1])
@@ -13,6 +14,8 @@ Array literal + index get:
 Array index set:
   $ cat >test_arr.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
+  > primitive (index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
   > let main () =
   >   let a = [| 1; 2; 3 |]
   >   a.[0] := 99
@@ -27,6 +30,7 @@ Array allocation with an initializer function:
   $ cat >test_arr.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > primitive (+) : i64 -> i64 -> i64 = "add"
+  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let main () =
   >   let a = [| 4: fun i -> i + 1 |]
   >   syli_print_i64 (a.[2])
@@ -41,6 +45,7 @@ Recursively print every element:
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
   > primitive (+) : i64 -> i64 -> i64 = "add"
   > primitive (<) : i64 -> i64 -> bool = "lt"
+  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let rec print_arr a i n =
   >   if i < n then
   >     syli_print_i64 (a.[i])
@@ -59,6 +64,7 @@ Recursively print every element:
 Allocate using a named function as the initializer:
   $ cat >test_arr.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let f i = i
   > let arr = [| 20: f |]
   > let main () =
@@ -72,6 +78,7 @@ Allocate using a named function as the initializer:
 Allocation size from a variable:
   $ cat >test_arr.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let f i = i
   > let n = 20
   > let arr = [| n: f |]

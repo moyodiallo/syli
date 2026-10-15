@@ -31,13 +31,6 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | CExp_ArrayAlloc { size; init } ->
       let acc'' = v.expr v acc' size in
       v.expr v acc'' init
-  | CExp_Index { array; index } ->
-      let acc'' = v.expr v acc' array in
-      v.expr v acc'' index
-  | CExp_IndexSet { array; index; value } ->
-      let acc'' = v.expr v acc' array in
-      let acc''' = v.expr v acc'' index in
-      v.expr v acc''' value
   | CExp_Tuple exprs -> List.fold_left (v.expr v) acc' exprs
   | CExp_Record fields ->
       List.fold_left

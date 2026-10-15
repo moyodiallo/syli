@@ -110,11 +110,6 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ " |]"
   | Exp_ArrayAlloc { size; init } ->
       "[| " ^ string_of_expr ~ind size ^ ": " ^ string_of_expr ~ind init ^ " |]"
-  | Exp_Index { array; index } ->
-      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "]"
-  | Exp_IndexSet { array; index; value } ->
-      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "] := "
-      ^ string_of_expr ~ind value
   | Exp_Lambda { params; body; ret_ty; _ } ->
       let params_str = String.concat ", " (List.map string_of_param params) in
       let ret_str =

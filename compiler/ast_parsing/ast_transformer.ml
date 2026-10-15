@@ -87,15 +87,6 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
     | Exp_ArrayLit elements -> Exp_ArrayLit (List.map (t.expr t) elements)
     | Exp_ArrayAlloc { size; init } ->
         Exp_ArrayAlloc { size = t.expr t size; init = t.expr t init }
-    | Exp_Index { array; index } ->
-        Exp_Index { array = t.expr t array; index = t.expr t index }
-    | Exp_IndexSet { array; index; value } ->
-        Exp_IndexSet
-          {
-            array = t.expr t array;
-            index = t.expr t index;
-            value = t.expr t value;
-          }
     | Exp_Lambda lam -> Exp_Lambda (transform_lambda t lam)
     | Exp_Apply { closure_fun; args } ->
         Exp_Apply

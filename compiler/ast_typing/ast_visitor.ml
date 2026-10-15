@@ -62,13 +62,6 @@ let rec visit_expr_children (v : 'acc visitor) (acc : 'acc) (e : expr) : 'acc =
   | TExp_ArrayAlloc { size; init } ->
       let acc = v.expr v acc size in
       v.expr v acc init
-  | TExp_Index { array; index } ->
-      let acc = v.expr v acc array in
-      v.expr v acc index
-  | TExp_IndexSet { array; index; value } ->
-      let acc = v.expr v acc array in
-      let acc = v.expr v acc index in
-      v.expr v acc value
   | TExp_Lambda lam -> visit_lambda v acc lam
   | TExp_Apply { closure_fun; args } ->
       let acc = v.expr v acc closure_fun in

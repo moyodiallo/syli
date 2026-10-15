@@ -98,7 +98,7 @@ signature_item_desc:
       in
       mk_signature_external_value $startpos $endpos name value_ty ext_ident
     }
-  | PRIMITIVE name = fn_operator_or_fn_name COLON value_ty = ty EQ symbol = symbol
+  | PRIMITIVE name = primitive_name COLON value_ty = ty EQ symbol = symbol
     {
       let symbol_name, startpos, endpos = symbol in
       match Primitives.find_primitive symbol_name with
@@ -141,7 +141,7 @@ structure_item_desc:
       in
       mk_structure_external_value $startpos $endpos name value_ty ext_ident
     }
-  | PRIMITIVE name = fn_operator_or_fn_name COLON value_ty = ty EQ symbol = symbol
+  | PRIMITIVE name = primitive_name COLON value_ty = ty EQ symbol = symbol
     {
       let symbol_name, startpos, endpos = symbol in
       match Primitives.find_primitive symbol_name with
@@ -349,6 +349,14 @@ args:
         failwith "defining operator should be in ( ) like (==)"
       else mk_ident $startpos $endpos $1 }
 
+%inline primitive_name:
+  | LPAREN operator RPAREN { mk_ident ~is_operator:true $startpos $endpos $2 }
+  | LPAREN IDENT RPAREN    { mk_ident $startpos $endpos $2 }
+  | IDENT
+    { if check_operator $1 then
+        failwith "defining operator should be in ( ) like (==)"
+      else mk_ident $startpos $endpos $1 }
+
 %inline uident:
   | UIDENT { mk_ident $startpos $endpos $1 }
 
@@ -466,10 +474,19 @@ simple_expr:
   | operation  { $1 }
   | expr_variant  { $1 }
   | expr DOT LBRACKET expr RBRACKET
-    { mk_expr $startpos $endpos (Exp_Index { array = $1; index = $4 }) }
+    { let closure =
+        mk_expr $startpos $endpos
+          (Exp_Ident (mk_ident $startpos $endpos "index_get"))
+      in
+      mk_expr $startpos $endpos
+        (Exp_Apply { closure_fun = closure; args = [ $1; $4 ] }) }
   | expr DOT LBRACKET expr RBRACKET COLONEQ expr
-    { mk_expr $startpos $endpos
-        (Exp_IndexSet { array = $1; index = $4; value = $7 }) }
+    { let closure =
+        mk_expr $startpos $endpos
+          (Exp_Ident (mk_ident $startpos $endpos "index_set"))
+      in
+      mk_expr $startpos $endpos
+        (Exp_Apply { closure_fun = closure; args = [ $1; $4; $7 ] }) }
   | expr DOT IDENT
     { let ident = mk_ident $startpos $endpos $3 in
       mk_expr $startpos $endpos

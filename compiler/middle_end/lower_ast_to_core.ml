@@ -247,21 +247,6 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
               init = fst (desugar_expr env init);
             },
           env )
-    | TExp_Index { array; index } ->
-        ( CExp_Index
-            {
-              array = fst (desugar_expr env array);
-              index = fst (desugar_expr env index);
-            },
-          env )
-    | TExp_IndexSet { array; index; value } ->
-        ( CExp_IndexSet
-            {
-              array = fst (desugar_expr env array);
-              index = fst (desugar_expr env index);
-              value = fst (desugar_expr env value);
-            },
-          env )
     | TExp_Lambda l ->
         let l = (l : Typed_ast.lambda) in
         let params, env_params = desugar_lambda_params env l.params in
