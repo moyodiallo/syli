@@ -26,14 +26,21 @@ let vars_of_operand (op : operand) : IntSet.t =
   | OR_OVar v when is_ref_ty v.ty -> IntSet.singleton v.id
   | _ -> IntSet.empty
 
+let vars_of_projection (p : projection) : IntSet.t =
+  match p with
+  | OR_Project_field _ -> IntSet.empty
+  | OR_Project_array index -> vars_of_operand index
+  | OR_Project_variant _ -> IntSet.empty
+
 let vars_of_rvalue (rv : rvalue) : IntSet.t =
   match rv.node with
   | OR_BinOp { lhs; rhs } ->
       IntSet.union (vars_of_operand lhs) (vars_of_operand rhs)
   | OR_UnOp { operand } -> vars_of_operand operand
-  | OR_Object_get { obj; field_idx } ->
-      IntSet.union (vars_of_operand obj) (vars_of_operand field_idx)
+  | OR_Object_get { obj; projection; _ } ->
+      IntSet.union (vars_of_operand obj) (vars_of_projection projection)
   | OR_Object_length { obj } -> vars_of_operand obj
+  | OR_Object_size { obj } -> vars_of_operand obj
   | OR_Object_get_tag { obj } -> vars_of_operand obj
   | OR_Cast { src } -> vars_of_operand src
   | OR_Move { src } -> vars_of_operand src
@@ -42,11 +49,11 @@ let vars_of_rvalue (rv : rvalue) : IntSet.t =
 let ref_use_of_stmt (stmt : statement) : IntSet.t =
   match stmt.node with
   | OR_Assign { rvalue; _ } -> vars_of_rvalue rvalue
-  | OR_Object_set { obj; field_idx; value; _ } ->
+  | OR_Object_set { obj; projection; value; _ } ->
       IntSet.union
         (vars_of_operand (OR_OVar obj))
-        (IntSet.union (vars_of_operand field_idx) (vars_of_operand value))
-  | OR_Object_create { size; _ } -> vars_of_operand size
+        (IntSet.union (vars_of_projection projection) (vars_of_operand value))
+  | OR_Object_create { length; _ } -> vars_of_operand length
   | OR_Call { args; _ } ->
       List.fold_left
         (fun s a -> IntSet.union s (vars_of_operand a.operand))

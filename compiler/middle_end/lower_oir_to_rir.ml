@@ -69,7 +69,9 @@ let is_reference_ty = function
 (*   Bit  57:    HasPointers                                     *)
 (*   Bit  56:    Traceable                                       *)
 (*   Bits 55-48: Variant tag (8 bits)                            *)
-(*   Bit  47:    Cyclic mutable                                 *)
+(*   Bit  47:    Cyclic mutable                                  *)
+(*   Bits 46-43: Unit shift (4 bits)                             *)
+(*   Bits 42-32: Reserved                                        *)
 (*   Bits 31-0:  Payload (32 bits)                               *)
 (* ------------------------------------------------------------- *)
 
@@ -80,6 +82,7 @@ let has_pointers_shift = 57
 let tracing_shift = 56
 let variant_tag_shift = 48
 let cyclic_mutable_shift = 47
+let unit_shift_shift = 43
 
 (** ObjectType values as 2-bit fields. 00 = mono_imm, 01 = mono_ref, 10 =
     mixed_order, 11 = mixed_bitmap *)
@@ -116,7 +119,7 @@ let ptr_and_imm_counts (field_types : ty list) : int * int =
 (** Assemble the full 64-bit header word using bitwise OR. *)
 let make_header ~(zone : int64) ~(cyclic : int64) ~(cyclic_mutable : int64)
     ~(obj_type : int64) ~(has_pointers : bool) ~(traceable : int64)
-    ~(variant_tag : int64) (payload : int64) : int64 =
+    ~(variant_tag : int64) ~(unit_shift : int) (payload : int64) : int64 =
   let zone_bits = Int64.shift_left zone zone_shift in
   let cyclic_bits = Int64.shift_left cyclic cyclic_shift in
   let cyclic_mutable_bits =
@@ -127,6 +130,9 @@ let make_header ~(zone : int64) ~(cyclic : int64) ~(cyclic_mutable : int64)
     if has_pointers then Int64.shift_left 1L has_pointers_shift else 0L
   in
   let traceable_bit = Int64.shift_left traceable tracing_shift in
+  let unit_bits =
+    Int64.shift_left (Int64.of_int (unit_shift land 0xF)) unit_shift_shift
+  in
   let payload_bits = Int64.logand payload 0xFFFFFFFFL in
   let header = Int64.logor zone_bits cyclic_bits in
   let header = Int64.logor header cyclic_mutable_bits in
@@ -134,6 +140,7 @@ let make_header ~(zone : int64) ~(cyclic : int64) ~(cyclic_mutable : int64)
   let header = Int64.logor header has_pointers_bit in
   let header = Int64.logor header traceable_bit in
   let header = Int64.logor header variant_tag in
+  let header = Int64.logor header unit_bits in
   Int64.logor header payload_bits
 
 (** Classify a homogeneous field list (all fields are same kind: all refs or all
@@ -184,7 +191,6 @@ let fields_are_ordered (field_types : ty list) : bool =
          else (ordered, true))
        (true, false) field_types)
 
-(** Determine whether any field is a pointer/reference type. *)
 let has_pointer_fields (field_types : ty list) : bool =
   List.exists (fun (f : Rir.ty) -> is_reference_ty f.ty) field_types
 
@@ -228,34 +234,79 @@ let rec lower_ir_type (t : Oir.ir_type) : Rir.ir_type =
 let lower_ty (t : Oir.ty) : Rir.ty =
   { id = fresh_global_id (); ty = lower_ir_type t.ir_type }
 
+let default_shift = 3
+
+let cell_shift_of_ir_type (t : Oir.ir_type) : int =
+  match t with
+  | Oir.OR_I8 | Oir.OR_U8 | Oir.OR_Char | Oir.OR_Bool -> 0
+  | Oir.OR_I16 | Oir.OR_U16 -> 1
+  | Oir.OR_I32 | Oir.OR_U32 | Oir.OR_F32 -> 2
+  | _ -> default_shift
+
+(** Choose the widest cell shift over all shift fields.
+
+    TODO: introduce the re-ordering of the fields instead of choosing one size
+    for all the fields. the projection will be attached with the physical and
+    logical instead of logical only *)
+let max_cell_shift_of_fields (fields : Oir.record_field_ty list) : int =
+  match
+    List.map
+      (fun (f : Oir.record_field_ty) ->
+        cell_shift_of_ir_type f.field_ty.Oir.ir_type)
+      fields
+  with
+  | [] -> default_shift
+  | s :: rest -> List.fold_left (fun acc x -> if x > acc then x else acc) s rest
+
+let cell_shift_of_obj_kind (obj_kind : Oir.obj_kind) : int =
+  match obj_kind with
+  | Oir.OR_Array_kind { element_ty } ->
+      cell_shift_of_ir_type element_ty.Oir.ir_type
+  | Oir.OR_Record_kind { fields; _ } -> max_cell_shift_of_fields fields
+  | Oir.OR_Variant_kind { constructors } -> (
+      match constructors with
+      | [] -> default_shift
+      | [ c ] -> max_cell_shift_of_fields c.fields
+      | _ ->
+          failwith "cell_shift_of_obj_kind: variant with multiple constructors")
+
+let cell_shift_of_variant (t : Oir.ir_type) (tag : int) : int =
+  match t with
+  | Oir.OR_Obj { obj_kind = Oir.OR_Variant_kind { constructors }; _ } -> (
+      match
+        List.find_opt
+          (fun (c : Oir.variant_ctor_layout) -> c.tag = tag)
+          constructors
+      with
+      | Some c -> max_cell_shift_of_fields c.fields
+      | None -> default_shift)
+  | _ -> default_shift
+
 let header_operand_of_obj (obj_ty : Oir.ty) : operand =
   match obj_ty.ir_type with
-  | Oir.OR_Obj { obj_kind; tag_variant; cyclic_prop; _ } ->
+  | Oir.OR_Obj { obj_kind; cyclic_prop; _ } ->
       let zone = 0L in
       let cyclic = cyclic_bit_of_prop cyclic_prop in
       let cyclic_mutable = cyclic_mutable_bit_of_prop cyclic_prop in
       let traceable = traceable_bit_of_prop cyclic_prop in
-      let variant_tag = variant_tag_raw (Option.value tag_variant ~default:0) in
+      (* A variant object's kind lists exactly the constructor it was built
+         with; its tag goes into the header and its fields are the payload. *)
+      let ctor_fields, ctor_tag =
+        match obj_kind with
+        | Oir.OR_Variant_kind { constructors = [ c ] } -> (c.fields, c.tag)
+        | Oir.OR_Variant_kind _ ->
+            failwith "header_operand_of_obj: variant with multiple constructors"
+        | _ -> ([], 0)
+      in
+      let variant_tag = variant_tag_raw ctor_tag in
       let field_types =
         match obj_kind with
         | Oir.OR_Record_kind { fields; _ } ->
             fields
             |> List.map (fun (f : Oir.record_field_ty) -> lower_ty f.field_ty)
         | Oir.OR_Array_kind { element_ty } -> [ lower_ty element_ty ]
-        | Oir.OR_Variant_kind { constructors } ->
-            let fields =
-              match tag_variant with
-              | Some tag -> (
-                  match
-                    List.find_opt
-                      (fun (c : Oir.variant_ctor_layout) -> c.tag = tag)
-                      constructors
-                  with
-                  | Some c -> c.fields
-                  | None -> [])
-              | None -> []
-            in
-            fields
+        | Oir.OR_Variant_kind _ ->
+            ctor_fields
             |> List.map (fun (f : Oir.record_field_ty) -> lower_ty f.field_ty)
       in
       let has_pointers = has_pointer_fields field_types in
@@ -267,10 +318,15 @@ let header_operand_of_obj (obj_ty : Oir.ty) : operand =
               classify_ordered_fields field_types
             else classify_bitmap_fields field_types
       in
-      let payload_val = encode_payload payload in
+      let payload_val =
+        match obj_kind with
+        | Oir.OR_Array_kind _ -> 0L
+        | _ -> encode_payload payload
+      in
+      let unit_shift = cell_shift_of_obj_kind obj_kind in
       let header =
         make_header ~zone ~cyclic ~cyclic_mutable ~obj_type ~has_pointers
-          ~traceable ~variant_tag payload_val
+          ~traceable ~variant_tag ~unit_shift payload_val
       in
       int64_operand header
   | _ -> failwith "OR_Object_create dst must have an OR_Obj structural type"
@@ -382,17 +438,51 @@ let lower_terminator (ctx : ctx) (term : Oir.terminator) : ctx * Rir.terminator
   in
   (ctx, { id = fresh_global_id (); node })
 
-let runtime_call_of_object_create (dst : Oir.var) (size : Rir.operand) :
-    Rir.runtime_call =
-  let header = header_operand_of_obj dst.ty in
+let alloc_call ~(header : Rir.operand) (length : Rir.operand) ~(ret_ty : Rir.ty)
+    : Rir.runtime_call =
   {
     fn_name = RR_RT_object_alloc;
-    args = [ header; int_operand 1; size ];
-    ret_ty = Some (lower_ty dst.ty);
+    args = [ header; int_operand 1; length ];
+    ret_ty = Some ret_ty;
   }
 
-(* Whether an OIR type is represented as an LLVM pointer at the codegen
-   boundary (so an i64 <-> that type cast needs inttoptr/ptrtoint). *)
+let alloc_call_stmt (dst' : Rir.var) (call : Rir.runtime_call) (ty : Rir.ty) :
+    Rir.statement =
+  { id = fresh_global_id (); node = RR_Runtime_call { dst = dst'; call }; ty }
+
+let runtime_call_of_object_create ctx (dst : Oir.var) (dst' : Rir.var)
+    (length : Rir.operand) (stmt_ty : Oir.ty) : ctx * Rir.statement list =
+  let ret_ty = lower_ty dst.ty in
+  let call = alloc_call ~header:(header_operand_of_obj dst.ty) length ~ret_ty in
+  (ctx, [ alloc_call_stmt dst' call (lower_ty stmt_ty) ])
+
+let runtime_call_of_array_object_create ctx (dst : Oir.var) (dst' : Rir.var)
+    (length : Rir.operand) (stmt_ty : Oir.ty) : ctx * Rir.statement list =
+  let ret_ty = lower_ty dst.ty in
+  let base = header_operand_of_obj dst.ty in
+  let hdr_ty = i64_ty () in
+  let hdr_var = fresh_var ctx "Sy_rir_hdr" hdr_ty in
+  (* the length could be dynamic (not known at compile time) *)
+  let assign : Rir.statement =
+    {
+      id = fresh_global_id ();
+      node =
+        RR_Assign
+          {
+            dst = hdr_var;
+            rvalue =
+              {
+                id = fresh_global_id ();
+                node = RR_BinOp { op = CR_Add; lhs = base; rhs = length };
+                ty = hdr_ty;
+              };
+          };
+      ty = hdr_ty;
+    }
+  in
+  let call = alloc_call ~header:(RR_OVar hdr_var) length ~ret_ty in
+  (ctx, [ assign; alloc_call_stmt dst' call (lower_ty stmt_ty) ])
+
 let oir_is_ptr (t : Oir.ir_type) : bool =
   match t with
   | Oir.OR_Obj _ | Oir.OR_Obj_Ptr | Oir.OR_String | Oir.OR_FnPtr -> true
@@ -402,6 +492,26 @@ let oir_operand_ir (op : Oir.operand) : Oir.ir_type =
   match op with
   | Oir.OR_OVar v -> v.ty.Oir.ir_type
   | Oir.OR_OConstant (_, ty) -> ty.Oir.ir_type
+
+let cell_shift_of_obj_operand (op : Oir.operand) : int =
+  match oir_operand_ir op with
+  | Oir.OR_Obj { obj_kind; _ } -> cell_shift_of_obj_kind obj_kind
+  | _ -> default_shift
+
+let projection_field_idx (ctx : ctx) (p : Oir.projection) : ctx * Rir.operand =
+  match p with
+  | Oir.OR_Project_field field_idx ->
+      (ctx, int64_operand (Int64.of_int field_idx))
+  | Oir.OR_Project_variant { field_idx; _ } ->
+      (ctx, int64_operand (Int64.of_int field_idx))
+  | Oir.OR_Project_array index -> lower_operand ctx index
+
+let cell_shift_of_projection (obj : Oir.operand) (p : Oir.projection) : int =
+  match p with
+  | Oir.OR_Project_field _ -> cell_shift_of_obj_operand obj
+  | Oir.OR_Project_array _ -> cell_shift_of_obj_operand obj
+  | Oir.OR_Project_variant { tag; _ } ->
+      cell_shift_of_variant (oir_operand_ir obj) tag
 
 let rir_cast_node ~(src : Rir.operand) ~(src_is_ptr : bool) (to_ty : Oir.ty) :
     Rir.rvalue_node =
@@ -422,19 +532,33 @@ let rvalue_of_oir (ctx : ctx) (rv : Oir.rvalue) : ctx * Rir.rvalue =
     | OR_UnOp { op; operand } ->
         let ctx, operand' = lower_operand ctx operand in
         (ctx, RR_UnOp { op = lower_unop op; operand = operand' })
-    | OR_Object_get { obj; field_idx; value_ty } ->
+    | OR_Object_get { obj; projection; value_ty } ->
         let ctx, obj' = lower_operand ctx obj in
-        let ctx, field_idx' = lower_operand ctx field_idx in
+        let ctx, field_idx' = projection_field_idx ctx projection in
+        let cell_shift = cell_shift_of_projection obj projection in
         ( ctx,
           RR_Object_load
-            { obj = obj'; field_idx = field_idx'; value_ty = lower_ty value_ty }
-        )
+            {
+              obj = obj';
+              field_idx = field_idx';
+              value_ty = lower_ty value_ty;
+              cell_shift;
+            } )
     | OR_Object_length { obj } ->
         let ctx, obj' = lower_operand ctx obj in
         ( ctx,
           RR_Runtime_call
             {
               fn_name = RR_RT_get_object_length;
+              args = [ obj' ];
+              ret_ty = Some rir_ty;
+            } )
+    | OR_Object_size { obj } ->
+        let ctx, obj' = lower_operand ctx obj in
+        ( ctx,
+          RR_Runtime_call
+            {
+              fn_name = RR_RT_get_object_size;
               args = [ obj' ];
               ret_ty = Some rir_ty;
             } )
@@ -543,11 +667,7 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
   | OR_Assign
       {
         dst;
-        rvalue =
-          {
-            node = Oir.OR_Object_get { obj; field_idx; value_ty; ownership_get };
-            _;
-          } as rv;
+        rvalue = { node = Oir.OR_Object_get { ownership_get; _ }; _ } as rv;
       }
     when is_var_ref dst
          && (ownership_get = OR_Ownership_own
@@ -597,10 +717,10 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set }
+  | OR_Object_set { obj; projection; value; value_ty; ownership_set }
     when is_ty_ref value_ty ->
       let ctx, obj' = lower_var ctx obj in
-      let ctx, field_idx' = lower_operand ctx field_idx in
+      let ctx, field_idx' = projection_field_idx ctx projection in
       let ctx, value' = lower_operand ctx value in
       let rir_ty = lower_ty value_ty in
       let tmp = fresh_var ctx "Sy_rir_tmp" rir_ty in
@@ -635,14 +755,16 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
                 field_idx = field_idx';
                 value = RR_OVar tmp;
                 value_ty = rir_ty;
+                cell_shift =
+                  cell_shift_of_projection (Oir.OR_OVar obj) projection;
               };
           ty = rir_ty;
         }
       in
       (ctx, [ share_stmt; store_stmt ])
-  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set } ->
+  | OR_Object_set { obj; projection; value; value_ty; ownership_set = _ } ->
       let ctx, obj' = lower_var ctx obj in
-      let ctx, field_idx' = lower_operand ctx field_idx in
+      let ctx, field_idx' = projection_field_idx ctx projection in
       let ctx, value' = lower_operand ctx value in
       ( ctx,
         [
@@ -655,23 +777,23 @@ let statement_of_oir (ctx : ctx) (stmt : Oir.statement) :
                   field_idx = field_idx';
                   value = value';
                   value_ty = lower_ty value_ty;
+                  cell_shift =
+                    cell_shift_of_projection (Oir.OR_OVar obj) projection;
                 };
             ty = lower_ty stmt.ty;
           };
         ] )
-  | OR_Object_create { dst; size } ->
+  | OR_Object_create { dst; length } ->
       let ctx, dst' = lower_var ctx dst in
-      let ctx, size' = lower_operand ctx size in
-      ( ctx,
-        [
-          {
-            id = fresh_global_id ();
-            node =
-              RR_Runtime_call
-                { dst = dst'; call = runtime_call_of_object_create dst size' };
-            ty = lower_ty stmt.ty;
-          };
-        ] )
+      let ctx, length' = lower_operand ctx length in
+      let is_array =
+        match dst.ty.Oir.ir_type with
+        | Oir.OR_Obj { obj_kind = Oir.OR_Array_kind _; _ } -> true
+        | _ -> false
+      in
+      if is_array then
+        runtime_call_of_array_object_create ctx dst dst' length' stmt.ty
+      else runtime_call_of_object_create ctx dst dst' length' stmt.ty
   | OR_Call { dst; target; args } ->
       let ctx, dst' = lower_var ctx dst in
       let ctx, target' = lower_call_target ctx target in

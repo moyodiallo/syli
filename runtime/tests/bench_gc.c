@@ -121,17 +121,17 @@ static double percentile_ns_sorted(const uint64_t* sorted, size_t n, double p)
         + ((double)sorted[hi] - (double)sorted[lo]) * frac;
 }
 
-static obj_ptr make_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_ref_object(size_t length, CyclicFlag cyclic)
 {
-    object_payload_t payload = syli_object_make_mono_payload(words);
+    object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
+        Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     if (cyclic == Cyclic) {
         header |= GC_CYCLIC_MUTABLE_MASK;
     }
-    obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, words);
+    obj_ptr obj = syli_rt_ownership_alloc_object(header, 1, length);
     Object* o   = syli_object_of_obj_ptr(obj);
-    memset(syli_object_data(o), 0, words * sizeof(uint64_t));
+    memset(syli_object_data(o), 0, length * sizeof(uint64_t));
     return obj;
 }
 
@@ -197,7 +197,7 @@ static CounterSnapshot take_counter_snapshot(void)
 
     s.total_traced       = syli_state.total_objects_traced;
     s.total_released     = syli_state.total_objects_released;
-    s.total_memory_freed = syli_state.total_objects_memory_freed;
+    s.total_memory_freed = syli_state.total_objects_freed;
 
     s.generation_tracing    = syli_state.generation_tracing;
     s.tracing_generations   = syli_state.tracing_generations;

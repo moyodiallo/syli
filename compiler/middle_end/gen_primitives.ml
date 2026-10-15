@@ -28,6 +28,14 @@ let binop_of_symbol (symbol : string) : I.binop option =
   | "ge" -> Some CR_Ge
   | _ -> None
 
+type unary_primitive = UArrayLen | UArraySize
+
+let unary_primitive_of_symbol (symbol : string) : unary_primitive option =
+  match symbol with
+  | "array_len" -> Some UArrayLen
+  | "array_size" -> Some UArraySize
+  | _ -> None
+
 let build_binop (type_defs : Type_lowering.type_entry StringMap.t)
     (name : string) (op : I.binop) (is_public : bool) (annotated_ty : C.ty) :
     I.function_cir =
@@ -91,11 +99,74 @@ let build_binop (type_defs : Type_lowering.type_entry StringMap.t)
     unit_param_indices = [];
   }
 
+let build_unary (type_defs : Type_lowering.type_entry StringMap.t)
+    (name : string) (kind : unary_primitive) (is_public : bool)
+    (annotated_ty : C.ty) : I.function_cir =
+  let param_ctys = Type_lowering.get_args_ty annotated_ty in
+  if List.length param_ctys <> 1 then
+    raise
+      (Primitive_error
+         (Printf.sprintf "primitive %s must be unary, got %d args" name
+            (List.length param_ctys)));
+  let ret_ty = Type_lowering.get_return_ty annotated_ty in
+  let param_ty = Type_lowering.mk_ir_ty type_defs (List.nth param_ctys 0) in
+  let ir_ret_ty = Type_lowering.mk_ir_ty type_defs ret_ty in
+  let x : I.var = { I.id = fresh_id (); I.name = "x"; I.ty = param_ty } in
+  let result : I.var =
+    { I.id = fresh_id (); I.name = "Sy_prim_result"; I.ty = ir_ret_ty }
+  in
+  let node : I.rvalue_node =
+    match kind with
+    | UArrayLen -> I.CR_Object_length { obj = I.CR_OVar x }
+    | UArraySize -> I.CR_Object_size { obj = I.CR_OVar x }
+  in
+  let assign : I.statement =
+    {
+      I.id = fresh_id ();
+      node =
+        I.CR_Assign
+          {
+            dst = result;
+            rvalue = { I.id = fresh_id (); node; ty = ir_ret_ty };
+          };
+      ty = ir_ret_ty;
+    }
+  in
+  let block_id = fresh_id () in
+  let term : I.terminator =
+    { I.id = fresh_id (); node = I.CR_Return (Some (I.CR_OVar result)) }
+  in
+  let entry_block : I.block =
+    {
+      I.id = block_id;
+      label_id = 0;
+      statements = [ assign ];
+      terminator = term;
+      pred_blocks = [];
+      succ_blocks = [];
+    }
+  in
+  {
+    I.id = fresh_id ();
+    name;
+    params = [ x ];
+    locals = [ result ];
+    entry_block;
+    blocks = [ entry_block ];
+    return_ty = ir_ret_ty;
+    visibility = (if is_public then I.CR_Public else I.CR_Private);
+    unit_param_indices = [];
+  }
+
 let build (type_defs : Type_lowering.type_entry StringMap.t) ~(fn_name : string)
     ~(symbol : string) ~(is_public : bool) (annotated_ty : C.ty) :
     I.function_cir =
-  match binop_of_symbol symbol with
-  | Some op -> build_binop type_defs fn_name op is_public annotated_ty
-  | None ->
-      raise
-        (Primitive_error (Printf.sprintf "Unknown primitive symbol: %s" symbol))
+  match unary_primitive_of_symbol symbol with
+  | Some kind -> build_unary type_defs fn_name kind is_public annotated_ty
+  | None -> (
+      match binop_of_symbol symbol with
+      | Some op -> build_binop type_defs fn_name op is_public annotated_ty
+      | None ->
+          raise
+            (Primitive_error
+               (Printf.sprintf "Unknown primitive symbol: %s" symbol)))

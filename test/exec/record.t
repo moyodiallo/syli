@@ -25,3 +25,18 @@ Returning a record through a function constructing it with its param:
   $ dune exec sylic -- build test_file.sy
   $ ./test_file.exe
   42
+
+A record whose fields are all sub-word packs them into sub-word cells:
+  $ cat >test_file.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > type flags = { a: bool; b: bool; c: bool }
+  > let main () =
+  >   let f = { a = true; b = false; c = true }
+  >   if f.a then syli_print_i64 1 else syli_print_i64 0
+  >   if f.b then syli_print_i64 1 else syli_print_i64 0
+  >   if f.c then syli_print_i64 1 else syli_print_i64 0
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_file.sy
+  $ ./test_file.exe
+  101

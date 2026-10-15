@@ -11,7 +11,6 @@ let fail (msg : string) : 'a = raise (Lowering_error msg)
 let label_of_block_id (id : int) : string = "bb" ^ string_of_int id
 let is_float_ir_type = function RR_Float | RR_Double -> true | _ -> false
 let gc_ptr_ty = LV_Ptr_as 1
-let object_struct_ty = LV_Struct [ LV_I64; LV_I64; LV_Array (0, LV_I64) ]
 let object_untag_fn_name = "syli_inlinable_ownership_untag"
 
 let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
@@ -33,6 +32,15 @@ let rec lltype_of_ir_type (ty : Rir.ir_type) : lltype =
 
 let lltype_of_ty (t : Rir.ty) : lltype = lltype_of_ir_type t.ty
 let lltype_of_var (v : Rir.var) : lltype = lltype_of_ty v.ty
+
+(** LLVM integer type for an object slot cell *)
+let lltype_of_cell_shift (shift : int) : lltype =
+  match shift with
+  | 0 -> LV_I8
+  | 1 -> LV_I16
+  | 2 -> LV_I32
+  | 3 -> LV_I64
+  | n -> fail (Printf.sprintf "unsupported object cell shift %d" n)
 
 let parse_int64 (s : string) : int64 =
   let normalized = String.trim s in
@@ -206,11 +214,12 @@ let ensure_typed_slot_ptr (_ctx : lower_ctx) (ptr : operand)
   ([], ptr)
 
 let lower_object_slot_ptr (ctx : lower_ctx) (obj : Rir.operand)
-    (field_idx : Rir.operand) (value_ty : Rir.ty) :
+    (field_idx : Rir.operand) (cell_shift : int) :
     lower_ctx * instruction list * operand =
   let ctx, obj', extra1 = lower_operand ctx obj in
   let ctx, idx', extra2 = lower_operand ctx field_idx in
-  let object_ty = object_struct_ty in
+  let cell_ty = lltype_of_cell_shift cell_shift in
+  let object_ty = LV_Struct [ LV_I64; LV_I64; LV_Array (0, cell_ty) ] in
   let obj_ty = ty_of_operand obj' in
   let zero = LV_Constant (LV_Integer 0L, LV_I32) in
   let offset =
@@ -475,10 +484,14 @@ let lower_statement (ctx : lower_ctx) (stmt : Rir.statement) :
   | Rir.RR_Assign
       {
         dst;
-        rvalue = { node = Rir.RR_Object_load { obj; field_idx; value_ty }; _ };
+        rvalue =
+          {
+            node = Rir.RR_Object_load { obj; field_idx; value_ty; cell_shift };
+            _;
+          };
       } ->
       let ctx, ptr_instrs, typed_ptr =
-        lower_object_slot_ptr ctx obj field_idx value_ty
+        lower_object_slot_ptr ctx obj field_idx cell_shift
       in
       let ctx, instrs =
         assign_rhs_to_var ctx dst
@@ -553,9 +566,9 @@ let lower_statement (ctx : lower_ctx) (stmt : Rir.statement) :
       let ctx, instrs = assign_rhs_to_var ctx dst rhs in
 
       (ctx, [ extra; instrs ])
-  | Rir.RR_Object_store { obj; field_idx; value; value_ty } ->
+  | Rir.RR_Object_store { obj; field_idx; value; value_ty; cell_shift } ->
       let ctx, ptr_instrs, typed_ptr =
-        lower_object_slot_ptr ctx obj field_idx value_ty
+        lower_object_slot_ptr ctx obj field_idx cell_shift
       in
       let ctx, value_ops, extra = lower_operand ctx value in
       (ctx, [ ptr_instrs; extra; [ LV_Store (value_ops, typed_ptr) ] ])

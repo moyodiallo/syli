@@ -57,7 +57,7 @@ static inline void gc_remove_candidate_at(size_t index)
 static inline void gc_account_cyclic_free(Object* obj)
 {
     if (syli_object_is_cyclic(obj)) {
-        syli_state.cyclic_mem_dealloc += syli_object_total_words(obj);
+        syli_state.cyclic_mem_dealloc += syli_object_total_bytes(obj);
         syli_state.cyclic_obj_dealloc++;
     }
 }
@@ -75,7 +75,7 @@ static inline void free_released_object(Object* obj)
         return;
     }
 
-    syli_state.total_objects_memory_freed++;
+    syli_state.total_objects_freed++;
     gc_account_cyclic_free(obj);
     free(obj);
 }

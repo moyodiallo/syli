@@ -13,21 +13,21 @@
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-static obj_ptr make_mono_ref_object(size_t words, CyclicFlag cyclic)
+static obj_ptr make_mono_ref_object(size_t length, CyclicFlag cyclic)
 {
-    object_payload_t payload = syli_object_make_mono_payload(words);
+    object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, payload);
-    return syli_rt_ownership_alloc_object(header, 1, words);
+        Zone_GcLocal, cyclic, Type_MonoRef, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
+    return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
-static obj_ptr make_trackable_object(size_t words)
+static obj_ptr make_trackable_object(size_t length)
 {
-    object_payload_t payload = syli_object_make_mono_payload(words);
+    object_payload_t payload = syli_object_make_mono_payload(length);
     object_header_t header
         = syli_object_make_header(Zone_GcLocal, Cyclic, Type_MonoRef,
-            (ObjectImmutableFlag)(Flag_HasPointers | Flag_Traceable), payload);
-    return syli_rt_ownership_alloc_object(header, 1, words);
+            (ObjectImmutableFlag)(Flag_HasPointers | Flag_Traceable), GC_UNIT_SHIFT_I64, payload);
+    return syli_rt_ownership_alloc_object(header, 1, length);
 }
 
 static bool releasing_drained(void)
@@ -101,7 +101,7 @@ static void test_releasing_waitlist_gets_drained(void)
     assert(vector_size_obj_ptr(&syli_state.releasing_waitlist) == 0);
     assert(vector_size_obj_ptr(&syli_state.releasing_worklist) == 0);
     assert(syli_state.releasing_steps > 0);
-    assert(syli_state.total_objects_memory_freed >= 2);
+    assert(syli_state.total_objects_freed >= 2);
 
     syli_state_destroy();
 
@@ -141,10 +141,10 @@ static void test_roots_protect_created_objects(void)
 
     assert(syli_state.tracing_generations > 0);
     assert(syli_state.total_objects_traced == created);
-    assert(syli_state.total_objects_memory_freed == 0);
+    assert(syli_state.total_objects_freed == 0);
 
     printf("  created=%zu traced=%zu freed=%zu\n", created,
-        syli_state.total_objects_traced, syli_state.total_objects_memory_freed);
+        syli_state.total_objects_traced, syli_state.total_objects_freed);
     syli_print_gc_state();
 
     syli_state_destroy();

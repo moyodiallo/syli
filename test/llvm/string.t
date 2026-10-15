@@ -300,23 +300,23 @@ String returned from a closure capturing it:
     %Sy_llvm_tmp_1 = add i64 %Sy_llvm_tmp_0, 2
     %Sy_llvm_tmp_2 = inttoptr i64 %Sy_llvm_tmp_1 to ptr addrspace(1)
     call void @syli_rt_gc_cycle()
-    %sy2_f = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251398048237748290, i32 1, i32 2)
+    %sy2_f = call ptr addrspace(1) @syli_rt_ownership_alloc_object(i64 4251424436516814914, i32 1, i32 2)
     ; nop
     %Sy_oir_accum_fn_0 = bitcast ptr @__make_closure_accum.sy2_f.26_ret_string to ptr
     %Sy_llvm_tmp_3 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_f)
-    %Sy_llvm_tmp_4 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_3, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_4 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_3, i32 0, i32 2, i64 0
     store ptr %Sy_oir_accum_fn_0, ptr addrspace(1) %Sy_llvm_tmp_4
     %Sy_llvm_tmp_5 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_f)
-    %Sy_llvm_tmp_6 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_5, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_6 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_5, i32 0, i32 2, i64 1
     %Sy_oir_release_tmp_1 = load ptr addrspace(1), ptr addrspace(1) %Sy_llvm_tmp_6
     call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_oir_release_tmp_1)
     %Sy_rir_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_own(ptr addrspace(1) %Sy_llvm_tmp_2)
     %Sy_llvm_tmp_7 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_f)
-    %Sy_llvm_tmp_8 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_7, i32 0, i32 2, i32 1
+    %Sy_llvm_tmp_8 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_7, i32 0, i32 2, i64 1
     store ptr addrspace(1) %Sy_rir_tmp_0, ptr addrspace(1) %Sy_llvm_tmp_8
     ; nop
     %Sy_llvm_tmp_9 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %sy2_f)
-    %Sy_llvm_tmp_10 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_9, i32 0, i32 2, i32 0
+    %Sy_llvm_tmp_10 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_9, i32 0, i32 2, i64 0
     %Sy_accum_ptr_1 = load ptr, ptr addrspace(1) %Sy_llvm_tmp_10
     %Sy_cir_var_0 = call ptr addrspace(1) %Sy_accum_ptr_1(i64 0, ptr addrspace(1) %sy2_f, i64 0)
     ; nop

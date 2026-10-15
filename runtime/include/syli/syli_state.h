@@ -66,7 +66,7 @@ typedef struct Syli_state {
 
     size_t total_objects_traced;
     size_t total_objects_released;
-    size_t total_objects_memory_freed;
+    size_t total_objects_freed;
 
     size_t generation_tracing;
 
@@ -110,13 +110,6 @@ extern SYLI_TLS Syli_state syli_state;
 // Initialize runtime system
 void syli_state_init();
 void syli_state_destroy();
-
-// ========================
-// Allocation
-// ========================
-
-// ARC allocations
-Object* syli_state_alloc_object(object_header_t header, size_t length);
 
 // ========================
 // Garbage collection

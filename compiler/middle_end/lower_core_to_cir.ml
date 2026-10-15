@@ -31,8 +31,8 @@ type ctx = {
   occ_scrut_var : I.var;
       (** the materialised root of the match currently being lowered; only
           meaningful inside [lower_tree], set by [lower_match] *)
-  occ_payloads : C.constructor_arg IntMap.t;
-      (** constructor argument per payload occurrence id *)
+  occ_payloads : (int * C.constructor_arg) IntMap.t;
+      (** constructor tag and argument per payload occurrence id *)
   occ_materialized : I.var IntMap.t;
       (** occurrence id -> the variable holding its value *)
   occ_types : C.ty IntMap.t;  (** occurrence id -> its core type *)
@@ -162,6 +162,7 @@ let rec arg_type_compatible (a : I.ir_type) (b : I.ir_type) : bool =
   | CR_U8, CR_U8 -> true
   | CR_F32, CR_F32 -> true
   | CR_F64, CR_F64 -> true
+  | CR_Char, CR_Char -> true
   | CR_FnPtr, CR_FnPtr -> true
   | CR_Void, CR_Void -> true
   | CR_GenericTyp { type_var = tv1 }, CR_GenericTyp { type_var = tv2 } ->
@@ -276,18 +277,18 @@ let cir_mut_flag = function CMutable -> I.Mutable | CImmutable -> I.Immutable
 
 (** CIR object type of a variant constructor. The payload is flattened into the
     object's fields:
-    - tuple payload [C of (t0, t1)]               -> fields [0:t0, 1:t1];
+    - tuple payload [C of (t0, t1)] -> fields [0:t0, 1:t1];
     - inline record payload [C of { a:t0; b:t1 }] -> fields [0:t0, 1:t1];
-    - any other payload [C of t]                  -> a single field [0:t].
+    - any other payload [C of t] -> a single field [0:t].
 
     For example
-
+    {v
         type point = { x : f64; y : f64 }
         type shape =
           | Circle of (f64, f64)
           | Rect of { w : f64; h : f64 }
           | Dot of point
-
+    v}
     yields [Circle] and [Rect] with two [f64] fields each, and [Dot] with a
     single field holding a [point] reference. The constructor tag is not a
     field; it lives in the object header ([tag_variant = Some tag]). *)
@@ -337,7 +338,6 @@ let variant_constructor_ty (type_defs : Type_lowering.type_entry StringMap.t)
         {
           named = Some variant_name;
           obj_kind = I.CR_Variant_kind { constructors = [ { I.tag; fields } ] };
-          tag_variant = Some tag;
           cyclic_prop;
         };
   }
@@ -385,7 +385,11 @@ let rec resolve_alias (type_defs : Type_lowering.type_entry StringMap.t)
 (** Constructor payload descriptor attached to an [Occ_Payload] occurrence. *)
 let payload_arg_of_occ (ctx : ctx) (occ : PM.occurrence) :
     C.constructor_arg option =
-  IntMap.find_opt occ.PM.id ctx.occ_payloads
+  Option.map snd (IntMap.find_opt occ.PM.id ctx.occ_payloads)
+
+(** Constructor tag attached to an [Occ_Payload] occurrence. *)
+let payload_tag_of_occ (ctx : ctx) (occ : PM.occurrence) : int option =
+  Option.map fst (IntMap.find_opt occ.PM.id ctx.occ_payloads)
 
 (** An anonymous product payload (tuple or record) is flattened into the
     constructor block, so its occurrence denotes the block itself. *)
@@ -469,17 +473,18 @@ let rec occurrence_ty (ctx : ctx) (occ : PM.occurrence) : ctx * C.ty =
       let ctx = { ctx with occ_types = IntMap.add occ.PM.id t ctx.occ_types } in
       (ctx, t)
 
-let emit_object_get (ctx : ctx) (obj : I.var) (idx : int) (value_ty : I.ty) :
-    ctx * I.var =
+let emit_object_get (obj_tag : int option) (ctx : ctx) (obj : I.var) (idx : int)
+    (value_ty : I.ty) : ctx * I.var =
   let ctx, dst = fresh_var ctx value_ty in
-  let idx_op : I.operand =
-    I.CR_OConstant (I.CR_IntLit (string_of_int idx), i64_ir_ty ())
+  let projection : I.projection =
+    match obj_tag with
+    | Some tag -> I.CR_Project_variant { tag; field_idx = idx }
+    | None -> I.CR_Project_field idx
   in
   let rv : I.rvalue =
     {
       I.id = fresh_id ();
-      node =
-        I.CR_Object_get { obj = I.CR_OVar obj; field_idx = idx_op; value_ty };
+      node = I.CR_Object_get { obj = I.CR_OVar obj; projection; value_ty };
       ty = value_ty;
     }
   in
@@ -505,12 +510,19 @@ let rec materialize_occ (ctx : ctx) (occ : PM.occurrence) : ctx * I.var =
               let ctx, parent_var = materialize_occ ctx parent in
               let ctx, occ_ty = occurrence_ty ctx occ in
               let value_ty = mk_ir_ty ctx.type_defs occ_ty in
-              emit_object_get ctx parent_var 0 value_ty
+              emit_object_get
+                (payload_tag_of_occ ctx occ)
+                ctx parent_var 0 value_ty
         | PM.Occ_Field (parent, idx) | PM.Occ_Tuple (parent, idx) ->
             let ctx, parent_var = materialize_occ ctx parent in
             let ctx, occ_ty = occurrence_ty ctx occ in
             let value_ty = mk_ir_ty ctx.type_defs occ_ty in
-            emit_object_get ctx parent_var idx value_ty
+            let obj_tag =
+              if is_inlined_payload_occ ctx parent then
+                payload_tag_of_occ ctx parent
+              else None
+            in
+            emit_object_get obj_tag ctx parent_var idx value_ty
       in
       let ctx =
         {
@@ -807,30 +819,27 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let field_count = List.length fields in
       let ptr_ty = mk_ir_ty ctx.type_defs e.ty in
       let ctx, obj_var = fresh_var ctx ptr_ty in
-      let size_op : I.operand =
+      let length_op : I.operand =
         I.CR_OConstant
           ( I.CR_IntLit (string_of_int field_count),
             { I.id = 0; I.ir_type = I.CR_I64 } )
       in
       let ctx, _ =
-        emit ctx (I.CR_Object_create { dst = obj_var; size = size_op }) ptr_ty
+        emit ctx
+          (I.CR_Object_create { dst = obj_var; length = length_op })
+          ptr_ty
       in
       let ctx =
         List.fold_left
           (fun ctx (f : C.record_field) ->
             let ctx, fval = lower_expr ctx f.field_value in
             let field_ty = mk_ir_ty ctx.type_defs f.field_ty in
-            let idx_op : I.operand =
-              I.CR_OConstant
-                ( I.CR_IntLit (string_of_int f.field_idx),
-                  { I.id = 0; I.ir_type = I.CR_I64 } )
-            in
             let ctx, _ =
               emit ctx
                 (I.CR_Object_set
                    {
                      obj = obj_var;
-                     field_idx = idx_op;
+                     projection = I.CR_Project_field f.field_idx;
                      value = fval;
                      value_ty = field_ty;
                    })
@@ -842,18 +851,17 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       (ctx, I.CR_OVar obj_var)
   | CExp_Field { record; field_idx } ->
       let ctx, obj_op = lower_expr ctx record in
-      let idx_op : I.operand =
-        I.CR_OConstant
-          ( I.CR_IntLit (string_of_int field_idx),
-            { I.id = 0; I.ir_type = I.CR_I64 } )
-      in
       let ctx, dst = fresh_var ctx out_ty in
       let rv : I.rvalue =
         {
           I.id = dst.I.id;
           node =
             I.CR_Object_get
-              { obj = obj_op; field_idx = idx_op; value_ty = out_ty };
+              {
+                obj = obj_op;
+                projection = I.CR_Project_field field_idx;
+                value_ty = out_ty;
+              };
           ty = out_ty;
         }
       in
@@ -868,17 +876,12 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       in
       let ctx, val_op = lower_expr ctx value in
       let val_ty = mk_ir_ty ctx.type_defs value.ty in
-      let idx_op : I.operand =
-        I.CR_OConstant
-          ( I.CR_IntLit (string_of_int field_idx),
-            { I.id = 0; I.ir_type = I.CR_I64 } )
-      in
       let ctx, _ =
         emit ctx
           (I.CR_Object_set
              {
                obj = obj_var;
-               field_idx = idx_op;
+               projection = I.CR_Project_field field_idx;
                value = val_op;
                value_ty = val_ty;
              })
@@ -891,26 +894,25 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let count = List.length elements in
       let obj_ty = mk_ir_ty ctx.type_defs e.ty in
       let ctx, obj_var = fresh_var ctx obj_ty in
-      let size_op : I.operand =
+      let length_op : I.operand =
         I.CR_OConstant (I.CR_IntLit (string_of_int count), i64_ir_ty ())
       in
       let ctx, _ =
-        emit ctx (I.CR_Object_create { dst = obj_var; size = size_op }) obj_ty
+        emit ctx
+          (I.CR_Object_create { dst = obj_var; length = length_op })
+          obj_ty
       in
       let ctx =
         List.fold_left
           (fun (ctx, i) (elem : C.expr) ->
             let ctx, v = lower_expr ctx elem in
             let vty = mk_ir_ty ctx.type_defs elem.ty in
-            let idx_op : I.operand =
-              I.CR_OConstant (I.CR_IntLit (string_of_int i), i64_ir_ty ())
-            in
             let ctx, _ =
               emit ctx
                 (I.CR_Object_set
                    {
                      obj = obj_var;
-                     field_idx = idx_op;
+                     projection = I.CR_Project_field i;
                      value = v;
                      value_ty = vty;
                    })
@@ -927,11 +929,13 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let count = List.length elements in
       let obj_ty = mk_ir_ty ctx.type_defs e.ty in
       let ctx, obj_var = fresh_var ctx obj_ty in
-      let size_op : I.operand =
+      let length_op : I.operand =
         I.CR_OConstant (I.CR_IntLit (string_of_int count), i64_ir_ty ())
       in
       let ctx, _ =
-        emit ctx (I.CR_Object_create { dst = obj_var; size = size_op }) obj_ty
+        emit ctx
+          (I.CR_Object_create { dst = obj_var; length = length_op })
+          obj_ty
       in
       let ctx =
         List.fold_left
@@ -946,7 +950,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
                 (I.CR_Object_set
                    {
                      obj = obj_var;
-                     field_idx = idx_op;
+                     projection = I.CR_Project_array idx_op;
                      value = v;
                      value_ty = vty;
                    })
@@ -974,7 +978,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let obj_ty = mk_ir_ty ctx.type_defs e.ty in
       let ctx, arr_var = fresh_var ctx obj_ty in
       let ctx, _ =
-        emit ctx (I.CR_Object_create { dst = arr_var; size = n_op }) obj_ty
+        emit ctx (I.CR_Object_create { dst = arr_var; length = n_op }) obj_ty
       in
       let i_ty = i64_ir_ty () in
       let ctx, i_var = fresh_var ctx i_ty in
@@ -1024,7 +1028,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           (I.CR_Object_set
              {
                obj = arr_var;
-               field_idx = I.CR_OVar i_var;
+               projection = I.CR_Project_array (I.CR_OVar i_var);
                value = I.CR_OVar v_var;
                value_ty = elem_ty;
              })
@@ -1065,7 +1069,11 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           I.id = dst.I.id;
           node =
             I.CR_Object_get
-              { obj = obj_op; field_idx = idx_op; value_ty = out_ty };
+              {
+                obj = obj_op;
+                projection = I.CR_Project_array idx_op;
+                value_ty = out_ty;
+              };
           ty = out_ty;
         }
       in
@@ -1086,7 +1094,7 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
           (I.CR_Object_set
              {
                obj = obj_var;
-               field_idx = idx_op;
+               projection = I.CR_Project_array idx_op;
                value = val_op;
                value_ty = val_ty;
              })
@@ -1307,7 +1315,7 @@ and lower_match (ctx : ctx) (scrutinee : C.expr) (cases : C.pattern_case list)
                       {
                         ctx with
                         occ_payloads =
-                          IntMap.add pocc.PM.id arg ctx.occ_payloads;
+                          IntMap.add pocc.PM.id (tag, arg) ctx.occ_payloads;
                       }
                   | None -> ctx)
               | PM.Test_Constant _ | PM.Test_Constructor _ -> ctx
@@ -1420,7 +1428,7 @@ and lower_variant_payload (ctx : ctx) (variant_name : string) (tag : int)
   let ctx, obj_var = fresh_var ctx obj_ty in
   let ctx, _ =
     emit ctx
-      (I.CR_Object_create { dst = obj_var; size = i64_const field_count })
+      (I.CR_Object_create { dst = obj_var; length = i64_const field_count })
       obj_ty
   in
   let set_field (ctx : ctx) (idx : int) (v : I.operand) (vty : I.ty) : ctx =
@@ -1429,7 +1437,7 @@ and lower_variant_payload (ctx : ctx) (variant_name : string) (tag : int)
         (I.CR_Object_set
            {
              obj = obj_var;
-             field_idx = i64_const idx;
+             projection = I.CR_Project_field idx;
              value = v;
              value_ty = vty;
            })
@@ -1481,7 +1489,7 @@ and lower_variant_payload (ctx : ctx) (variant_name : string) (tag : int)
                         I.CR_Object_get
                           {
                             obj = I.CR_OVar src_var;
-                            field_idx = i64_const i;
+                            projection = I.CR_Project_field i;
                             value_ty = fty;
                           };
                       ty = fty;

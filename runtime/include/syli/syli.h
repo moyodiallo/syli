@@ -25,15 +25,13 @@
  ************************************************/
 
 GCObject* syli_rt_rc_alloc_object(
-    object_header_t header, size_t refcount, size_t words);
-
-GCObject* syli_rt_shared_alloc(object_header_t header, size_t words);
+    object_header_t header, size_t refcount, size_t length);
 
 /************************************************
  * Ownership Tag Primitives
  ************************************************/
 obj_ptr syli_rt_ownership_alloc_object(
-    object_header_t header, size_t refcount, size_t words);
+    object_header_t header, size_t refcount, size_t length);
 
 obj_ptr syli_rt_ownership_untag(obj_ptr ptr);
 obj_ptr syli_rt_ownership_borrow(obj_ptr ptr);
@@ -68,6 +66,8 @@ void syli_rt_object_notify_mutation(
 uint64_t syli_rt_get_object_tag(Object* obj);
 
 uint64_t syli_rt_get_object_length(Object* obj);
+
+uint64_t syli_rt_get_object_size(Object* obj);
 
 /************************************************
  * Match Failure

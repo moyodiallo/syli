@@ -7,10 +7,6 @@ let string_of_cyclic_prop = function
   | Acyclic -> "acyclic"
   | Unknown_cyclic_prop -> "unknown_cyclic"
 
-let string_of_tag_variant = function
-  | Some t -> Printf.sprintf "tag=%d" t
-  | None -> "tag=-"
-
 let rec string_of_ir_type = function
   | OR_I64 -> "i64"
   | OR_I32 -> "i32"
@@ -24,11 +20,10 @@ let rec string_of_ir_type = function
   | OR_F32 -> "f32"
   | OR_F64 -> "f64"
   | OR_FnPtr -> "fn_ptr"
-  | OR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
+  | OR_Obj { named; obj_kind; cyclic_prop } ->
       let name = match named with Some n -> n | None -> "obj" in
-      Printf.sprintf "%s{%s %s %s}" name
+      Printf.sprintf "%s{%s %s}" name
         (string_of_obj_kind obj_kind)
-        (string_of_tag_variant tag_variant)
         (string_of_cyclic_prop cyclic_prop)
   | OR_Obj_Ptr -> "obj_ptr"
   | OR_Char -> "char"
@@ -139,6 +134,13 @@ let own_str (op : ownership_op) (ir_type : ir_type) : string =
     Printf.sprintf "@%s " (string_of_ownership_op op)
   else ""
 
+let string_of_projection = function
+  | OR_Project_field field_idx -> Printf.sprintf "field[%d]" field_idx
+  | OR_Project_array index ->
+      Printf.sprintf "array[%s]" (string_of_operand index)
+  | OR_Project_variant { tag; field_idx } ->
+      Printf.sprintf "variant(%d)[%d]" tag field_idx
+
 let string_of_rvalue (rv : rvalue) : string =
   match rv.node with
   | OR_BinOp { op; lhs; rhs } ->
@@ -146,13 +148,14 @@ let string_of_rvalue (rv : rvalue) : string =
         (string_of_operand rhs)
   | OR_UnOp { op; operand } ->
       Printf.sprintf "%s%s" (string_of_unop op) (string_of_operand operand)
-  | OR_Object_get { obj; field_idx; value_ty; ownership_get } ->
+  | OR_Object_get { obj; projection; value_ty; ownership_get } ->
       Printf.sprintf "%sobj_get(%s, %s):%s"
         (own_str ownership_get value_ty.ir_type)
         (string_of_operand obj)
-        (string_of_operand field_idx)
+        (string_of_projection projection)
         (string_of_short_ty value_ty)
   | OR_Object_length { obj } -> Printf.sprintf "len(%s)" (string_of_operand obj)
+  | OR_Object_size { obj } -> Printf.sprintf "size(%s)" (string_of_operand obj)
   | OR_Object_get_tag { obj } ->
       Printf.sprintf "get_tag(%s)" (string_of_operand obj)
   | OR_Cast { src; to_ty; ownership } ->
@@ -175,15 +178,15 @@ let string_of_statement (stmt : statement) : string =
   match stmt.node with
   | OR_Assign { dst; rvalue } ->
       Printf.sprintf "%s = %s" (var_to_string dst) (string_of_rvalue rvalue)
-  | OR_Object_set { obj; field_idx; value; value_ty; ownership_set } ->
+  | OR_Object_set { obj; projection; value; value_ty; ownership_set } ->
       Printf.sprintf "obj_set(%s, %s, %s%s):%s" (var_to_string obj)
-        (string_of_operand field_idx)
+        (string_of_projection projection)
         (own_str ownership_set value_ty.ir_type)
         (string_of_operand value)
         (string_of_short_ty value_ty)
-  | OR_Object_create { dst; size } ->
-      Printf.sprintf "%s = object_create{size=%s}" (var_to_string_full dst)
-        (string_of_operand size)
+  | OR_Object_create { dst; length } ->
+      Printf.sprintf "%s = object_create{length=%s}" (var_to_string_full dst)
+        (string_of_operand length)
   | OR_Call { dst; target; args; _ } ->
       let dst_str = var_to_string dst ^ " = " in
       let string_of_arg a =

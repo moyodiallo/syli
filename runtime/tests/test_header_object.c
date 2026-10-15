@@ -18,7 +18,8 @@ void test_header_construction_basic()
     obj.header_word = syli_object_make_header(Zone_GcLocal, // zone = local
         Acyclic, // acyclic
         Type_MonoImm, // type mono imm
-        Flag_None, // no imm flags
+        Flag_None, // no imm flags,
+        GC_UNIT_SHIFT_I64,
         0 // payload = 0
     );
 
@@ -38,13 +39,13 @@ void test_header_cyclic_flag()
 
     Object obj_no_cyclic;
     obj_no_cyclic.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_is_acyclic(&obj_no_cyclic) == true);
     assert(syli_object_is_cyclic(&obj_no_cyclic) == false);
 
     Object obj_cyclic;
     obj_cyclic.header_word = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MonoImm, Flag_None, 0);
+        Zone_GcLocal, Cyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_is_acyclic(&obj_cyclic) == false);
     assert(syli_object_is_cyclic(&obj_cyclic) == true);
 
@@ -61,27 +62,27 @@ void test_header_type_field()
 
     Object obj_mono_imm;
     obj_mono_imm.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_type(&obj_mono_imm) == Type_MonoImm);
     assert(syli_object_is_mono(&obj_mono_imm) == true);
     assert(syli_object_is_mono_imm(&obj_mono_imm) == true);
 
     Object obj_mono_ref;
     obj_mono_ref.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoRef, Flag_None, 0);
+        Zone_GcLocal, Acyclic, Type_MonoRef, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_type(&obj_mono_ref) == Type_MonoRef);
     assert(syli_object_is_mono(&obj_mono_ref) == true);
     assert(syli_object_is_mono_ref(&obj_mono_ref) == true);
 
     Object obj_mixed_order;
-    obj_mixed_order.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MixedOrder, Flag_None, 0);
+    obj_mixed_order.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MixedOrder, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_type(&obj_mixed_order) == Type_MixedOrder);
     assert(syli_object_is_mixed_order(&obj_mixed_order) == true);
 
     Object obj_mixed_bitmap;
-    obj_mixed_bitmap.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MixedBitmap, Flag_None, 0);
+    obj_mixed_bitmap.header_word = syli_object_make_header(Zone_GcLocal,
+        Acyclic, Type_MixedBitmap, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_type(&obj_mixed_bitmap) == Type_MixedBitmap);
     assert(syli_object_is_mixed_bitmap(&obj_mixed_bitmap) == true);
 
@@ -94,16 +95,17 @@ void test_header_flags_field()
 
     // Test specific flag patterns
     Object obj1;
-    obj1.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
-        Type_MonoImm, Flag_HasFinalizer | Flag_HasPointers, 0);
+    obj1.header_word
+        = syli_object_make_header(Zone_GcLocal, Acyclic, Type_MonoImm,
+            Flag_HasFinalizer | Flag_HasPointers, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_get_immutable_flags(&obj1)
         == (Flag_HasFinalizer | Flag_HasPointers));
     assert(syli_object_has_finalizer(&obj1) == true);
     assert(syli_object_has_pointers(&obj1) == true);
 
     Object obj2;
-    obj2.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_HasFinalizer, 0);
+    obj2.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MonoImm, Flag_HasFinalizer, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_get_immutable_flags(&obj2) == Flag_HasFinalizer);
     assert(syli_object_has_finalizer(&obj2) == true);
     assert(syli_object_has_pointers(&obj2) == false);
@@ -118,18 +120,18 @@ void test_header_payload_field()
     // Test boundary values
     Object obj_min;
     obj_min.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0);
     assert(syli_object_payload(&obj_min) == 0);
 
     Object obj_max;
-    obj_max.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0xFFFFFFFFULL);
+    obj_max.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0xFFFFFFFFULL);
     assert(syli_object_payload(&obj_max) == 0xFFFFFFFFULL);
 
     // Test some intermediate values
     Object obj_mid;
-    obj_mid.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 0x12345678ULL);
+    obj_mid.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 0x12345678ULL);
     assert(syli_object_payload(&obj_mid) == 0x12345678ULL);
 
     printf("✓ Payload field encoding/decoding works\n\n");
@@ -141,18 +143,18 @@ void test_header_mixed_types()
 
     // Test mixed order
     Object obj_order;
-    obj_order.header_word
-        = syli_object_make_header(Zone_GcLocal, Acyclic, Type_MixedOrder,
-            Flag_HasPointers, syli_object_make_order_payload(3, 2));
+    obj_order.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MixedOrder, Flag_HasPointers, GC_UNIT_SHIFT_I64,
+        syli_object_make_order_payload(3, 2));
     assert(syli_object_order_ptr_count(&obj_order) == 3);
     assert(syli_object_order_imm_count(&obj_order) == 2);
     assert(syli_object_length(&obj_order) == 5);
 
     // Test mixed bitmap
     Object obj_bitmap;
-    obj_bitmap.header_word
-        = syli_object_make_header(Zone_GcLocal, Acyclic, Type_MixedBitmap,
-            Flag_HasPointers, syli_object_make_bitmap_payload(10, 0x1FF));
+    obj_bitmap.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64,
+        syli_object_make_bitmap_payload(10, 0x1FF));
     assert(syli_object_bitmap_length(&obj_bitmap) == 10);
     assert(syli_object_bitmap_bits(&obj_bitmap) == 0x1FF);
 
@@ -164,13 +166,13 @@ void test_bitmap_payload()
     printf("Test 9: Bitmap payload decoding\n");
 
     // Test bitmap payload
-    uint8_t length = 10;
-    uint32_t bitmap = 0x1FF; // 9 bits set
+    uint8_t length   = 10;
+    uint32_t bitmap  = 0x1FF; // 9 bits set
     uint32_t payload = syli_object_make_bitmap_payload(length, bitmap);
 
     Object obj;
-    obj.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+    obj.header_word = syli_object_make_header(Zone_GcLocal, Acyclic,
+        Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
 
     assert(syli_object_bitmap_length(&obj) == length);
     assert(syli_object_bitmap_bits(&obj) == bitmap);
@@ -185,13 +187,13 @@ void test_mono_payload()
     // Test mono imm
     Object obj_imm;
     obj_imm.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, 42);
+        Zone_GcLocal, Acyclic, Type_MonoImm, Flag_None, GC_UNIT_SHIFT_I64, 42);
     assert(syli_object_mono_length(&obj_imm) == 42);
 
     // Test mono ref
     Object obj_ref;
     obj_ref.header_word = syli_object_make_header(
-        Zone_GcLocal, Acyclic, Type_MonoRef, Flag_None, 100);
+        Zone_GcLocal, Acyclic, Type_MonoRef, Flag_None, GC_UNIT_SHIFT_I64, 100);
     assert(syli_object_mono_length(&obj_ref) == 100);
 
     printf("✓ Mono payload decoding works\n\n");
@@ -205,7 +207,7 @@ void test_header_full_combination()
     obj.header_word = syli_object_make_header(Zone_GcShared, // zone
         Cyclic, // cyclic
         Type_MonoRef, // type
-        Flag_HasFinalizer | Flag_HasPointers, // imm flags
+        Flag_HasFinalizer | Flag_HasPointers, GC_UNIT_SHIFT_I64, // imm flags
         0xDEADBEEF // payload
     );
 

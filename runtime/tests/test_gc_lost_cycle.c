@@ -19,7 +19,7 @@ static obj_ptr make_cons(obj_ptr tail)
 {
     object_payload_t payload = syli_object_make_bitmap_payload(2, 0x1);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     header |= GC_CYCLIC_MUTABLE_MASK;
     obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, 2);
     Object* o      = syli_object_of_obj_ptr(obj);
@@ -40,7 +40,7 @@ static obj_ptr make_plain_cons(obj_ptr tail)
 {
     object_payload_t payload = syli_object_make_bitmap_payload(2, 0x1);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, 2);
     Object* o      = syli_object_of_obj_ptr(obj);
     uint64_t* data = syli_object_data(o);
@@ -54,7 +54,7 @@ static obj_ptr make_two_refs(obj_ptr a, obj_ptr b)
 {
     object_payload_t payload = syli_object_make_bitmap_payload(2, 0x3);
     object_header_t header   = syli_object_make_header(
-        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, payload);
+        Zone_GcLocal, Cyclic, Type_MixedBitmap, Flag_HasPointers, GC_UNIT_SHIFT_I64, payload);
     header |= GC_CYCLIC_MUTABLE_MASK;
     obj_ptr obj    = syli_rt_ownership_alloc_object(header, 1, 2);
     Object* o      = syli_object_of_obj_ptr(obj);
@@ -126,7 +126,7 @@ static void test_two_cycle(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 2);
+    assert(syli_state.total_objects_freed == 2);
 
     syli_state_destroy();
 
@@ -157,7 +157,7 @@ static void test_multiply_referenced_cycle(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 2);
+    assert(syli_state.total_objects_freed == 2);
 
     syli_state_destroy();
 
@@ -189,7 +189,7 @@ static void test_three_cycle(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 3);
+    assert(syli_state.total_objects_freed == 3);
 
     syli_state_destroy();
 
@@ -222,7 +222,7 @@ static void test_zero_refcount_candidate_arc_released(void)
     run_gc_until(candidates_empty_and_releasing_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 2);
+    assert(syli_state.total_objects_freed == 2);
 
     syli_state_destroy();
 
@@ -266,7 +266,7 @@ static void test_unmarked_child_with_refs(void)
     run_gc_until(lost_cycle_drained, 256);
 
     assert(vector_size_CyclicCandidate(&syli_state.cyclic_candidates) == 0);
-    assert(syli_state.total_objects_memory_freed == 4);
+    assert(syli_state.total_objects_freed == 4);
 
     syli_state_destroy();
 

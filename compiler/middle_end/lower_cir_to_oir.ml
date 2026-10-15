@@ -97,12 +97,11 @@ let rec lower_ir_type (t : Cir.ir_type) : Oir.ir_type =
   | Cir.CR_F32 -> Oir.OR_F32
   | Cir.CR_F64 -> Oir.OR_F64
   | Cir.CR_FnPtr -> Oir.OR_FnPtr
-  | Cir.CR_Obj { named; obj_kind; tag_variant; cyclic_prop } ->
+  | Cir.CR_Obj { named; obj_kind; cyclic_prop } ->
       Oir.OR_Obj
         {
           named;
           obj_kind = lower_obj_kind obj_kind;
-          tag_variant;
           cyclic_prop = lower_cyclic_prop cyclic_prop;
         }
   | Cir.CR_Obj_Ptr -> Oir.OR_Obj_Ptr
@@ -251,6 +250,15 @@ let lower_terminator (ctx : ctx) (term : Cir.terminator) : ctx * Oir.terminator
   in
   (ctx, { id = fresh_global_id (); node })
 
+let lower_projection (ctx : ctx) (p : Cir.projection) : ctx * Oir.projection =
+  match p with
+  | Cir.CR_Project_field field_idx -> (ctx, Oir.OR_Project_field field_idx)
+  | Cir.CR_Project_array index ->
+      let ctx, index' = lower_operand ctx index in
+      (ctx, Oir.OR_Project_array index')
+  | Cir.CR_Project_variant { tag; field_idx } ->
+      (ctx, Oir.OR_Project_variant { tag; field_idx })
+
 let rvalue_of_cir (ctx : ctx) (rv : Cir.rvalue) : ctx * Oir.rvalue =
   let oir_ty = lower_ty rv.ty in
   let ctx, node =
@@ -262,20 +270,23 @@ let rvalue_of_cir (ctx : ctx) (rv : Cir.rvalue) : ctx * Oir.rvalue =
     | Cir.CR_UnOp { op; operand } ->
         let ctx, operand' = lower_operand ctx operand in
         (ctx, Oir.OR_UnOp { op = lower_unop op; operand = operand' })
-    | Cir.CR_Object_get { obj; field_idx; value_ty } ->
+    | Cir.CR_Object_get { obj; projection; value_ty } ->
         let ctx, obj' = lower_operand ctx obj in
-        let ctx, field_idx' = lower_operand ctx field_idx in
+        let ctx, projection' = lower_projection ctx projection in
         ( ctx,
           Oir.OR_Object_get
             {
               obj = obj';
-              field_idx = field_idx';
+              projection = projection';
               value_ty = lower_ty value_ty;
               ownership_get = Oir.OR_Ownership_unknown;
             } )
     | Cir.CR_Object_length { obj } ->
         let ctx, obj' = lower_operand ctx obj in
         (ctx, Oir.OR_Object_length { obj = obj' })
+    | Cir.CR_Object_size { obj } ->
+        let ctx, obj' = lower_operand ctx obj in
+        (ctx, Oir.OR_Object_size { obj = obj' })
     | Cir.CR_Object_get_tag { obj } ->
         let ctx, obj' = lower_operand ctx obj in
         (ctx, Oir.OR_Object_get_tag { obj = obj' })
@@ -440,7 +451,6 @@ let closure_obj_ty (sir_field_types : Cir.ty list) : Oir.ty =
         {
           named = None;
           obj_kind = Oir.OR_Record_kind { fields };
-          tag_variant = Some 0;
           cyclic_prop = Oir.Unknown_cyclic_prop;
         };
   }
@@ -474,9 +484,9 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
   let stored_oir_tys = List.map lower_ty stored_cir_tys in
   let field_types : Cir.ty list = sir_fn_ptr_ty :: stored_cir_tys in
   let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst field_types in
-  let size_op = int_operand total_fields in
+  let length_op = int_operand total_fields in
   let create_stmt_node =
-    Oir.OR_Object_create { dst = oir_dst; size = size_op }
+    Oir.OR_Object_create { dst = oir_dst; length = length_op }
   in
   (* Set clos[0] = accum_fn *)
   let accum_var = fresh_var ctx "Sy_oir_accum_fn" (fn_ptr_ty ()) in
@@ -504,7 +514,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
         Oir.OR_Object_set
           {
             obj = oir_dst;
-            field_idx = int_operand 0;
+            projection = Oir.OR_Project_field 0;
             value = var_operand accum_var;
             value_ty = fn_ptr_ty ();
             ownership_set = Oir.OR_Ownership_constant;
@@ -527,7 +537,7 @@ let lower_make_closure (ctx : ctx) (dst : Cir.var) (free_vars : Cir.var list)
             Oir.OR_Object_set
               {
                 obj = oir_dst;
-                field_idx = int_operand (1 + i);
+                projection = Oir.OR_Project_field (1 + i);
                 value;
                 value_ty;
                 ownership_set = Oir.OR_Ownership_unknown;
@@ -625,9 +635,9 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
     @ [ sir_obj_ptr_ty ] @ new_arg_cir_tys
   in
   let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst sir_field_types in
-  let size_op = int_operand total_fields in
+  let length_op = int_operand total_fields in
   let create_stmt_node =
-    Oir.OR_Object_create { dst = oir_dst; size = size_op }
+    Oir.OR_Object_create { dst = oir_dst; length = length_op }
   in
   (* Set clos[0] = accum_fn *)
   let accum_var = fresh_var ctx "Sy_accum_fn" (fn_ptr_ty ()) in
@@ -655,7 +665,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
         Oir.OR_Object_set
           {
             obj = oir_dst;
-            field_idx = int_operand 0;
+            projection = Oir.OR_Project_field 0;
             value = var_operand accum_var;
             value_ty = fn_ptr_ty ();
             ownership_set = Oir.OR_Ownership_constant;
@@ -678,7 +688,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
               Oir.OR_Object_set
                 {
                   obj = oir_dst;
-                  field_idx = int_operand 1;
+                  projection = Oir.OR_Project_field 1;
                   value = int64_operand (Int64.of_int edge_weight);
                   value_ty = i64_ty ();
                   ownership_set = Oir.OR_Ownership_constant;
@@ -699,7 +709,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
         Oir.OR_Object_set
           {
             obj = oir_dst;
-            field_idx = int_operand parent_idx;
+            projection = Oir.OR_Project_field parent_idx;
             value = closure_operand;
             value_ty = lower_ty sir_obj_ptr_ty;
             ownership_set = Oir.OR_Ownership_unknown;
@@ -720,7 +730,7 @@ let lower_partial_apply (ctx : ctx) (dst : Cir.var) (closure : Cir.var)
             Oir.OR_Object_set
               {
                 obj = oir_dst;
-                field_idx = int_operand (args_idx + i);
+                projection = Oir.OR_Project_field (args_idx + i);
                 value;
                 value_ty;
                 ownership_set = Oir.OR_Ownership_unknown;
@@ -758,9 +768,9 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
     @ [ sir_obj_ptr_ty ]
   in
   let ctx, oir_dst = with_closure_dst_ty ctx dst oir_dst sir_field_types in
-  let size_op = int_operand total_fields in
+  let length_op = int_operand total_fields in
   let create_stmt_node =
-    Oir.OR_Object_create { dst = oir_dst; size = size_op }
+    Oir.OR_Object_create { dst = oir_dst; length = length_op }
   in
   (* Set clos[0] = accum_fn *)
   let accum_var = fresh_var ctx "Sy_oir_accum_fn" (fn_ptr_ty ()) in
@@ -788,7 +798,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
         Oir.OR_Object_set
           {
             obj = oir_dst;
-            field_idx = int_operand 0;
+            projection = Oir.OR_Project_field 0;
             value = var_operand accum_var;
             value_ty = fn_ptr_ty ();
             ownership_set = Oir.OR_Ownership_constant;
@@ -811,7 +821,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
               Oir.OR_Object_set
                 {
                   obj = oir_dst;
-                  field_idx = int_operand 1;
+                  projection = Oir.OR_Project_field 1;
                   value = int64_operand (Int64.of_int edge_weight);
                   value_ty = i64_ty ();
                   ownership_set = Oir.OR_Ownership_constant;
@@ -832,7 +842,7 @@ let lower_cast_closure (ctx : ctx) (dst : Cir.var) (src : Cir.var) :
         Oir.OR_Object_set
           {
             obj = oir_dst;
-            field_idx = int_operand parent_idx;
+            projection = Oir.OR_Project_field parent_idx;
             value = src_operand;
             value_ty = lower_ty sir_obj_ptr_ty;
             ownership_set = Oir.OR_Ownership_unknown;
@@ -883,9 +893,9 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | Cir.CR_Object_set { obj; field_idx; value; value_ty } ->
+  | Cir.CR_Object_set { obj; projection; value; value_ty } ->
       let ctx, obj' = lower_var ctx obj in
-      let ctx, field_idx' = lower_operand ctx field_idx in
+      let ctx, projection' = lower_projection ctx projection in
       let ctx, value' = lower_operand ctx value in
       ( ctx,
         [
@@ -895,7 +905,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
               Oir.OR_Object_set
                 {
                   obj = obj';
-                  field_idx = field_idx';
+                  projection = projection';
                   value = value';
                   value_ty = lower_ty value_ty;
                   ownership_set = OR_Ownership_unknown;
@@ -903,14 +913,14 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
             ty = lower_ty stmt.ty;
           };
         ] )
-  | Cir.CR_Object_create { dst; size } ->
+  | Cir.CR_Object_create { dst; length } ->
       let ctx, dst' = lower_var ctx dst in
-      let ctx, size' = lower_operand ctx size in
+      let ctx, length' = lower_operand ctx length in
       ( ctx,
         [
           {
             id = fresh_global_id ();
-            node = Oir.OR_Object_create { dst = dst'; size = size' };
+            node = Oir.OR_Object_create { dst = dst'; length = length' };
             ty = lower_ty stmt.ty;
           };
         ] )
@@ -933,7 +943,7 @@ let statement_of_cir (ctx : ctx) (stmt : Cir.statement) :
                       Oir.OR_Object_get
                         {
                           obj = closure_op;
-                          field_idx = int_operand 0;
+                          projection = Oir.OR_Project_field 0;
                           value_ty = fn_ptr_ty ();
                           ownership_get = Oir.OR_Ownership_constant;
                         };

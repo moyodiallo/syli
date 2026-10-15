@@ -76,7 +76,6 @@ and ir_type =
   | CR_Obj of {
       named : string option;
       obj_kind : obj_kind;
-      tag_variant : int option;
       cyclic_prop : cyclic_prop;
     }
   | CR_Obj_Ptr
@@ -129,12 +128,19 @@ and terminator_node =
 and switch_case_node = { value : int; target_block : id }
 (** A switch case mapping an integer value to a target block. *)
 
+(** Logical projection *)
+type projection =
+  | CR_Project_field of int
+  | CR_Project_array of operand
+  | CR_Project_variant of { tag : int; field_idx : int }
+
 (** Rvalue computation node. *)
 type rvalue_node =
   | CR_BinOp of { op : binop; lhs : operand; rhs : operand }
   | CR_UnOp of { op : unop; operand : operand }
-  | CR_Object_get of { obj : operand; field_idx : operand; value_ty : ty }
+  | CR_Object_get of { obj : operand; projection : projection; value_ty : ty }
   | CR_Object_length of { obj : operand }
+  | CR_Object_size of { obj : operand }
   | CR_Object_get_tag of { obj : operand }
   | CR_Cast of { src : operand; to_ty : ty }
   | CR_Move of { src : operand }
@@ -151,11 +157,11 @@ and statement_node =
   | CR_Assign of { dst : var; rvalue : rvalue }
   | CR_Object_set of {
       obj : var;
-      field_idx : operand;
+      projection : projection;
       value : operand;
       value_ty : ty;
     }
-  | CR_Object_create of { dst : var; size : operand }
+  | CR_Object_create of { dst : var; length : operand }
   | CR_Call of { dst : var; target : call_target; args : operand list }
   | CR_Make_closure of {
       dst : var;

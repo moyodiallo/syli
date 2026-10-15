@@ -33,7 +33,7 @@ Array literal/alloc/index get/set lower to CIR:
   
     bb0:
       %__sy_cir_lambda_57:(i64 -> i64) = #make_closure {__sy_cir_lambda_57} () ()
-      %Sy_cir_var_0:obj{[array_elt=i64] tag=- acyclic} = object_create{size=4:i64}
+      %Sy_cir_var_0:obj{[array_elt=i64] acyclic} = object_create{length=4:i64}
       %Sy_cir_var_1:i64 = move(0:i64)
       goto bb1
   
@@ -47,7 +47,7 @@ Array literal/alloc/index get/set lower to CIR:
   
     bb2:
       %Sy_cir_var_3:i64 = #call_apply {%__sy_cir_lambda_57:(i64 -> i64)}  (%Sy_cir_var_1:i64)
-      obj_set(%Sy_cir_var_0:obj_ptr, %Sy_cir_var_1:i64, %Sy_cir_var_3:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[%Sy_cir_var_1:i64], %Sy_cir_var_3:i64):i64
       %Sy_cir_var_4:i64 = %Sy_cir_var_1:i64 + 1:i64
       %Sy_cir_var_1:i64 = move(%Sy_cir_var_4:i64)
       goto bb1
@@ -57,7 +57,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      obj_set(%syliArr.a:obj_ptr, 1:i64, 42:i64):i64
+      obj_set(%syliArr.a:obj_ptr, array[1:i64], 42:i64):i64
       return
   end
   
@@ -65,7 +65,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = obj_get(%syliArr.a:obj_ptr, 0:i64):i64
+      %Sy_cir_var_0:i64 = obj_get(%syliArr.a:obj_ptr, array[0:i64]):i64
       return %Sy_cir_var_0:i64
   end
   
@@ -73,10 +73,10 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:obj{[array_elt=i64] tag=- acyclic} = object_create{size=3:i64}
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 1:i64):i64
-      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 2:i64):i64
-      obj_set(%Sy_cir_var_0:obj_ptr, 2:i64, 3:i64):i64
+      %Sy_cir_var_0:obj{[array_elt=i64] acyclic} = object_create{length=3:i64}
+      obj_set(%Sy_cir_var_0:obj_ptr, array[0:i64], 1:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[1:i64], 2:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[2:i64], 3:i64):i64
       return %Sy_cir_var_0:obj_ptr
   end
   
@@ -118,13 +118,13 @@ Array literal/alloc/index get/set lower to CIR:
   
     bb0:
       gc_cycle
-      %__sy_cir_lambda_57:obj{{card=1 [0:fn_ptr]} tag=0 unknown_cyclic} = object_create{size=1:i32}
+      %__sy_cir_lambda_57:obj{{card=1 [0:fn_ptr]} unknown_cyclic} = object_create{length=1:i32}
       
       %Sy_oir_accum_fn_0:fn_ptr = addr_fn(__make_closure_accum.__sy_cir_lambda_57.65_ret_i64)
-      obj_set(%__sy_cir_lambda_57:obj_ptr, 0:i32, %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
+      obj_set(%__sy_cir_lambda_57:obj_ptr, field[0], %Sy_oir_accum_fn_0:fn_ptr):fn_ptr
       
       gc_cycle
-      %Sy_cir_var_0:obj{[array_elt=i64] tag=- acyclic} = object_create{size=4:i64}
+      %Sy_cir_var_0:obj{[array_elt=i64] acyclic} = object_create{length=4:i64}
       
       %Sy_cir_var_1:i64 = move(0:i64)
       goto bb1
@@ -138,10 +138,10 @@ Array literal/alloc/index get/set lower to CIR:
       return @own %Sy_cir_var_0:obj_ptr
   
     bb2:
-      %Sy_accum_ptr_1:fn_ptr = obj_get(%__sy_cir_lambda_57:obj_ptr, 0:i32):fn_ptr
+      %Sy_accum_ptr_1:fn_ptr = obj_get(%__sy_cir_lambda_57:obj_ptr, field[0]):fn_ptr
       %Sy_cir_var_3:i64 = #call_direct_fn_ptr(%Sy_accum_ptr_1:fn_ptr)  (%Sy_cir_var_1:i64, @borrow %__sy_cir_lambda_57:obj_ptr, 0:i64)
       
-      obj_set(%Sy_cir_var_0:obj_ptr, %Sy_cir_var_1:i64, %Sy_cir_var_3:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[%Sy_cir_var_1:i64], %Sy_cir_var_3:i64):i64
       %Sy_cir_var_4:i64 = %Sy_cir_var_1:i64 + 1:i64
       %Sy_cir_var_1:i64 = move(%Sy_cir_var_4:i64)
       goto bb1
@@ -151,7 +151,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      obj_set(%syliArr.a:obj_ptr, 1:i64, 42:i64):i64
+      obj_set(%syliArr.a:obj_ptr, array[1:i64], 42:i64):i64
       release(%syliArr.a:obj_ptr)
       return
   end
@@ -160,7 +160,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = obj_get(%syliArr.a:obj_ptr, 0:i64):i64
+      %Sy_cir_var_0:i64 = obj_get(%syliArr.a:obj_ptr, array[0:i64]):i64
       return %Sy_cir_var_0:i64
   end
   
@@ -169,11 +169,11 @@ Array literal/alloc/index get/set lower to CIR:
   
     bb0:
       gc_cycle
-      %Sy_cir_var_0:obj{[array_elt=i64] tag=- acyclic} = object_create{size=3:i64}
+      %Sy_cir_var_0:obj{[array_elt=i64] acyclic} = object_create{length=3:i64}
       
-      obj_set(%Sy_cir_var_0:obj_ptr, 0:i64, 1:i64):i64
-      obj_set(%Sy_cir_var_0:obj_ptr, 1:i64, 2:i64):i64
-      obj_set(%Sy_cir_var_0:obj_ptr, 2:i64, 3:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[0:i64], 1:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[1:i64], 2:i64):i64
+      obj_set(%Sy_cir_var_0:obj_ptr, array[2:i64], 3:i64):i64
       return @own %Sy_cir_var_0:obj_ptr
   end
   

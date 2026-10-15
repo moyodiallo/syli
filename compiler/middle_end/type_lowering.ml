@@ -140,7 +140,6 @@ let mk_ir_ty (type_defs : type_entry StringMap.t) (cty : C.ty) : I.ty =
           {
             named = None;
             obj_kind = I.CR_Record_kind { fields };
-            tag_variant = None;
             cyclic_prop = prop;
           }
     | CTy_Array elem ->
@@ -154,7 +153,6 @@ let mk_ir_ty (type_defs : type_entry StringMap.t) (cty : C.ty) : I.ty =
             obj_kind =
               I.CR_Array_kind
                 { element_ty = { I.id = fresh_id (); I.ir_type = element_ir } };
-            tag_variant = None;
             cyclic_prop = prop;
           }
     | CTy_Defined { name; args } -> (
@@ -177,7 +175,6 @@ let mk_ir_ty (type_defs : type_entry StringMap.t) (cty : C.ty) : I.ty =
               {
                 named = Some key;
                 obj_kind = I.CR_Record_kind { fields };
-                tag_variant = None;
                 cyclic_prop = record_prop;
               }
         | Some { decl = { def = CTydef_Alias t; _ }; _ } -> go visited t
@@ -218,7 +215,6 @@ let mk_ir_ty (type_defs : type_entry StringMap.t) (cty : C.ty) : I.ty =
                 {
                   named = Some key;
                   obj_kind = I.CR_Variant_kind { constructors };
-                  tag_variant = None;
                   cyclic_prop = prop;
                 }
         | Some { decl = { def = CTydef_Abstract; _ }; _ } ->

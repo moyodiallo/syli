@@ -36,9 +36,18 @@
  *
  * Bit 47       : CYCLIC MUTABLE (0 = no, 1 = mutable cyclic)
  *
- * Bits 46–31   : Reserved for future use
+ * Bits 46-43   : UNIT SHIFT (4)
+ *               unit shift with each corresponding type:
+ *               0 = i8,
+ *               1 = i16,
+ *               2 = i32,
+ *               3 = i64.
+ *               4-15 = reserved.
+ *               size_bytes = length << unit_shift
  *
- * Bits  32-0  :
+ * Bits 42-32   : Reserved for future use
+ *
+ * Bits  31-0   :
  *   PAYLOAD (32)   ← immutable
  *     mono:       length (32 bits)
  *     multi-order: arity (32 bits) (16 bits pointers + 16 bits non-pointers)
@@ -61,6 +70,13 @@ typedef uint32_t object_payload_t;
 #define GC_HAS_POINTERS_MASK    (0x1ULL << 57) // bit 57
 #define GC_TRACEABLE_MASK       (0x1ULL << 56) // bit 56
 #define GC_CYCLIC_MUTABLE_MASK  (0x1ULL << 47) // bit 47 (mutable cyclic)
+#define GC_UNIT_SHIFT_BITS      43
+#define GC_UNIT_MASK            (0xFULL << GC_UNIT_SHIFT_BITS) // bits 46-43
+/* Unit shift encodes the element cell width (header bits 46-43). */
+#define GC_UNIT_SHIFT_I8        0
+#define GC_UNIT_SHIFT_I16       1
+#define GC_UNIT_SHIFT_I32       2
+#define GC_UNIT_SHIFT_I64       3
 #define GC_VARIANT_SHIFT        48
 #define GC_VARIANT_FLAGS_MASK   (0xFFULL << GC_VARIANT_SHIFT) // bits 55-48
 #define GC_IMMUTABLE_FLAGS_MASK (0x3ULL << 57) // bits 58-57
@@ -120,16 +136,19 @@ typedef struct Object {
 
 static inline uint64_t syli_object_make_header(ObjectZone zone,
     CyclicFlag cyclic, ObjectType type, ObjectImmutableFlag imm_flags,
-    object_payload_t payload)
+    unsigned unit_shift, object_payload_t payload)
 {
     assert(
         zone == Zone_GcLocal || zone == Zone_GcShared || zone == Zone_Static);
     assert(cyclic == Cyclic || cyclic == Acyclic);
     assert(type == Type_MonoImm || type == Type_MonoRef
         || type == Type_MixedOrder || type == Type_MixedBitmap);
+    assert(unit_shift <= GC_UNIT_SHIFT_I64);
 
     return ((uint64_t)zone | (uint64_t)cyclic | (uint64_t)type
-        | (uint64_t)imm_flags | ((uint64_t)payload & GC_PAYLOAD_MASK));
+        | (uint64_t)imm_flags
+        | ((uint64_t)(unit_shift & 0xF) << GC_UNIT_SHIFT_BITS)
+        | ((uint64_t)payload & GC_PAYLOAD_MASK));
 }
 
 static inline uint32_t syli_object_make_mono_payload(size_t length)
@@ -327,20 +346,39 @@ static inline size_t syli_object_length(Object* o)
     }
 }
 
+/* ============================================================
+ * Unit / Byte Size Accessors
+ * ============================================================ */
+
+static inline unsigned syli_object_unit_shift(Object* o)
+{
+    return (unsigned)((o->header_word & GC_UNIT_MASK) >> GC_UNIT_SHIFT_BITS);
+}
+
+static inline size_t syli_object_unit_bytes(Object* o)
+{
+    return (size_t)1 << syli_object_unit_shift(o);
+}
+
+static inline size_t syli_object_size_bytes(Object* o)
+{
+    return syli_object_length(o) << syli_object_unit_shift(o);
+}
+
 /* Variants */
 static inline uint64_t syli_object_get_variant_tag(Object* o)
 {
     return (o->header_word & GC_VARIANT_FLAGS_MASK) >> GC_VARIANT_SHIFT;
 }
 
-static inline size_t syli_object_total_words(Object* o)
+static inline size_t syli_object_total_bytes(Object* o)
 {
-    // header + meta_ref_count + data (+ candidate index for mutable-cyclic)
-    size_t words = 2 + syli_object_length(o);
+    // header + meta_ref_count + payload bytes (+ candidate index )
+    size_t total = 2 * sizeof(uint64_t) + syli_object_size_bytes(o);
     if (syli_object_is_cyclic_mutable(o)) {
-        words += 1;
+        total += sizeof(uint64_t);
     }
-    return words;
+    return total;
 }
 
 #endif /* HEADER_OBJECT_H */

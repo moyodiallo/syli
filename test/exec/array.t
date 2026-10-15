@@ -82,3 +82,46 @@ Allocation size from a variable:
   $ dune exec sylic -- build test_arr.sy
   $ ./test_arr.exe
   7
+
+Array length (`array_len`) and byte size (`array_size`) primitives:
+  $ cat >test_arr.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive len : 'a array -> i64 = "array_len"
+  > primitive size : 'a array -> i64 = "array_size"
+  > let main () =
+  >   let a = [| 10; 20; 30 |]
+  >   syli_print_i64 (len a)
+  >   syli_print_i64 (size a)
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_arr.sy
+  $ ./test_arr.exe
+  324
+
+`array_size` of a packed char array uses the element cell width (1 byte):
+  $ cat >test_arr.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive size : 'a array -> i64 = "array_size"
+  > let main () =
+  >   let a = [| 'a'; 'b'; 'c' |]
+  >   syli_print_i64 (size a)
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_arr.sy
+  $ ./test_arr.exe
+  3
+
+`array_len` of an allocated array:
+  $ cat >test_arr.sy <<EOF
+  > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive len : 'a array -> i64 = "array_len"
+  > let f i = i
+  > let n = 20
+  > let main () =
+  >   let a = [| n: f |]
+  >   syli_print_i64 (len a)
+  > let _ = main ()
+  > EOF
+  $ dune exec sylic -- build test_arr.sy
+  $ ./test_arr.exe
+  20

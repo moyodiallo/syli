@@ -335,12 +335,14 @@ static inline void syli_object_decr_n(Object* o, size_t n)
  * ============================================================ */
 
 static inline Object* syli_object_alloc(
-    object_header_t header, uint64_t meta_ref_count, size_t words)
+    object_header_t header, uint64_t meta_ref_count, size_t length)
 {
     size_t extra_words = (header & GC_CYCLIC_MUTABLE_MASK) ? 1 : 0;
+    size_t unit_shift  = (header & GC_UNIT_MASK) >> GC_UNIT_SHIFT_BITS;
+    size_t data_bytes  = length << unit_shift;
 
     GCObject* obj = (GCObject*)malloc(
-        sizeof(GCObject) + (words + extra_words) * sizeof(uint64_t));
+        sizeof(GCObject) + data_bytes + extra_words * sizeof(uint64_t));
 
     obj->header_word    = header;
     obj->meta_ref_count = meta_ref_count;

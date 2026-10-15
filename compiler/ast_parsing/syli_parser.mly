@@ -8,6 +8,7 @@
 %token <string> CHAR
 %token <string> FLOAT
 %token <string> BOOL_VAL
+%token <string> TYPE_VAR
 %token TY_INT64 TY_INT32 TY_INT16 TY_INT8 TY_UINT64 TY_UINT32 TY_UINT16 TY_UINT8
 %token TY_CHAR TY_BOOL TY_UNIT TY_STRING TY_ARRAY TY_F32 TY_F64
 %token REC LET RETURN IF ELSE ELSEIF THEN FUN
@@ -274,6 +275,8 @@ ty:
   | TY_BOOL   { mk_ty $startpos $endpos (Ty_Constant Ty_Bool) }
   | TY_UNIT   { mk_ty $startpos $endpos (Ty_Constant Ty_Unit) }
   | TY_STRING { mk_ty $startpos $endpos (Ty_Constant Ty_String) }
+
+  | TYPE_VAR { mk_ty $startpos $endpos (Ty_Var $1) }
 
   | ty TY_ARRAY { mk_ty $startpos $endpos (Ty_Array $1) }
   | LPAREN ty_tuple RPAREN { mk_ty $startpos $endpos (Ty_Tuple $2) }

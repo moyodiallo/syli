@@ -63,7 +63,6 @@ and ir_type =
   | OR_Obj of {
       named : string option;
       obj_kind : obj_kind;
-      tag_variant : int option;
       cyclic_prop : cyclic_prop;
     }
   | OR_Obj_Ptr
@@ -112,16 +111,22 @@ and ownership_op =
 
 type arg = { operand : operand; ownership_arg : ownership_op }
 
+type projection =
+  | OR_Project_field of int
+  | OR_Project_array of operand
+  | OR_Project_variant of { tag : int; field_idx : int }
+
 type rvalue_node =
   | OR_BinOp of { op : binop; lhs : operand; rhs : operand }
   | OR_UnOp of { op : unop; operand : operand }
   | OR_Object_get of {
       obj : operand;
-      field_idx : operand;
+      projection : projection;
       value_ty : ty;
       ownership_get : ownership_op;
     }
   | OR_Object_length of { obj : operand }
+  | OR_Object_size of { obj : operand }
   | OR_Object_get_tag of { obj : operand }
   | OR_Cast of { src : operand; to_ty : ty; ownership : ownership_op }
   | OR_Move of { src : operand }
@@ -134,12 +139,12 @@ and statement_node =
   | OR_Assign of { dst : var; rvalue : rvalue }
   | OR_Object_set of {
       obj : var;
-      field_idx : operand;
+      projection : projection;
       value : operand;
       value_ty : ty;
       ownership_set : ownership_op;
     }
-  | OR_Object_create of { dst : var; size : operand }
+  | OR_Object_create of { dst : var; length : operand }
   | OR_Call of { dst : var; target : call_target; args : arg list }
   | OR_Store_global of {
       global : qualified_name;

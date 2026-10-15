@@ -44,6 +44,12 @@ let comparison_const_tys =
     Ty_Constant Ty_F64;
   ]
 
+(** ['a array -> i64]: generic in the element type, used by [len] and [size]. *)
+let array_prim_ty =
+  mk_ty
+  @@ Ty_Arrow
+       (mk_ty @@ Ty_Array (mk_ty @@ Ty_Var "a"), mk_ty @@ Ty_Constant Ty_Int64)
+
 let primitives =
   [
     {
@@ -86,6 +92,8 @@ let primitives =
       name = "ge";
       tys = List.map triple_comparison_arrow_ty comparison_const_tys;
     };
+    { name = "array_len"; tys = [ array_prim_ty ] };
+    { name = "array_size"; tys = [ array_prim_ty ] };
   ]
 
 let rec is_ty_equal (ty1 : ty) (ty2 : ty) : bool =
@@ -108,5 +116,23 @@ let rec is_ty_equal (ty1 : ty) (ty2 : ty) : bool =
 let find_primitive (name : string) : primitive_instances option =
   List.find_opt (fun p -> p.name = name) primitives
 
+let rec ty_matches_pattern (pat : ty) (actual : ty) : bool =
+  match (pat.ty_desc, actual.ty_desc) with
+  | Ty_Var _, _ -> true
+  | Ty_Any, _ | _, Ty_Any -> true
+  | Ty_Constant a, Ty_Constant b -> a = b
+  | Ty_Arrow (parg, pret), Ty_Arrow (aarg, aret) ->
+      ty_matches_pattern parg aarg && ty_matches_pattern pret aret
+  | Ty_Tuple pats, Ty_Tuple actuals ->
+      List.length pats = List.length actuals
+      && List.for_all2 ty_matches_pattern pats actuals
+  | Ty_Array pat, Ty_Array actual -> ty_matches_pattern pat actual
+  | Ty_Defined p, Ty_Defined a -> (
+      p.name.name = a.name.name
+      &&
+        try List.for_all2 ty_matches_pattern p.args a.args
+        with Invalid_argument _ -> false)
+  | _ -> false
+
 let ty_match_primitive_instance (ty : ty) (p : primitive_instances) : bool =
-  List.exists (fun t -> is_ty_equal t ty) p.tys
+  List.exists (fun t -> ty_matches_pattern t ty) p.tys
