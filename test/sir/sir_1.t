@@ -174,7 +174,7 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith./" (20:i64, 4:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_arith.(/) (20:i64, 4:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -182,7 +182,7 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith.*" (4:i64, 6:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_arith.(*) (4:i64, 6:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -190,7 +190,7 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith.-" (10:i64, 2:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_arith.(-) (10:i64, 2:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -198,11 +198,11 @@ Arithmetic operations:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_arith.+" (5:i64, 3:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_arith.(+) (5:i64, 3:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_arith.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_arith.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -210,7 +210,7 @@ Arithmetic operations:
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_arith.*"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_arith.(*)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -218,7 +218,7 @@ Arithmetic operations:
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_arith.-"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_arith.(-)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -226,7 +226,7 @@ Arithmetic operations:
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_arith./"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_arith.(/)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -266,7 +266,7 @@ Comparison operations produce a temporary variable:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:bool = #call_direct "syliTest_cmp.<" (2:i64, 5:i64)
+      %Sy_cir_var_0:bool = #call_direct syliTest_cmp.(<) (2:i64, 5:i64)
       return %Sy_cir_var_0:bool
   end
   
@@ -274,11 +274,11 @@ Comparison operations produce a temporary variable:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:bool = #call_direct "syliTest_cmp.==" (5:i64, 5:i64)
+      %Sy_cir_var_0:bool = #call_direct syliTest_cmp.(==) (5:i64, 5:i64)
       return %Sy_cir_var_0:bool
   end
   
-  public fn "syliTest_cmp.=="(%x:i64, %y:i64) -> bool:
+  public fn syliTest_cmp.(==)(%x:i64, %y:i64) -> bool:
     entry: bb0
   
     bb0:
@@ -286,7 +286,7 @@ Comparison operations produce a temporary variable:
       return %Sy_prim_result:bool
   end
   
-  public fn "syliTest_cmp.<"(%x:i64, %y:i64) -> bool:
+  public fn syliTest_cmp.(<)(%x:i64, %y:i64) -> bool:
     entry: bb0
   
     bb0:
@@ -372,7 +372,7 @@ Type error propagates from typing phase:
     1 | let x = 1 + true
                 ^^^^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
 Collection literals are no longer supported (moved to traits):
@@ -414,7 +414,7 @@ Closures as an argument:
   Typed test_closure.src successfully: module Test_closure with 6 top-level typed items
   Type Environment:
   {
-    + : i64 -> i64 -> i64
+    (+) : i64 -> i64 -> i64
     apply_twice : forall '82. '82 -> '82 -> '82 -> '82
     double_x : i64 -> i64
     f : i64 -> i64 -> i64
@@ -459,11 +459,11 @@ Closures as an argument:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_closure.+" (%x:i64, %x:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_closure.(+) (%x:i64, %x:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_closure.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_closure.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

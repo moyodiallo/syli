@@ -18,7 +18,7 @@
 %token COMMA SEMI COLON COLONEQ NEWLINE DOT ARROW
 %token EQ PLUS MINUS STAR PERCENT SLASH TIMES
 %token LT GT EQEQ BANGEQ LTEQ GTEQ AMPAMPAND NOT
-%token BARBAR BAR CARET BANG UNDERSCORE
+%token BARBAR BAR CARET BANG HASH UNDERSCORE
 %token INDENT DEDENT EOF
 %token STRUCTURE
 %token <int> SPACE
@@ -98,7 +98,7 @@ signature_item_desc:
       in
       mk_signature_external_value $startpos $endpos name value_ty ext_ident
     }
-  | PRIMITIVE name = primitive_name COLON value_ty = ty EQ symbol = symbol
+  | PRIMITIVE name = fn_operator_or_fn_name COLON value_ty = ty EQ symbol = symbol
     {
       let symbol_name, startpos, endpos = symbol in
       match Primitives.find_primitive symbol_name with
@@ -141,7 +141,7 @@ structure_item_desc:
       in
       mk_structure_external_value $startpos $endpos name value_ty ext_ident
     }
-  | PRIMITIVE name = primitive_name COLON value_ty = ty EQ symbol = symbol
+  | PRIMITIVE name = fn_operator_or_fn_name COLON value_ty = ty EQ symbol = symbol
     {
       let symbol_name, startpos, endpos = symbol in
       match Primitives.find_primitive symbol_name with
@@ -338,24 +338,14 @@ args:
   | atom_expr args  { $1 :: $2 }
 
 %inline ident:
-  | IDENT
-    { let is_operator = check_operator $1 in
-      mk_ident ~is_operator $startpos $endpos $1 }
+  | IDENT { mk_ident $startpos $endpos $1 }
 
 %inline fn_operator_or_fn_name:
-  | LPAREN operator RPAREN { mk_ident ~is_operator:true $startpos $endpos $2 }
-  | IDENT
-    { if check_operator $1 then
-        failwith "defining operator should be in ( ) like (==)"
-      else mk_ident $startpos $endpos $1 }
-
-%inline primitive_name:
-  | LPAREN operator RPAREN { mk_ident ~is_operator:true $startpos $endpos $2 }
-  | LPAREN IDENT RPAREN    { mk_ident $startpos $endpos $2 }
-  | IDENT
-    { if check_operator $1 then
-        failwith "defining operator should be in ( ) like (==)"
-      else mk_ident $startpos $endpos $1 }
+  | LPAREN operator RPAREN
+    { mk_ident $startpos $endpos ("(" ^ $2 ^ ")") }
+  | LPAREN HASH IDENT RPAREN
+    { mk_ident $startpos $endpos ("(#" ^ $3 ^ ")") }
+  | IDENT { mk_ident $startpos $endpos $1 }
 
 %inline uident:
   | UIDENT { mk_ident $startpos $endpos $1 }
@@ -476,14 +466,14 @@ simple_expr:
   | expr DOT LBRACKET expr RBRACKET
     { let closure =
         mk_expr $startpos $endpos
-          (Exp_Ident (mk_ident $startpos $endpos "index_get"))
+          (Exp_Ident (mk_ident $startpos $endpos "(#index_get)"))
       in
       mk_expr $startpos $endpos
         (Exp_Apply { closure_fun = closure; args = [ $1; $4 ] }) }
   | expr DOT LBRACKET expr RBRACKET COLONEQ expr
     { let closure =
         mk_expr $startpos $endpos
-          (Exp_Ident (mk_ident $startpos $endpos "index_set"))
+          (Exp_Ident (mk_ident $startpos $endpos "(#index_set)"))
       in
       mk_expr $startpos $endpos
         (Exp_Apply { closure_fun = closure; args = [ $1; $4; $7 ] }) }
@@ -520,22 +510,20 @@ expr_variant:
 %inline operation:
   | expr op = operator expr
     { let closure = mk_expr $startpos $endpos
-        (Exp_Ident (mk_ident ~is_operator:true $startpos $endpos op)) in
+        (Exp_Ident (mk_ident $startpos $endpos ("(" ^ op ^ ")"))) in
       mk_expr $startpos $endpos
         (Exp_Apply { closure_fun = closure; args = [$1; $3] }) }
   | MINUS expr
     { let closure = mk_expr $startpos $endpos
-        (Exp_Ident
-           (mk_ident ~is_operator:true $startpos $endpos "unegative")) in
+        (Exp_Ident (mk_ident $startpos $endpos "(#unegative)")) in
       mk_expr $startpos $endpos (Exp_Apply { closure_fun = closure; args = [$2] }) }
   | PLUS expr
     { let closure = mk_expr $startpos $endpos
-        (Exp_Ident
-           (mk_ident ~is_operator:true $startpos $endpos "upositive")) in
+        (Exp_Ident (mk_ident $startpos $endpos "(#upositive)")) in
       mk_expr $startpos $endpos (Exp_Apply { closure_fun = closure; args = [$2] }) }
   | BANG expr
     { let closure = mk_expr $startpos $endpos
-        (Exp_Ident (mk_ident ~is_operator:true $startpos $endpos "!")) in
+        (Exp_Ident (mk_ident $startpos $endpos "(!)")) in
       mk_expr $startpos $endpos (Exp_Apply { closure_fun = closure; args = [$2] }) }
   | NOT expr
     { let ident = mk_ident $startpos $endpos "not" in

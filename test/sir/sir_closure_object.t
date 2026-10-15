@@ -41,11 +41,11 @@ Simple closure with one captured variable:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_simple.+" (%x:i64, %x:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_simple.(+) (%x:i64, %x:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_simple.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_simple.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -127,11 +127,11 @@ Closure with multiple captured variables:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_multi.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_multi.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -220,12 +220,12 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
-      %Sy_cir_var_1:i64 = #call_direct "syliTest_multi.+" (%Sy_cir_var_0:i64, %z:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_multi.(+) (%x:i64, %y:i64)
+      %Sy_cir_var_1:i64 = #call_direct syliTest_multi.(+) (%Sy_cir_var_0:i64, %z:i64)
       return %Sy_cir_var_1:i64
   end
   
-  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_multi.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -314,12 +314,12 @@ Closure with multipble chains of captured variables:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%x:i64, %y:i64)
-      %Sy_cir_var_1:i64 = #call_direct "syliTest_multi.+" (%Sy_cir_var_0:i64, %z:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_multi.(+) (%x:i64, %y:i64)
+      %Sy_cir_var_1:i64 = #call_direct syliTest_multi.(+) (%Sy_cir_var_0:i64, %z:i64)
       return %Sy_cir_var_1:i64
   end
   
-  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_multi.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -394,11 +394,11 @@ Lambda with captured variable (env param):
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_env.+" (%sy_x_cap_0:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_env.(+) (%sy_x_cap_0:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_env.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_env.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -480,12 +480,12 @@ Chain with Make_closure then Partial_apply — fn_ptr stored at the terminal lea
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_chain.+" (%x:i64, %y:i64)
-      %Sy_cir_var_1:i64 = #call_direct "syliTest_chain.+" (%Sy_cir_var_0:i64, %z:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_chain.(+) (%x:i64, %y:i64)
+      %Sy_cir_var_1:i64 = #call_direct syliTest_chain.(+) (%Sy_cir_var_0:i64, %z:i64)
       return %Sy_cir_var_1:i64
   end
   
-  public fn "syliTest_chain.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_chain.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -554,7 +554,7 @@ No closure (no object_create generated):
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_no_closure.+" (%syliTest_no_closure.x:i64, 1:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_no_closure.(+) (%syliTest_no_closure.x:i64, 1:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -566,7 +566,7 @@ No closure (no object_create generated):
       return 42:i64
   end
   
-  public fn "syliTest_no_closure.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_no_closure.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

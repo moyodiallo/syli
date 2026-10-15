@@ -24,8 +24,8 @@ Typing recursive functions in Syli
   Typed test_file.sy successfully: module Test_file with 4 top-level typed items
   Type Environment:
   {
-    * : i64 -> i64 -> i64
-    - : i64 -> i64 -> i64
-    == : i64 -> i64 -> bool
+    (*) : i64 -> i64 -> i64
+    (-) : i64 -> i64 -> i64
+    (==) : i64 -> i64 -> bool
     factorial : i64 -> i64
   }

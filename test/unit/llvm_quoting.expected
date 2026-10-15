@@ -1,0 +1,15 @@
+"syliMod.foo" -> syliMod.foo
+"a-b" -> a-b
+"_x-1.y" -> _x-1.y
+"-lead" -> -lead
+"trail-" -> trail-
+"a$b.c_d" -> a$b.c_d
+"12" -> 12
+"123" -> 123
+"1abc" -> "1abc"
+"syliMod.(+)" -> "syliMod.(+)"
+"syliArr.(#index_set)" -> "syliArr.(#index_set)"
+"a:b" -> "a:b"
+"a b" -> "a b"
+"a\"b" -> "a\22b"
+"" -> ""

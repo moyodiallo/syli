@@ -24,19 +24,10 @@ let loc_of_parsing (loc : Syli_parsing.Ast.location) : location =
   { start_pos = loc.start_pos; end_pos = loc.end_pos; filename = loc.filename }
 
 let ident_of_parsing (id : Syli_parsing.Ast.ident) : ident =
-  {
-    name = id.name;
-    id = id.id;
-    path = [];
-    loc = loc_of_parsing id.loc;
-    is_operator = id.is_operator;
-  }
+  { name = id.name; id = id.id; path = []; loc = loc_of_parsing id.loc }
 
 let mk_ty ty_desc = { ty_desc }
 
-(** Elaborates a parsed type into a typed type, tying repeated named type
-    variables (['a]) within a single annotation to the same unification variable
-    so that e.g. ['a array -> i64 -> 'a] shares ['a]. *)
 let ty_of_parsing (ctx : Env.infer_ctx) (t : Syli_parsing.Ast.ty) :
     Env.infer_ctx * ty =
   let module SM = Syli_common.StringMap in

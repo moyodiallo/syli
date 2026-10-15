@@ -13,15 +13,7 @@ type path = string list (* ["Std"; "List"] *)
 
 (* Source location *)
 type location = { start_pos : int; end_pos : int; filename : string }
-
-type ident = {
-  name : string;
-  path : path;
-  id : int;
-  loc : location;
-  is_operator : bool;
-}
-
+type ident = { name : string; path : path; id : int; loc : location }
 type mut_flag = Mutable | Immutable
 type rec_flag = Recursive | NonRecursive
 

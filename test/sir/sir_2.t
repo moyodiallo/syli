@@ -21,11 +21,11 @@ A function with let bindings:
   
     bb0:
       %sy1_x:i64 = cast(10:i64 as i64)
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_let.+" (%sy1_x:i64, 32:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_let.(+) (%sy1_x:i64, 32:i64)
       return
   end
   
-  public fn "syliTest_let.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_let.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -70,11 +70,11 @@ Simple Partial apply (ir_fp — after generate_functions, before monomorphize):
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_partial.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_partial.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -119,11 +119,11 @@ Simple Partial apply (ir):
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_partial.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_partial.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -178,11 +178,11 @@ Simple Partial apply (ir_raw):
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_partial.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_partial.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_partial.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_partial.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -222,11 +222,11 @@ Partial apply from a lambda with captured local value:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syli_tmp_partial2.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syli_tmp_partial2.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syli_tmp_partial2.+"(%x:i64, %y:i64) -> i64:
+  public fn syli_tmp_partial2.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

@@ -47,23 +47,13 @@ let toplevel_rename env (ident : Typed_ast.ident) =
       "sy" ^ string_of_int (fresh_id ()) ^ "_" ^ name
     else name
   in
-  let qname =
-    toplevel_name env (rename_possible_public env ident.name ident.id)
-  in
-  if ident.is_operator then
-    (*e.g. [syliTest_file.==] becomes ["syliTest_file.=="]*)
-    Printf.sprintf "\"%s\"" qname
-  else qname
+  toplevel_name env (rename_possible_public env ident.name ident.id)
 
 let lebind_expr_rename env (ident : Typed_ast.ident) =
   let rename (env : env) (name : string) (id : int) : string =
     "sy" ^ string_of_int (fresh_id ()) ^ "_" ^ name
   in
-  let qname = rename env ident.name ident.id in
-  if ident.is_operator then
-    (*e.g. [syliTest_file.==] becomes ["syliTest_file.=="]*)
-    Printf.sprintf "\"%s\"" qname
-  else qname
+  rename env ident.name ident.id
 
 let rec desugar_ty env (t : Typed_ast.ty) : ty =
   let ty_desc =
@@ -267,21 +257,9 @@ let rec desugar_expr (env : env) (e : Typed_ast.expr) : expr * env =
           match l.pattern.pattern_desc with
           | TPat_Ident name -> name
           | TPat_Unit ->
-              {
-                name = "unit_pat";
-                path = [];
-                id = l.pattern.id;
-                is_operator = false;
-                loc = l.loc;
-              }
+              { name = "unit_pat"; path = []; id = l.pattern.id; loc = l.loc }
           | TPat_Any ->
-              {
-                name = "any_pat";
-                path = [];
-                id = l.pattern.id;
-                loc = l.loc;
-                is_operator = false;
-              }
+              { name = "any_pat"; path = []; id = l.pattern.id; loc = l.loc }
           | _ ->
               error_at l.loc
                 "let param pattern must be simplified to an identifier, unit, \
@@ -465,7 +443,6 @@ let rec desugarize_structure_items (env : env)
                     name = "unit_pat";
                     path = [];
                     id = ldef.pattern.id;
-                    is_operator = false;
                     loc = ldef.loc;
                   }
               | TPat_Any ->
@@ -474,7 +451,6 @@ let rec desugarize_structure_items (env : env)
                     path = [];
                     id = ldef.pattern.id;
                     loc = ldef.loc;
-                    is_operator = false;
                   }
               | _ ->
                   error_at ldef.loc

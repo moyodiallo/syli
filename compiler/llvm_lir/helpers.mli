@@ -15,6 +15,7 @@ val null : Types.lltype -> Types.operand
 val zeroinitializer : Types.lltype -> Types.operand
 val local : string -> Types.lltype -> Types.operand
 val global : string -> Types.lltype -> Types.operand
+val quote_if_needed : string -> string
 val string_of_lltype : Types.lltype -> string
 val string_of_float_literal : float -> string
 val string_of_operand : Types.operand -> string

@@ -1,7 +1,7 @@
 Array literal/alloc/index get/set lower to CIR:
   $ cat >arr.sy <<EOF
-  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
-  > primitive (index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
+  > primitive (#index_get) : 'a array -> i64 -> 'a = "array_index_get"
+  > primitive (#index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
   > let a = [| 1; 2; 3 |]
   > let b = a.[0]
   > let _ = a.[1] := 42
@@ -59,7 +59,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:void = #call_direct syliArr.index_set__obj_obj_i64__i64__i64_ret_void (%syliArr.a:obj_ptr, 1:i64, 42:i64)
+      %Sy_cir_var_0:void = #call_direct syliArr.(#index_set)__obj_obj_i64__i64__i64_ret_void (%syliArr.a:obj_ptr, 1:i64, 42:i64)
       return
   end
   
@@ -67,7 +67,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct syliArr.index_get__obj_obj_i64__i64_ret_i64 (%syliArr.a:obj_ptr, 0:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliArr.(#index_get)__obj_obj_i64__i64_ret_i64 (%syliArr.a:obj_ptr, 0:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -90,7 +90,7 @@ Array literal/alloc/index get/set lower to CIR:
       return %i:i64
   end
   
-  public fn syliArr.index_get__obj_obj_i64__i64_ret_i64(%x:obj_ptr, %y:i64) -> i64:
+  public fn syliArr.(#index_get)__obj_obj_i64__i64_ret_i64(%x:obj_ptr, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -98,7 +98,7 @@ Array literal/alloc/index get/set lower to CIR:
       return %Sy_prim_result:i64
   end
   
-  public fn syliArr.index_set__obj_obj_i64__i64__i64_ret_void(%x:obj_ptr, %y:i64, %z:i64) -> void:
+  public fn syliArr.(#index_set)__obj_obj_i64__i64__i64_ret_void(%x:obj_ptr, %y:i64, %z:i64) -> void:
     entry: bb0
   
     bb0:
@@ -169,7 +169,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:void = #call_direct syliArr.index_set__obj_obj_i64__i64__i64_ret_void (@transfer %syliArr.a:obj_ptr, 1:i64, 42:i64)
+      %Sy_cir_var_0:void = #call_direct syliArr.(#index_set)__obj_obj_i64__i64__i64_ret_void (@transfer %syliArr.a:obj_ptr, 1:i64, 42:i64)
       return
   end
   
@@ -177,7 +177,7 @@ Array literal/alloc/index get/set lower to CIR:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct syliArr.index_get__obj_obj_i64__i64_ret_i64 (@transfer %syliArr.a:obj_ptr, 0:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliArr.(#index_get)__obj_obj_i64__i64_ret_i64 (@transfer %syliArr.a:obj_ptr, 0:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -202,7 +202,7 @@ Array literal/alloc/index get/set lower to CIR:
       return %i:i64
   end
   
-  public fn syliArr.index_get__obj_obj_i64__i64_ret_i64(%x:obj_ptr, %y:i64) -> i64:
+  public fn syliArr.(#index_get)__obj_obj_i64__i64_ret_i64(%x:obj_ptr, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -211,7 +211,7 @@ Array literal/alloc/index get/set lower to CIR:
       return %Sy_prim_result:i64
   end
   
-  public fn syliArr.index_set__obj_obj_i64__i64__i64_ret_void(%x:obj_ptr, %y:i64, %z:i64) -> void:
+  public fn syliArr.(#index_set)__obj_obj_i64__i64__i64_ret_void(%x:obj_ptr, %y:i64, %z:i64) -> void:
     entry: bb0
   
     bb0:

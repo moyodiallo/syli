@@ -71,7 +71,7 @@ If-then-else with bool comparison:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:bool = #call_direct "syliTest_if_cmp.>" (%syliTest_if_cmp.x:i64, 5:i64)
+      %Sy_cir_var_0:bool = #call_direct syliTest_if_cmp.(>) (%syliTest_if_cmp.x:i64, 5:i64)
       cond_br %Sy_cir_var_0:bool, bb1, bb2
   
     bb2:
@@ -95,7 +95,7 @@ If-then-else with bool comparison:
       return 10:i64
   end
   
-  public fn "syliTest_if_cmp.>"(%x:i64, %y:i64) -> bool:
+  public fn syliTest_if_cmp.(>)(%x:i64, %y:i64) -> bool:
     entry: bb0
   
     bb0:

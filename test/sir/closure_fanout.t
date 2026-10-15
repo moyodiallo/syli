@@ -47,7 +47,7 @@ Closure fan-out through if-then-else with dispatch:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_fanout.-" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_fanout.(-) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -55,11 +55,11 @@ Closure fan-out through if-then-else with dispatch:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_fanout.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_fanout.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_fanout.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_fanout.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -67,7 +67,7 @@ Closure fan-out through if-then-else with dispatch:
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_fanout.-"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_fanout.(-)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

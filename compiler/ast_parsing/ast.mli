@@ -74,15 +74,8 @@ type path = string list
 type location = { start_pos : int; end_pos : int; filename : string }
 (** Source location in the input file. *)
 
-type ident = {
-  name : string;
-  path : path;
-  id : int;
-  loc : location;
-  is_operator : bool;
-}
-(** A name paired with a path, a unique ID and source location; [is_operator]
-    marks the dedicated operator namespace. *)
+type ident = { name : string; path : path; id : int; loc : location }
+(** A name paired with a path, a unique ID and source location. *)
 
 type mut_flag =
   | Mutable
@@ -206,8 +199,7 @@ and letdef = {
   ty_annot : ty option;
   loc : location;
 }
-(** A let-binding; [LetFun] with a [Pat_Ident] whose name carries
-    [is_operator = true] binds an operator. *)
+(** A let-binding. *)
 
 and record_field = {
   id : int;

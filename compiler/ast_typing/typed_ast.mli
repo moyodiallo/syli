@@ -7,15 +7,8 @@ type path = string list
 type location = { start_pos : int; end_pos : int; filename : string }
 (** Source location in the input file. *)
 
-and ident = {
-  name : string;
-  id : int;
-  path : string list;
-  loc : location;
-  is_operator : bool;
-}
-(** A name with unique ID, path, and source location; [is_operator] marks the
-    dedicated operator namespace. *)
+and ident = { name : string; id : int; path : string list; loc : location }
+(** A name with unique ID, path, and source location. *)
 
 (** Mutability flag for typed bindings. *)
 type mut_flag = TMutable | TImmutable

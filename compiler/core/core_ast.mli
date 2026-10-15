@@ -8,7 +8,7 @@ type path = string list
 (** A dotted path of module names. *)
 
 type ident = { name : string; path : path; id : int }
-(** An identifier with name, full name, path, unique ID, and [is_operator]. *)
+(** An identifier with name, full name, path, unique ID *)
 
 (** Mutability flag for core AST bindings. *)
 type mut_flag = CMutable | CImmutable

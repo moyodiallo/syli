@@ -1,7 +1,7 @@
 Array typing: literal infers element type, index get/set, allocation:
   $ cat >arr.sy <<EOF
-  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
-  > primitive (index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
+  > primitive (#index_get) : 'a array -> i64 -> 'a = "array_index_get"
+  > primitive (#index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
   > let a = [| 1; 2; 3 |]
   > let b = a.[0]
   > let _ = a.[1] := 42
@@ -11,11 +11,11 @@ Array typing: literal infers element type, index get/set, allocation:
   Typed arr.sy successfully: module Arr with 6 top-level typed items
   Type Environment:
   {
+    (#index_get) : forall '64. '64 array -> i64 -> '64
+    (#index_set) : forall '65. '65 array -> i64 -> '65 -> unit
     a : i64 array
     b : i64
     c : i64 array
-    index_get : forall '64. '64 array -> i64 -> '64
-    index_set : forall '65. '65 array -> i64 -> '65 -> unit
   }
 
 Array literal element type mismatch is a type error:
@@ -33,7 +33,7 @@ Array literal element type mismatch is a type error:
 
 Index expression must be i64:
   $ cat >arr_index_ty.sy <<EOF
-  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
+  > primitive (#index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let a = [| 1; 2 |]
   > let b = a.[true]
   > EOF
@@ -48,7 +48,7 @@ Index expression must be i64:
 
 Index-set value must match the element type:
   $ cat >arr_indexset_ty.sy <<EOF
-  > primitive (index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
+  > primitive (#index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
   > let a = [| 1; 2 |]
   > let _ = a.[0] := true
   > EOF
@@ -63,7 +63,7 @@ Index-set value must match the element type:
 
 Indexing a non-array is a type error:
   $ cat >arr_index_nonarray.sy <<EOF
-  > primitive (index_get) : 'a array -> i64 -> 'a = "array_index_get"
+  > primitive (#index_get) : 'a array -> i64 -> 'a = "array_index_get"
   > let x = 1
   > let y = x.[0]
   > EOF

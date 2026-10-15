@@ -5,14 +5,7 @@
 type path = string list
 
 type location = { start_pos : int; end_pos : int; filename : string }
-
-and ident = {
-  name : string;
-  id : int;
-  path : string list;
-  loc : location;
-  is_operator : bool;
-}
+and ident = { name : string; id : int; path : string list; loc : location }
 
 type mut_flag = TMutable | TImmutable
 type rec_flag = TRecursive | TNonRecursive
