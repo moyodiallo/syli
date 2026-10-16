@@ -43,3 +43,8 @@
  (name pattern_matching)
  (modules pattern_matching)
  (libraries middle_end syli_core syli_parsing syli_typing))
+
+(test
+ (name llvm_quoting)
+ (modules llvm_quoting)
+ (libraries llvm_lir))

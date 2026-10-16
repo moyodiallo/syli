@@ -12,30 +12,14 @@ let mk_expr startpos endpos expr_desc : expr =
 let mk_ty startpos endpos ty_desc : ty =
   { id = fresh_id (); ty_desc; loc = mk_loc startpos endpos }
 
-let mk_ident ?(is_operator = false) startpos endpos name : ident =
-  {
-    name;
-    path = [];
-    id = fresh_id ();
-    loc = mk_loc startpos endpos;
-    is_operator;
-  }
+let mk_ident startpos endpos name : ident =
+  { name; path = []; id = fresh_id (); loc = mk_loc startpos endpos }
 
 let mk_structure_item startpos endpos structure_item_desc : structure_item =
   { id = fresh_id (); structure_item_desc; loc = mk_loc startpos endpos }
 
 let mk_external_fn symbol ty kind : external_fn =
   { symbol; kind; calling_convention = None }
-
-let check_operator (s : string) : bool =
-  let is_op_char c =
-    match c with
-    | '=' | ':' | '!' | '&' | '|' | '>' | '<' | '+' | '-' | '*' | '%' | '/'
-    | '^' | '~' ->
-        true
-    | _ -> false
-  in
-  s <> "" && String.for_all is_op_char s
 
 let mk_signature_value startpos endpos name ty : signature_item_desc =
   Sig_Value { name; ty }

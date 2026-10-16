@@ -1,6 +1,8 @@
 Array literal, index get/set lower to CIR and compile to LLVM:
   $ cat >test_array.sy <<EOF
   > foreign syli_print_i64 : i64 -> unit = "syli_print_i64"
+  > primitive (#index_get) : 'a array -> i64 -> 'a = "array_index_get"
+  > primitive (#index_set) : 'a array -> i64 -> 'a -> unit = "array_index_set"
   > let main () =
   >     let a = [| 10; 20; 30 |]
   >     syli_print_i64(a.[1])
@@ -28,9 +30,17 @@ Array literal, index get/set lower to CIR and compile to LLVM:
       obj_set(%Sy_cir_var_0:obj_ptr, array[0:i64], 10:i64):i64
       obj_set(%Sy_cir_var_0:obj_ptr, array[1:i64], 20:i64):i64
       obj_set(%Sy_cir_var_0:obj_ptr, array[2:i64], 30:i64):i64
-      %Sy_cir_var_1:i64 = obj_get(%Sy_cir_var_0:obj_ptr, array[1:i64]):i64
+      %Sy_cir_var_1:i64 = #call_direct syliTest_array.(#index_get)__obj_obj_i64__i64_ret_i64 (%Sy_cir_var_0:obj_ptr, 1:i64)
       %Sy_cir_var_2:void = #call_direct syliTest_array.syli_print_i64 (%Sy_cir_var_1:i64)
       return
+  end
+  
+  public fn syliTest_array.(#index_get)__obj_obj_i64__i64_ret_i64(%x:obj_ptr, %y:i64) -> i64:
+    entry: bb0
+  
+    bb0:
+      %Sy_prim_result:i64 = obj_get(%x:obj_ptr, array[%y:i64]):i64
+      return %Sy_prim_result:i64
   end
   
   end
@@ -74,12 +84,18 @@ Array literal, index get/set lower to CIR and compile to LLVM:
     %Sy_llvm_tmp_4 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
     %Sy_llvm_tmp_5 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_4, i32 0, i32 2, i64 2
     store i64 30, ptr addrspace(1) %Sy_llvm_tmp_5
-    %Sy_llvm_tmp_6 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %Sy_cir_var_0)
-    %Sy_llvm_tmp_7 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_6, i32 0, i32 2, i64 1
-    %Sy_cir_var_1 = load i64, ptr addrspace(1) %Sy_llvm_tmp_7
-    call void @syli_inlinable_ownership_release(ptr addrspace(1) %Sy_cir_var_0)
+    %Sy_cir_var_1 = call i64 @"syliTest_array.(#index_get)__obj_obj_i64__i64_ret_i64"(ptr addrspace(1) %Sy_cir_var_0, i64 1)
     call void @syli_print_i64(i64 %Sy_cir_var_1)
     ret void
+  }
+  
+  define i64 @"syliTest_array.(#index_get)__obj_obj_i64__i64_ret_i64"(ptr addrspace(1) %x, i64 %y) gc "statepoint-example" {
+  bb0:
+    %Sy_llvm_tmp_0 = call ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %x)
+    %Sy_llvm_tmp_1 = getelementptr { i64, i64, [0 x i64] }, ptr addrspace(1) %Sy_llvm_tmp_0, i32 0, i32 2, i64 %y
+    %Sy_prim_result = load i64, ptr addrspace(1) %Sy_llvm_tmp_1
+    call void @syli_inlinable_ownership_release(ptr addrspace(1) %x)
+    ret i64 %Sy_prim_result
   }
   
   define ptr addrspace(1) @syli_inlinable_ownership_untag(ptr addrspace(1) %p) {

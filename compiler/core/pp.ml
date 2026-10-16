@@ -82,15 +82,6 @@ let rec string_of_expr_inner ?(indent = 0) (e : expr) : string =
       Printf.sprintf "[| %s: %s |]"
         (string_of_expr ~indent size)
         (string_of_expr ~indent init)
-  | CExp_Index { array; index } ->
-      Printf.sprintf "%s.[%s]"
-        (string_of_expr ~indent array)
-        (string_of_expr ~indent index)
-  | CExp_IndexSet { array; index; value } ->
-      Printf.sprintf "%s.[%s] := %s"
-        (string_of_expr ~indent array)
-        (string_of_expr ~indent index)
-        (string_of_expr ~indent value)
   | CExp_Tuple elements ->
       Printf.sprintf "(%s)"
         (String.concat ", " (List.map (string_of_expr ~indent) elements))

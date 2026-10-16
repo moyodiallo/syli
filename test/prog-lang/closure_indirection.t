@@ -21,15 +21,15 @@
   module Test_file
   extern syliTest_file.syli_print_i64 : (i64) -> unit
   
-  extern "syliTest_file.+" : (i64) -> (i64) -> i64
+  extern syliTest_file.(+) : (i64) -> (i64) -> i64
   
-  extern "syliTest_file.-" : (i64) -> (i64) -> i64
+  extern syliTest_file.(-) : (i64) -> (i64) -> i64
   
   let syliTest_file.add = fun (x, y) : i64 ->
-      "syliTest_file.+"(x : i64, y : i64) : i64
+      syliTest_file.(+)(x : i64, y : i64) : i64
   
   let syliTest_file.sub = fun (x, y) : i64 ->
-      "syliTest_file.-"(x : i64, y : i64) : i64
+      syliTest_file.(-)(x : i64, y : i64) : i64
   
   let syliTest_file.main = fun () : unit ->
       {
@@ -112,7 +112,7 @@
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_file.-" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.(-) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -120,11 +120,11 @@
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_file.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_file.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -132,7 +132,7 @@
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_file.-"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.(-)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -229,7 +229,7 @@
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_file.-" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.(-) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -237,11 +237,11 @@
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_file.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_file.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_file.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -249,7 +249,7 @@
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_file.-"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.(-)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -339,23 +339,23 @@
   
   define i64 @syliTest_file.sub(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_file.-"(i64 %x, i64 %y)
+    %Sy_cir_var_0 = call i64 @"syliTest_file.(-)"(i64 %x, i64 %y)
     ret i64 %Sy_cir_var_0
   }
   
   define i64 @syliTest_file.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_file.+"(i64 %x, i64 %y)
+    %Sy_cir_var_0 = call i64 @"syliTest_file.(+)"(i64 %x, i64 %y)
     ret i64 %Sy_cir_var_0
   }
   
-  define i64 @"syliTest_file.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_file.(+)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = add i64 %x, %y
     ret i64 %Sy_prim_result
   }
   
-  define i64 @"syliTest_file.-"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_file.(-)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = sub i64 %x, %y
     ret i64 %Sy_prim_result

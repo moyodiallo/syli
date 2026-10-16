@@ -11,14 +11,14 @@ Nested functions:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern "syliTest_multi.+" : (f64) -> (f64) -> f64
+  extern syliTest_multi.(+) : (f64) -> (f64) -> f64
   
   let syliTest_multi.main = fun () : i64 ->
       {
         let sy1_apply = fun (f, x, y) : 'a93 ->
             f(x : 'a87, y : 'a89) : 'a93
         let sy2_add = fun (x, y, z) : f64 ->
-            "syliTest_multi.+"(x : f64, z : f64) : f64
+            syliTest_multi.(+)(x : f64, z : f64) : f64
         let sy3_add1 = sy2_add(1.0 : f64) : ('a102) -> (f64) -> f64
         let sy4_result = sy1_apply(sy3_add1 : (i64) -> (f64) -> f64, 3 : i64, 4.0 : f64) : f64
         let sy5_result2 = sy1_apply(sy3_add1 : (f64) -> (f64) -> f64, 1.0 : f64, 2.0 : f64) : f64
@@ -74,11 +74,11 @@ Nested functions:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
+      %Sy_cir_var_0:f64 = #call_direct syliTest_multi.(+) (%x:f64, %z:f64)
       return %Sy_cir_var_0:f64
   end
   
-  public fn "syliTest_multi.+"(%x:f64, %y:f64) -> f64:
+  public fn syliTest_multi.(+)(%x:f64, %y:f64) -> f64:
     entry: bb0
   
     bb0:
@@ -113,7 +113,7 @@ Nested functions:
       return 0:i64
   end
   
-  public fn "syliTest_multi.+"(%x:f64, %y:f64) -> f64:
+  public fn syliTest_multi.(+)(%x:f64, %y:f64) -> f64:
     entry: bb0
   
     bb0:
@@ -125,7 +125,7 @@ Nested functions:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
+      %Sy_cir_var_0:f64 = #call_direct syliTest_multi.(+) (%x:f64, %z:f64)
       return %Sy_cir_var_0:f64
   end
   
@@ -133,7 +133,7 @@ Nested functions:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:f64 = #call_direct "syliTest_multi.+" (%x:f64, %z:f64)
+      %Sy_cir_var_0:f64 = #call_direct syliTest_multi.(+) (%x:f64, %z:f64)
       return %Sy_cir_var_0:f64
   end
   

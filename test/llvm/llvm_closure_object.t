@@ -74,12 +74,12 @@ Closure with multipble chains of captured variables:
   
   define i64 @syliTest_multi.add(i64 %x, i64 %y, i64 %z) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
-    %Sy_cir_var_1 = call i64 @"syliTest_multi.+"(i64 %Sy_cir_var_0, i64 %z)
+    %Sy_cir_var_0 = call i64 @"syliTest_multi.(+)"(i64 %x, i64 %y)
+    %Sy_cir_var_1 = call i64 @"syliTest_multi.(+)"(i64 %Sy_cir_var_0, i64 %z)
     ret i64 %Sy_cir_var_1
   }
   
-  define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_multi.(+)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = add i64 %x, %y
     ret i64 %Sy_prim_result
@@ -252,11 +252,11 @@ Closure as an argument:
   
   define i64 @syliTest_multi.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %x, i64 %y)
+    %Sy_cir_var_0 = call i64 @"syliTest_multi.(+)"(i64 %x, i64 %y)
     ret i64 %Sy_cir_var_0
   }
   
-  define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_multi.(+)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = add i64 %x, %y
     ret i64 %Sy_prim_result

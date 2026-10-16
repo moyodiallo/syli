@@ -98,7 +98,8 @@ let func_to_string (f : func) =
   let params_str =
     String.concat ", "
       (List.map
-         (fun (ty, name) -> Printf.sprintf "%s %%%s" (string_of_lltype ty) name)
+         (fun (ty, name) ->
+           Printf.sprintf "%s %%%s" (string_of_lltype ty) (quote_if_needed name))
          f.params)
   in
   let attrs_str =
@@ -106,7 +107,7 @@ let func_to_string (f : func) =
   in
   Printf.bprintf buf "define %s @%s(%s)%s {\n"
     (string_of_lltype f.ret_type)
-    f.name params_str attrs_str;
+    (quote_if_needed f.name) params_str attrs_str;
   List.iter
     (fun block -> Printf.bprintf buf "%s" (block_to_string block))
     f.blocks;
@@ -121,7 +122,8 @@ let module_to_string (m : module_llvm) =
   if m.target_triple <> None then Printf.bprintf buf "\n";
   List.iter
     (fun (name, ty) ->
-      Printf.bprintf buf "%%%s = type %s\n" name (string_of_lltype ty))
+      Printf.bprintf buf "%%%s = type %s\n" (quote_if_needed name)
+        (string_of_lltype ty))
     m.type_defs;
   if m.type_defs <> [] then Printf.bprintf buf "\n";
   List.iter
@@ -129,9 +131,11 @@ let module_to_string (m : module_llvm) =
       match ty with
       | LV_Func (args, ret) ->
           let args_str = String.concat ", " (List.map string_of_lltype args) in
-          Printf.bprintf buf "declare %s @%s(%s)\n" (string_of_lltype ret) name
-            args_str
-      | _ -> Printf.bprintf buf "declare %s @%s\n" (string_of_lltype ty) name)
+          Printf.bprintf buf "declare %s @%s(%s)\n" (string_of_lltype ret)
+            (quote_if_needed name) args_str
+      | _ ->
+          Printf.bprintf buf "declare %s @%s\n" (string_of_lltype ty)
+            (quote_if_needed name))
     m.declarations;
   if m.declarations <> [] then Printf.bprintf buf "\n";
   List.iter
@@ -142,7 +146,7 @@ let module_to_string (m : module_llvm) =
         | None ->
             string_of_typed_operand (LV_Constant (LV_ZeroInitializer, g.g_type))
       in
-      Printf.bprintf buf "@%s = global %s\n" g.g_name init_str)
+      Printf.bprintf buf "@%s = global %s\n" (quote_if_needed g.g_name) init_str)
     m.globals;
   if m.globals <> [] then Printf.bprintf buf "\n";
   List.iter (fun f -> Printf.bprintf buf "%s\n" (func_to_string f)) m.functions;

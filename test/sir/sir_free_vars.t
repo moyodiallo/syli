@@ -32,11 +32,11 @@ Closure with free variables:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%sy_sy1_free_cap_0:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_multi.(+) (%sy_sy1_free_cap_0:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_multi.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

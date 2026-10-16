@@ -89,15 +89,6 @@ let rec transform_expr (t : transformer) (e : expr) : expr =
         TExp_ArrayLit { elements = List.map (t.expr t) elements }
     | TExp_ArrayAlloc { size; init } ->
         TExp_ArrayAlloc { size = t.expr t size; init = t.expr t init }
-    | TExp_Index { array; index } ->
-        TExp_Index { array = t.expr t array; index = t.expr t index }
-    | TExp_IndexSet { array; index; value } ->
-        TExp_IndexSet
-          {
-            array = t.expr t array;
-            index = t.expr t index;
-            value = t.expr t value;
-          }
     | TExp_Lambda lam -> TExp_Lambda (transform_lambda t lam)
     | TExp_Apply { closure_fun; args } ->
         TExp_Apply

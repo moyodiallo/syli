@@ -5,14 +5,7 @@
 type path = string list
 
 type location = { start_pos : int; end_pos : int; filename : string }
-
-and ident = {
-  name : string;
-  id : int;
-  path : string list;
-  loc : location;
-  is_operator : bool;
-}
+and ident = { name : string; id : int; path : string list; loc : location }
 
 type mut_flag = TMutable | TImmutable
 type rec_flag = TRecursive | TNonRecursive
@@ -127,8 +120,6 @@ and expr_desc =
   | TExp_VariantConstructor of { tag : int; name : ident; arg : expr option }
   | TExp_ArrayLit of { elements : expr list }
   | TExp_ArrayAlloc of { size : expr; init : expr }
-  | TExp_Index of { array : expr; index : expr }
-  | TExp_IndexSet of { array : expr; index : expr; value : expr }
   | TExp_Lambda of lambda
   | TExp_Apply of { closure_fun : expr; args : expr list }
   | TExp_Let of letdef

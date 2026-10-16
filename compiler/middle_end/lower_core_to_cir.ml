@@ -1060,47 +1060,6 @@ let rec lower_expr (ctx : ctx) (e : C.expr) : ctx * I.operand =
       let ctx = finish_block ctx (I.CR_Goto header_id) in
       let ctx = { ctx with pending_merge_id = Some exit_id } in
       (ctx, I.CR_OVar arr_var)
-  | CExp_Index { array; index } ->
-      let ctx, obj_op = lower_expr ctx array in
-      let ctx, idx_op = lower_expr ctx index in
-      let ctx, dst = fresh_var ctx out_ty in
-      let rv : I.rvalue =
-        {
-          I.id = dst.I.id;
-          node =
-            I.CR_Object_get
-              {
-                obj = obj_op;
-                projection = I.CR_Project_array idx_op;
-                value_ty = out_ty;
-              };
-          ty = out_ty;
-        }
-      in
-      let ctx, _ = emit ctx (I.CR_Assign { dst; rvalue = rv }) out_ty in
-      (ctx, I.CR_OVar dst)
-  | CExp_IndexSet { array; index; value } ->
-      let ctx, obj_op = lower_expr ctx array in
-      let obj_var : I.var =
-        match obj_op with
-        | I.CR_OVar v -> v
-        | _ -> raise (Lowering_error "IndexSet target must be a variable")
-      in
-      let ctx, idx_op = lower_expr ctx index in
-      let ctx, val_op = lower_expr ctx value in
-      let val_ty = mk_ir_ty ctx.type_defs value.ty in
-      let ctx, _ =
-        emit ctx
-          (I.CR_Object_set
-             {
-               obj = obj_var;
-               projection = I.CR_Project_array idx_op;
-               value = val_op;
-               value_ty = val_ty;
-             })
-          val_ty
-      in
-      (ctx, void_null)
   | CExp_Loop _ | CExp_Break _ | CExp_Continue | CExp_Return _ ->
       raise (Lowering_error "core form not lowered to SIR yet")
 

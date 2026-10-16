@@ -9,13 +9,13 @@ Closure with free variables:
   > EOF
   $ dune exec sylic -- core test_multi.sy
   module Test_multi
-  extern "syliTest_multi.+" : (i64) -> (i64) -> i64
+  extern syliTest_multi.(+) : (i64) -> (i64) -> i64
   
   let syliTest_multi.apply = fun () : i64 ->
       {
         let sy1_free = 1 : i64
         let sy2_add = fun (x, y) : i64 ->
-            "syliTest_multi.+"(sy1_free : i64, y : i64) : i64
+            syliTest_multi.(+)(sy1_free : i64, y : i64) : i64
         let sy3_result = sy2_add(1 : i64, 2 : i64) : i64
         sy3_result : i64
       }
@@ -42,7 +42,7 @@ Closure with free variables:
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_multi.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_multi.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -54,7 +54,7 @@ Closure with free variables:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_multi.+" (%sy_sy1_free_cap_0:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_multi.(+) (%sy_sy1_free_cap_0:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
@@ -103,7 +103,7 @@ Closure with free variables:
     ret i64 %Sy_cir_var_0
   }
   
-  define i64 @"syliTest_multi.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_multi.(+)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = add i64 %x, %y
     ret i64 %Sy_prim_result
@@ -111,7 +111,7 @@ Closure with free variables:
   
   define i64 @sy2_add__i64__i64__i64_ret_i64(i64 %sy_sy1_free_cap_0, i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_multi.+"(i64 %sy_sy1_free_cap_0, i64 %y)
+    %Sy_cir_var_0 = call i64 @"syliTest_multi.(+)"(i64 %sy_sy1_free_cap_0, i64 %y)
     ret i64 %Sy_cir_var_0
   }
   

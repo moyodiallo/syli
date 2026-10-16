@@ -90,6 +90,7 @@ let string_of_token = function
   | BAR -> "|"
   | CARET -> "^"
   | BANG -> "!"
+  | HASH -> "#"
   | UNDERSCORE -> "_"
   | INDENT -> "INDENT"
   | DEDENT -> "DEDENT"

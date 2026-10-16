@@ -17,6 +17,34 @@ let zeroinitializer ty = LV_Constant (LV_ZeroInitializer, ty)
 let local name ty = LV_Local (name, ty)
 let global name ty = LV_Global (name, ty)
 
+let escape_c_string (s : string) : string =
+  let buf = Buffer.create (String.length s) in
+  String.iter
+    (fun c ->
+      if c >= ' ' && c <= '~' && c <> '"' && c <> '\\' then
+        Buffer.add_char buf c
+      else Buffer.add_string buf (Printf.sprintf "\\%02x" (Char.code c)))
+    s;
+  Buffer.contents buf
+
+(** LLVM identifier after [@]/[%] (lexer [ReadVarName]):
+
+    {v
+        1. named: [-a-zA-Z$._][-a-zA-Z$._0-9]*
+        2. numeric: [0-9]+
+    v}
+    Unquoted iff it matches (1) or (2); anything else is quoted.*)
+let named_identifier_re = Str.regexp "^[-a-zA-Z$._][-a-zA-Z$._0-9]*$"
+
+let numeric_identifier_re = Str.regexp "^[0-9]+$"
+
+let is_unquoted_identifier (s : string) : bool =
+  Str.string_match named_identifier_re s 0
+  || Str.string_match numeric_identifier_re s 0
+
+let quote_if_needed (s : string) : string =
+  if is_unquoted_identifier s then s else "\"" ^ escape_c_string s ^ "\""
+
 let rec string_of_lltype = function
   | LV_I1 -> "i1"
   | LV_I8 -> "i8"
@@ -32,7 +60,7 @@ let rec string_of_lltype = function
   | LV_Struct fields ->
       let fields_str = String.concat ", " (List.map string_of_lltype fields) in
       "{ " ^ fields_str ^ " }"
-  | LV_Named name -> "%" ^ name
+  | LV_Named name -> "%" ^ quote_if_needed name
   | LV_Func (args, ret) ->
       let args_str = String.concat ", " (List.map string_of_lltype args) in
       Printf.sprintf "%s (%s)" (string_of_lltype ret) args_str
@@ -40,16 +68,6 @@ let rec string_of_lltype = function
 let string_of_float_literal f =
   let s = string_of_float f in
   if String.contains s '.' then s else s ^ ".0"
-
-let escape_c_string (s : string) : string =
-  let buf = Buffer.create (String.length s) in
-  String.iter
-    (fun c ->
-      if c >= ' ' && c <= '~' && c <> '"' && c <> '\\' then
-        Buffer.add_char buf c
-      else Buffer.add_string buf (Printf.sprintf "\\%02x" (Char.code c)))
-    s;
-  Buffer.contents buf
 
 let rec string_of_operand = function
   | LV_Constant (LV_Integer n, LV_I1) -> if n = 0L then "false" else "true"
@@ -69,11 +87,11 @@ let rec string_of_operand = function
                 Printf.sprintf "%s %s" (string_of_lltype ty)
                   (string_of_operand (LV_Constant (c, ty))))
               fields))
-  | LV_Local (n, _) -> "%" ^ n
-  | LV_Global (n, _) -> "@" ^ n
+  | LV_Local (n, _) -> "%" ^ quote_if_needed n
+  | LV_Global (n, _) -> "@" ^ quote_if_needed n
 
 let string_of_typed_operand = function
-  | LV_Global (n, _) -> Printf.sprintf "ptr @%s" n
+  | LV_Global (n, _) -> Printf.sprintf "ptr @%s" (quote_if_needed n)
   | op ->
       Printf.sprintf "%s %s"
         (string_of_lltype (ty_of_operand op))

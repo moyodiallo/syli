@@ -90,11 +90,6 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ " |]"
   | TExp_ArrayAlloc { size; init } ->
       "[| " ^ string_of_expr ~ind size ^ ": " ^ string_of_expr ~ind init ^ " |]"
-  | TExp_Index { array; index } ->
-      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "]"
-  | TExp_IndexSet { array; index; value } ->
-      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "] := "
-      ^ string_of_expr ~ind value
   | TExp_Lambda (lam : lambda) ->
       let params =
         List.map

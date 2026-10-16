@@ -24,35 +24,54 @@ let loc_of_parsing (loc : Syli_parsing.Ast.location) : location =
   { start_pos = loc.start_pos; end_pos = loc.end_pos; filename = loc.filename }
 
 let ident_of_parsing (id : Syli_parsing.Ast.ident) : ident =
-  {
-    name = id.name;
-    id = id.id;
-    path = [];
-    loc = loc_of_parsing id.loc;
-    is_operator = id.is_operator;
-  }
+  { name = id.name; id = id.id; path = []; loc = loc_of_parsing id.loc }
 
 let mk_ty ty_desc = { ty_desc }
 
-let rec ty_of_parsing (ctx : Env.infer_ctx) (t : Syli_parsing.Ast.ty) :
+let ty_of_parsing (ctx : Env.infer_ctx) (t : Syli_parsing.Ast.ty) :
     Env.infer_ctx * ty =
-  match t.ty_desc with
-  | Ty_Any -> (ctx, mk_ty TTy_Any)
-  | Ty_Constant c -> (ctx, mk_ty @@ TTy_Constant (const_ty_of_parsing c))
-  | Ty_Var _ -> Infer_helpers.fresh_ty ctx
-  | Ty_Tuple elems ->
-      let ctx, elems = List.fold_left_map ty_of_parsing ctx elems in
-      (ctx, mk_ty @@ TTy_Tuple elems)
-  | Ty_Arrow (arg, ret) ->
-      let ctx, arg = ty_of_parsing ctx arg in
-      let ctx, ret = ty_of_parsing ctx ret in
-      (ctx, mk_ty @@ TTy_Arrow (arg, ret))
-  | Ty_Array elem ->
-      let ctx, elem = ty_of_parsing ctx elem in
-      (ctx, mk_ty @@ TTy_Array elem)
-  | Ty_Defined d ->
-      let ctx, args = List.fold_left_map ty_of_parsing ctx d.args in
-      (ctx, { ty_desc = TTy_Defined { name = ident_of_parsing d.name; args } })
+  let module SM = Syli_common.StringMap in
+  let rec go (ctx : Env.infer_ctx) (vars : ty SM.t) (t : Syli_parsing.Ast.ty) :
+      Env.infer_ctx * ty SM.t * ty =
+    match t.ty_desc with
+    | Ty_Any -> (ctx, vars, mk_ty TTy_Any)
+    | Ty_Constant c -> (ctx, vars, mk_ty @@ TTy_Constant (const_ty_of_parsing c))
+    | Ty_Var name -> (
+        match SM.find_opt name vars with
+        | Some ty -> (ctx, vars, ty)
+        | None ->
+            let ctx, ty = Infer_helpers.fresh_ty ctx in
+            (ctx, SM.add name ty vars, ty))
+    | Ty_Tuple elems ->
+        let (ctx, vars), elems =
+          List.fold_left_map
+            (fun (ctx, vars) e ->
+              let ctx, vars, e = go ctx vars e in
+              ((ctx, vars), e))
+            (ctx, vars) elems
+        in
+        (ctx, vars, mk_ty @@ TTy_Tuple elems)
+    | Ty_Arrow (arg, ret) ->
+        let ctx, vars, arg = go ctx vars arg in
+        let ctx, vars, ret = go ctx vars ret in
+        (ctx, vars, mk_ty @@ TTy_Arrow (arg, ret))
+    | Ty_Array elem ->
+        let ctx, vars, elem = go ctx vars elem in
+        (ctx, vars, mk_ty @@ TTy_Array elem)
+    | Ty_Defined d ->
+        let (ctx, vars), args =
+          List.fold_left_map
+            (fun (ctx, vars) a ->
+              let ctx, vars, a = go ctx vars a in
+              ((ctx, vars), a))
+            (ctx, vars) d.args
+        in
+        ( ctx,
+          vars,
+          { ty_desc = TTy_Defined { name = ident_of_parsing d.name; args } } )
+  in
+  let ctx, _, ty = go ctx SM.empty t in
+  (ctx, ty)
 
 let constant_desc_of_parsing (d : Syli_parsing.Ast.constant_desc) :
     constant_desc * constant_ty =

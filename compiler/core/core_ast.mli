@@ -8,7 +8,7 @@ type path = string list
 (** A dotted path of module names. *)
 
 type ident = { name : string; path : path; id : int }
-(** An identifier with name, full name, path, unique ID, and [is_operator]. *)
+(** An identifier with name, full name, path, unique ID *)
 
 (** Mutability flag for core AST bindings. *)
 type mut_flag = CMutable | CImmutable
@@ -107,8 +107,6 @@ and expr_node =
   | CExp_VariantConstructor of { tag : int; arg : expr option }
   | CExp_ArrayLit of { elements : expr list }
   | CExp_ArrayAlloc of { size : expr; init : expr }
-  | CExp_Index of { array : expr; index : expr }
-  | CExp_IndexSet of { array : expr; index : expr; value : expr }
   | CExp_Lambda of lambda
   | CExp_Apply of { closure_fun : expr; args : expr list }
   | CExp_Let of { rec_flag : rec_flag; name : ident; value : expr }

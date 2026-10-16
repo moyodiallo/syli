@@ -50,6 +50,26 @@ let array_prim_ty =
   @@ Ty_Arrow
        (mk_ty @@ Ty_Array (mk_ty @@ Ty_Var "a"), mk_ty @@ Ty_Constant Ty_Int64)
 
+(** ['a array -> i64 -> 'a]: index get. *)
+let index_get_prim_ty =
+  mk_ty
+  @@ Ty_Arrow
+       ( mk_ty @@ Ty_Array (mk_ty @@ Ty_Var "a"),
+         mk_ty @@ Ty_Arrow (mk_ty @@ Ty_Constant Ty_Int64, mk_ty @@ Ty_Var "a")
+       )
+
+(** ['a array -> i64 -> 'a -> unit]: index set. *)
+let index_set_prim_ty =
+  mk_ty
+  @@ Ty_Arrow
+       ( mk_ty @@ Ty_Array (mk_ty @@ Ty_Var "a"),
+         mk_ty
+         @@ Ty_Arrow
+              ( mk_ty @@ Ty_Constant Ty_Int64,
+                mk_ty
+                @@ Ty_Arrow (mk_ty @@ Ty_Var "a", mk_ty @@ Ty_Constant Ty_Unit)
+              ) )
+
 let primitives =
   [
     {
@@ -94,6 +114,8 @@ let primitives =
     };
     { name = "array_len"; tys = [ array_prim_ty ] };
     { name = "array_size"; tys = [ array_prim_ty ] };
+    { name = "array_index_get"; tys = [ index_get_prim_ty ] };
+    { name = "array_index_set"; tys = [ index_set_prim_ty ] };
   ]
 
 let rec is_ty_equal (ty1 : ty) (ty2 : ty) : bool =

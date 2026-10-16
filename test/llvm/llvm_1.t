@@ -378,47 +378,47 @@ Arithmetic operations emit the corresponding LLVM instructions:
   
   define i64 @__init_global.syliTest_arith.d() gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_arith./"(i64 20, i64 4)
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.(/)"(i64 20, i64 4)
     ret i64 %Sy_cir_var_0
   }
   
   define i64 @__init_global.syliTest_arith.c() gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_arith.*"(i64 4, i64 6)
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.(*)"(i64 4, i64 6)
     ret i64 %Sy_cir_var_0
   }
   
   define i64 @__init_global.syliTest_arith.b() gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_arith.-"(i64 10, i64 2)
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.(-)"(i64 10, i64 2)
     ret i64 %Sy_cir_var_0
   }
   
   define i64 @__init_global.syliTest_arith.a() gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_arith.+"(i64 5, i64 3)
+    %Sy_cir_var_0 = call i64 @"syliTest_arith.(+)"(i64 5, i64 3)
     ret i64 %Sy_cir_var_0
   }
   
-  define i64 @"syliTest_arith.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_arith.(+)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = add i64 %x, %y
     ret i64 %Sy_prim_result
   }
   
-  define i64 @"syliTest_arith.*"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_arith.(*)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = mul i64 %x, %y
     ret i64 %Sy_prim_result
   }
   
-  define i64 @"syliTest_arith.-"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_arith.(-)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = sub i64 %x, %y
     ret i64 %Sy_prim_result
   }
   
-  define i64 @"syliTest_arith./"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_arith.(/)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = sdiv i64 %x, %y
     ret i64 %Sy_prim_result
@@ -534,23 +534,23 @@ Comparison operations emit icmp instructions:
   
   define i1 @__init_global.syliTest_cmp.lt() gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i1 @"syliTest_cmp.<"(i64 2, i64 5)
+    %Sy_cir_var_0 = call i1 @"syliTest_cmp.(<)"(i64 2, i64 5)
     ret i1 %Sy_cir_var_0
   }
   
   define i1 @__init_global.syliTest_cmp.eq() gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i1 @"syliTest_cmp.=="(i64 5, i64 5)
+    %Sy_cir_var_0 = call i1 @"syliTest_cmp.(==)"(i64 5, i64 5)
     ret i1 %Sy_cir_var_0
   }
   
-  define i1 @"syliTest_cmp.=="(i64 %x, i64 %y) gc "statepoint-example" {
+  define i1 @"syliTest_cmp.(==)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = icmp eq i64 %x, %y
     ret i1 %Sy_prim_result
   }
   
-  define i1 @"syliTest_cmp.<"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i1 @"syliTest_cmp.(<)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = icmp slt i64 %x, %y
     ret i1 %Sy_prim_result
@@ -656,12 +656,12 @@ Simple Function:
   
   define i64 @syliTest_fn.add(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
-    %Sy_cir_var_0 = call i64 @"syliTest_fn.+"(i64 %x, i64 20)
-    %Sy_cir_var_1 = call i64 @"syliTest_fn.+"(i64 %Sy_cir_var_0, i64 %y)
+    %Sy_cir_var_0 = call i64 @"syliTest_fn.(+)"(i64 %x, i64 20)
+    %Sy_cir_var_1 = call i64 @"syliTest_fn.(+)"(i64 %Sy_cir_var_0, i64 %y)
     ret i64 %Sy_cir_var_1
   }
   
-  define i64 @"syliTest_fn.+"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_fn.(+)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = add i64 %x, %y
     ret i64 %Sy_prim_result

@@ -117,6 +117,7 @@ rule token = parse
   | "="         { EQ }
   | ":="        { COLONEQ }
   | "!"         { BANG }
+  | "#"         { HASH }
 
   (* logical operators *)
   | "&&"        { AMPAMPAND }

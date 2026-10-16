@@ -16,19 +16,19 @@
 
   $ cat test_file.core
   module Test_file
-  extern "syliTest_file.-" : (i64) -> (i64) -> i64
+  extern syliTest_file.(-) : (i64) -> (i64) -> i64
   
-  extern "syliTest_file.*" : (i64) -> (i64) -> i64
+  extern syliTest_file.(*) : (i64) -> (i64) -> i64
   
-  extern "syliTest_file.==" : (i64) -> (i64) -> bool
+  extern syliTest_file.(==) : (i64) -> (i64) -> bool
   
   extern syliTest_file.syli_print_i64 : (i64) -> unit
   
   let rec syliTest_file.factorial = fun (n) : i64 ->
-      if "syliTest_file.=="(n : i64, 0 : i64) : bool
+      if syliTest_file.(==)(n : i64, 0 : i64) : bool
         1 : i64
       else
-        "syliTest_file.*"(n : i64, syliTest_file.factorial("syliTest_file.-"(n : i64, 1 : i64) : i64) : i64) : i64
+        syliTest_file.(*)(n : i64, syliTest_file.factorial(syliTest_file.(-)(n : i64, 1 : i64) : i64) : i64) : i64
   
   let syliTest_file.main = fun () : unit ->
       syliTest_file.syli_print_i64(syliTest_file.factorial(5 : i64) : i64) : unit
@@ -62,13 +62,13 @@
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:bool = #call_direct "syliTest_file.==" (%n:i64, 0:i64)
+      %Sy_cir_var_0:bool = #call_direct syliTest_file.(==) (%n:i64, 0:i64)
       cond_br %Sy_cir_var_0:bool, bb1, bb2
   
     bb2:
-      %Sy_cir_var_2:i64 = #call_direct "syliTest_file.-" (%n:i64, 1:i64)
+      %Sy_cir_var_2:i64 = #call_direct syliTest_file.(-) (%n:i64, 1:i64)
       %Sy_cir_var_3:i64 = #call_direct syliTest_file.factorial (%Sy_cir_var_2:i64)
-      %Sy_cir_var_4:i64 = #call_direct "syliTest_file.*" (%n:i64, %Sy_cir_var_3:i64)
+      %Sy_cir_var_4:i64 = #call_direct syliTest_file.(*) (%n:i64, %Sy_cir_var_3:i64)
       %Sy_cir_var_1:i64 = move(%Sy_cir_var_4:i64)
       goto bb3
   
@@ -81,7 +81,7 @@
       return %Sy_cir_var_1:i64
   end
   
-  public fn "syliTest_file.-"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.(-)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -89,7 +89,7 @@
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_file.*"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_file.(*)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -97,7 +97,7 @@
       return %Sy_prim_result:i64
   end
   
-  public fn "syliTest_file.=="(%x:i64, %y:i64) -> bool:
+  public fn syliTest_file.(==)(%x:i64, %y:i64) -> bool:
     entry: bb0
   
     bb0:
@@ -139,12 +139,12 @@
   define i64 @syliTest_file.factorial(i64 %n) gc "statepoint-example" {
   bb0:
     %Sy_cir_var_1 = alloca i64
-    %Sy_cir_var_0 = call i1 @"syliTest_file.=="(i64 %n, i64 0)
+    %Sy_cir_var_0 = call i1 @"syliTest_file.(==)"(i64 %n, i64 0)
     br i1 %Sy_cir_var_0, label %bb1, label %bb2
   bb2:
-    %Sy_cir_var_2 = call i64 @"syliTest_file.-"(i64 %n, i64 1)
+    %Sy_cir_var_2 = call i64 @"syliTest_file.(-)"(i64 %n, i64 1)
     %Sy_cir_var_3 = call i64 @syliTest_file.factorial(i64 %Sy_cir_var_2)
-    %Sy_cir_var_4 = call i64 @"syliTest_file.*"(i64 %n, i64 %Sy_cir_var_3)
+    %Sy_cir_var_4 = call i64 @"syliTest_file.(*)"(i64 %n, i64 %Sy_cir_var_3)
     store i64 %Sy_cir_var_4, ptr %Sy_cir_var_1
     br label %bb3
   bb1:
@@ -155,19 +155,19 @@
     ret i64 %Sy_llvm_tmp_0
   }
   
-  define i64 @"syliTest_file.-"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_file.(-)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = sub i64 %x, %y
     ret i64 %Sy_prim_result
   }
   
-  define i64 @"syliTest_file.*"(i64 %x, i64 %y) gc "statepoint-example" {
+  define i64 @"syliTest_file.(*)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = mul i64 %x, %y
     ret i64 %Sy_prim_result
   }
   
-  define i1 @"syliTest_file.=="(i64 %x, i64 %y) gc "statepoint-example" {
+  define i1 @"syliTest_file.(==)"(i64 %x, i64 %y) gc "statepoint-example" {
   bb0:
     %Sy_prim_result = icmp eq i64 %x, %y
     ret i1 %Sy_prim_result

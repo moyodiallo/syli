@@ -9,7 +9,7 @@
   Typed parse0.src successfully: module Parse0 with 5 top-level typed items
   Type Environment:
   {
-    + : i64 -> i64 -> i64
+    (+) : i64 -> i64 -> i64
     add : i64 -> i64 -> i64
     add10 : i64 -> i64
     add20 : i64
@@ -26,7 +26,7 @@
   Typed parse0.src successfully: module Parse0 with 4 top-level typed items
   Type Environment:
   {
-    + : i64 -> i64 -> i64
+    (+) : i64 -> i64 -> i64
     add : i64 -> i64 -> i64
     z : i64
   }

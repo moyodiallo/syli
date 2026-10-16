@@ -1,13 +1,6 @@
 open Ast
 
 let indent n = String.make (n * 2) ' '
-
-let is_expr_operator e =
-  match e.expr_desc with Exp_Ident i -> i.is_operator | _ -> false
-
-let is_binding_operator p =
-  match p with Pat_Ident i -> i.is_operator | _ -> false
-
 let is_expr_apply e = match e.expr_desc with Exp_Apply _ -> true | _ -> false
 let surround_with_paren s = "(" ^ s ^ ")"
 
@@ -110,11 +103,6 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ " |]"
   | Exp_ArrayAlloc { size; init } ->
       "[| " ^ string_of_expr ~ind size ^ ": " ^ string_of_expr ~ind init ^ " |]"
-  | Exp_Index { array; index } ->
-      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "]"
-  | Exp_IndexSet { array; index; value } ->
-      string_of_expr ~ind array ^ ".[" ^ string_of_expr ~ind index ^ "] := "
-      ^ string_of_expr ~ind value
   | Exp_Lambda { params; body; ret_ty; _ } ->
       let params_str = String.concat ", " (List.map string_of_param params) in
       let ret_str =
@@ -125,12 +113,8 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ string_of_expr ~ind:(ind + 1) body
       ^ "\n" ^ indent ind ^ "}"
   | Exp_Apply { closure_fun; args } ->
-      let closure =
-        if is_expr_operator closure_fun then
-          surround_with_paren @@ string_of_expr ~ind closure_fun
-        else string_of_expr ~ind closure_fun
-      in
-      closure ^ " "
+      string_of_expr ~ind closure_fun
+      ^ " "
       ^ String.concat " "
           (List.map
              (fun arg ->
@@ -140,9 +124,7 @@ let rec string_of_expr ?(ind = 0) (expr : expr) : string =
       ^ ""
   | Exp_Let ld ->
       "let "
-      ^ (if is_binding_operator ld.pattern.node then
-           surround_with_paren @@ string_of_pattern ld.pattern
-         else string_of_pattern ld.pattern)
+      ^ string_of_pattern ld.pattern
       ^ (match ld.ty_annot with None -> "" | Some t -> ": " ^ string_of_ty t)
       ^ " = "
       ^ string_of_expr ~ind ld.value

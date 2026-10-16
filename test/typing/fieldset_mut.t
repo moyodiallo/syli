@@ -11,7 +11,7 @@ Assigning to a mutable record field is allowed:
   Typed test_fieldset_mut.sy successfully: module Test_fieldset_mut with 3 top-level typed items
   Type Environment:
   {
-    + : i64 -> i64 -> i64
+    (+) : i64 -> i64 -> i64
     main : unit -> i64
   }
 

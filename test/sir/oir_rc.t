@@ -76,11 +76,11 @@ Multiple ref variables with independent lifetimes:
       release(%Sy_cir_var_0:obj_ptr)
       %Sy_cir_var_3:i64 = obj_get(%Sy_cir_var_1:obj_ptr, field[0]):i64
       release(%Sy_cir_var_1:obj_ptr)
-      %Sy_cir_var_4:i64 = #call_direct "syliTest_rc2.+" (%Sy_cir_var_2:i64, %Sy_cir_var_3:i64)
+      %Sy_cir_var_4:i64 = #call_direct syliTest_rc2.(+) (%Sy_cir_var_2:i64, %Sy_cir_var_3:i64)
       return
   end
   
-  public fn "syliTest_rc2.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_rc2.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -128,11 +128,11 @@ Closure with captured variable:
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc3.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_rc3.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_rc3.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_rc3.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -219,11 +219,11 @@ Closure returned from function — verifies the returned closure is NOT released
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc_returned.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_rc_returned.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_rc_returned.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_rc_returned.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -296,11 +296,11 @@ Closure compose — two closures passed as borrowed parameters, released in call
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc_compose.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_rc_compose.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_rc_compose.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_rc_compose.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:
@@ -390,11 +390,11 @@ Closure apply_twice — borrowed closure applied twice, still only released in c
     entry: bb0
   
     bb0:
-      %Sy_cir_var_0:i64 = #call_direct "syliTest_rc_twice.+" (%x:i64, %y:i64)
+      %Sy_cir_var_0:i64 = #call_direct syliTest_rc_twice.(+) (%x:i64, %y:i64)
       return %Sy_cir_var_0:i64
   end
   
-  public fn "syliTest_rc_twice.+"(%x:i64, %y:i64) -> i64:
+  public fn syliTest_rc_twice.(+)(%x:i64, %y:i64) -> i64:
     entry: bb0
   
     bb0:

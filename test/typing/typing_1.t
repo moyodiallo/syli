@@ -60,7 +60,7 @@ Arithmetic operations result in integers:
     1 | let a = 5 + 3
                 ^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
   $ cat >test_arith.sy <<EOF
@@ -75,7 +75,7 @@ Arithmetic operations result in integers:
     1 | let a = 5.0 + 3.0
                 ^^^^^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
 Comparison operations result in booleans:
@@ -93,7 +93,7 @@ Comparison operations result in booleans:
     1 | let eq = 5 == 5
                  ^^^^^^
   
-  Unbound identifier '=='
+  Unbound identifier '(==)'
   [1]
 
 Tuple types:
@@ -139,7 +139,7 @@ Lambda expressions:
     2 | let double = fun x -> x + x
                               ^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
 Curried lambda expressions:
@@ -152,7 +152,7 @@ Curried lambda expressions:
     1 | let add = fun x y -> x + y
                              ^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
 
@@ -168,7 +168,7 @@ Multiple bindings:
     3 | let z = x + y
                 ^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
   $ cat >array_list.t <<EOF
@@ -215,7 +215,7 @@ Closures as an argument:
     2 | let double_x x = x + x
                          ^^^^^
   
-  Unbound identifier '+'
+  Unbound identifier '(+)'
   [1]
 
 main function test with FFI and record types:
