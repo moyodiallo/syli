@@ -22,7 +22,7 @@ Failing: an alphabetic operator must use the # marker, not be spelled like an id
   Unexpected token: 'IDENT(index_set)'
   [1]
 
-Failing: the operator marker must be inside parens
+Failing: the operator marker must be inside parentheses
   $ cat >bad_op.sy <<EOF
   > let #index_set x = x
   > EOF
